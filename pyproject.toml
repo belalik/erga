@@ -17,7 +17,13 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
-dependencies = []
+dependencies = [
+    "pyyaml>=6",
+    "requests>=2.32",
+]
+
+[project.scripts]
+erga = "erga.cli:main"
 
 [project.urls]
 Repository = "https://github.com/belalik/erga"
@@ -34,6 +40,8 @@ dev = [
     "mypy>=1.11",
     "pytest>=8",
     "ruff>=0.6",
+    "types-pyyaml>=6",
+    "types-requests>=2.32",
 ]
 
 [tool.ruff]

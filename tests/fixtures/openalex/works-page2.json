@@ -1,0 +1,157 @@
+{
+  "meta": { "count": 10, "next_cursor": null },
+  "results": [
+    {
+      "id": "https://openalex.org/W1003",
+      "title": "Chemistry of Cracked Pots",
+      "authorships": [
+        {
+          "author": {
+            "id": "https://openalex.org/A5000000001",
+            "display_name": "Josiah Carberry",
+            "orcid": "https://orcid.org/0000-0002-1825-0097"
+          },
+          "raw_author_name": "Josiah Carberry"
+        }
+      ],
+      "publication_year": 2023,
+      "publication_date": "2023-07-15",
+      "primary_location": null,
+      "type": "article",
+      "doi": "https://doi.org/10.5555/cracked",
+      "cited_by_count": 7,
+      "abstract_inverted_index": null,
+      "open_access": { "is_oa": false, "oa_url": null },
+      "best_oa_location": null,
+      "is_retracted": true
+    },
+    {
+      "id": "https://openalex.org/W1005",
+      "title": "Bucket Handles Reconsidered",
+      "authorships": [
+        {
+          "author": {
+            "id": "https://openalex.org/A5000000002",
+            "display_name": "Vera Chan",
+            "orcid": null
+          },
+          "raw_author_name": "Vera Chan"
+        }
+      ],
+      "publication_year": 2025,
+      "publication_date": "2025-02-01",
+      "primary_location": {
+        "source": { "display_name": "Journal of Vessel Studies", "type": "journal" }
+      },
+      "type": "article",
+      "doi": "https://doi.org/10.5555/bucket",
+      "cited_by_count": 1,
+      "abstract_inverted_index": { "Handles": [0], "matter.": [1] },
+      "open_access": { "is_oa": false, "oa_url": null },
+      "best_oa_location": null,
+      "is_retracted": false
+    },
+    {
+      "id": "https://openalex.org/W1007",
+      "title": "Errata and Corrigenda: Cracked Pots",
+      "authorships": [
+        {
+          "author": {
+            "id": "https://openalex.org/A5000000001",
+            "display_name": "Josiah Carberry",
+            "orcid": "https://orcid.org/0000-0002-1825-0097"
+          },
+          "raw_author_name": "Josiah Carberry"
+        }
+      ],
+      "publication_year": 2021,
+      "publication_date": "2021-09-01",
+      "primary_location": {
+        "source": { "display_name": "Journal of Psychoceramics", "type": "journal" }
+      },
+      "type": "erratum",
+      "doi": "https://doi.org/10.5555/errata",
+      "cited_by_count": 0,
+      "abstract_inverted_index": null,
+      "open_access": { "is_oa": false, "oa_url": null },
+      "best_oa_location": null,
+      "is_retracted": false
+    },
+    {
+      "id": "https://openalex.org/W1008",
+      "title": "Annual Report on Pot Integrity",
+      "authorships": [
+        {
+          "author": {
+            "id": "https://openalex.org/A5000000001",
+            "display_name": "Josiah Carberry",
+            "orcid": "https://orcid.org/0000-0002-1825-0097"
+          },
+          "raw_author_name": "Josiah Carberry"
+        }
+      ],
+      "publication_year": 2021,
+      "publication_date": "2021-12-01",
+      "primary_location": {
+        "source": { "display_name": "Psychoceramics Bulletin", "type": "journal" }
+      },
+      "type": "article",
+      "doi": "https://doi.org/10.5555/report2021",
+      "cited_by_count": 2,
+      "abstract_inverted_index": null,
+      "open_access": { "is_oa": false, "oa_url": null },
+      "best_oa_location": null,
+      "is_retracted": false
+    },
+    {
+      "id": "https://openalex.org/W1009",
+      "title": "Annual Report on Pot Integrity",
+      "authorships": [
+        {
+          "author": {
+            "id": "https://openalex.org/A5000000001",
+            "display_name": "Josiah Carberry",
+            "orcid": "https://orcid.org/0000-0002-1825-0097"
+          },
+          "raw_author_name": "Josiah Carberry"
+        }
+      ],
+      "publication_year": 2022,
+      "publication_date": "2022-12-01",
+      "primary_location": {
+        "source": { "display_name": "Psychoceramics Bulletin", "type": "journal" }
+      },
+      "type": "article",
+      "doi": "https://doi.org/10.5555/report2022",
+      "cited_by_count": 0,
+      "abstract_inverted_index": null,
+      "open_access": { "is_oa": false, "oa_url": null },
+      "best_oa_location": null,
+      "is_retracted": false
+    },
+    {
+      "id": "https://openalex.org/W1010",
+      "title": "On the Resonance of Teacups",
+      "authorships": [
+        {
+          "author": {
+            "id": "https://openalex.org/A5000000001",
+            "display_name": "Josiah Carberry",
+            "orcid": "https://orcid.org/0000-0002-1825-0097"
+          },
+          "raw_author_name": "Josiah Carberry"
+        }
+      ],
+      "publication_year": 2020,
+      "publication_date": "2020-04-01",
+      "primary_location": null,
+      "type": "article",
+      "doi": "https://doi.org/10.5555/teacup",
+      "cited_by_count": 12,
+      "abstract_inverted_index": null,
+      "open_access": { "is_oa": false, "oa_url": null },
+      "best_oa_location": null,
+      "is_retracted": false
+    }
+  ]
+}

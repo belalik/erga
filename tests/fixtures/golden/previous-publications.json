@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "works": [
+    {
+      "id": "W1010",
+      "title": "On the Resonance of Teacups",
+      "doi": "https://doi.org/10.5555/teacup",
+      "venue": "Teacup Quarterly"
+    }
+  ]
+}

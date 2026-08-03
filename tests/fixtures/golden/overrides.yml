@@ -1,0 +1,7 @@
+# Patch one venue, drop an erratum, keep two same-titled annual reports apart.
+- doi: https://doi.org/10.5555/XYZ123
+  venue: Journal of Psychoceramics (Series B)
+- id: W1007
+  exclude: true
+- id: W1009
+  keep_distinct: true

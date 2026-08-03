@@ -12,9 +12,17 @@ highlights) lives in separate files that survive every automated refresh.
 
 ## Status
 
-Pre-0.1. Scaffold and requirements phase; the pipeline itself is not yet
-implemented. See `docs/requirements-v1.md` for the v1 design and
-`docs/todo.md` for open work.
+Pre-0.1. The pipeline is implemented end-to-end (config, fetch, normalize,
+dedup, curation, Crossref backfill, deterministic output, `build`/`verify`
+CLI) with unit suites plus a byte-exact golden test; not yet validated
+against live OpenAlex or released. See `docs/requirements-v1.md` for the v1
+design and `docs/todo.md` for open work.
+
+Module map (`src/erga/`): `config` (erga.yml), `http` (injectable transport
++ retry), `openalex`/`crossref` (clients), `normalize` (raw work → canonical
+record), `dedup` (DOI + title clustering), `curation` (manual/overrides/
+tags), `pipeline` (stage orchestration), `output` (deterministic JSON),
+`verify` (disambiguation report), `cli`.
 
 ## Commands
 

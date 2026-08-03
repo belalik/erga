@@ -1,0 +1,11 @@
+{
+  "meta": { "count": 1 },
+  "results": [
+    {
+      "id": "https://openalex.org/A5000000001",
+      "display_name": "Josiah Carberry",
+      "display_name_alternatives": ["J. S. Carberry", "Josiah S. Carberry"],
+      "works_count": 8
+    }
+  ]
+}

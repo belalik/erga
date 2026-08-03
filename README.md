@@ -3,10 +3,10 @@
 Keep a website's academic publications list current, automatically, without
 giving up control of the data.
 
-**Status: early development.** Nothing is usable yet; v0.1 will be the first
-end-to-end release.
+**Status: early development.** The CLI pipeline works end-to-end; not yet
+released or battle-tested against a production site.
 
-## What it will do
+## What it does
 
 You list your authors (ORCID iDs) in one config file. erga fetches their works
 from OpenAlex, normalizes and deduplicates them across registrars (arXiv,
@@ -26,6 +26,42 @@ Astro, Hugo, anything) renders it however it likes.
   CLI.
 
 The name: έργα, "works" — the same term OpenAlex uses for publications.
+
+## Usage
+
+Not on PyPI yet; install from a checkout with `uv sync` (or
+`pip install -e .`). Write an `erga.yml`:
+
+```yaml
+mailto: you@example.org          # identifies requests to Crossref/OpenAlex
+authors:
+  - name: Josiah Carberry
+    orcid: 0000-0002-1825-0097
+  - name: Another Person
+    openalex_id: A5000000000     # alternative when ORCID is missing/wrong
+
+openalex:
+  api_key_env: OPENALEX_API_KEY  # optional; env var name, never the key itself
+
+output:
+  path: publications.json
+```
+
+Then:
+
+- `erga build [--config PATH] [--dry-run]` runs the pipeline and writes
+  `publications.json`. With `--dry-run` it prints a summary (fetched, merged,
+  deduplicated, excluded, backfilled) without writing.
+- `erga verify [--config PATH]` prints the author-disambiguation report:
+  what each configured author resolves to on OpenAlex, with warnings for
+  split profiles, zero-work authors, and implausible works counts. Run it
+  once when setting up, and whenever a build looks off.
+
+Three optional curation files next to the config survive every refresh:
+`manual.yml` (records the APIs miss), `overrides.yml` (per-record patches,
+exclusions, dedup exemptions), and `tags.yml` (tag name to DOI/id lists;
+tag semantics are entirely yours). The full schema and pipeline design live
+in [docs/requirements-v1.md](docs/requirements-v1.md).
 
 ## License
 

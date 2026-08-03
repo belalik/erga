@@ -1,0 +1,9 @@
+# Golden-test config. All contacts are placeholders; 0000-0002-1825-0097 is
+# ORCID's fictitious researcher Josiah Carberry.
+mailto: maintainer@example.org
+authors:
+  - name: Josiah Carberry
+    orcid: 0000-0002-1825-0097
+    aliases: ["J. S. Carberry"]
+  - name: Vera Chan
+    openalex_id: A5000000002

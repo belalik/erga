@@ -1,0 +1,4 @@
+# "featured" is only an example; tag names carry no semantics for erga.
+featured:
+  - https://doi.org/10.5555/XYZ123
+  - W1004

@@ -1,0 +1,15 @@
+# A record the APIs miss entirely, and one that duplicates a fetched work by
+# DOI (manual always wins the dedup).
+- title: The Lost Lectures of Josiah Carberry
+  authors: ["J. S. Carberry"]
+  venue: Brown University Press
+  year: 2020
+  type: book
+  tags: [legacy]
+- title: Bucket Handles Reconsidered
+  authors: ["Vera Chan", "Josiah Carberry"]
+  venue: Journal of Vessel Studies
+  year: 2025
+  date: 2025-02-01
+  doi: 10.5555/BUCKET
+  type: journal

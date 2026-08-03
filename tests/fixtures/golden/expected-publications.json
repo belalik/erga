@@ -1,0 +1,211 @@
+{
+  "schema_version": 1,
+  "works": [
+    {
+      "id": "manual-bucket-handles-reconsidered",
+      "title": "Bucket Handles Reconsidered",
+      "authors": [
+        {
+          "name": "Vera Chan",
+          "orcid": null,
+          "tracked": true
+        },
+        {
+          "name": "Josiah Carberry",
+          "orcid": "https://orcid.org/0000-0002-1825-0097",
+          "tracked": true
+        }
+      ],
+      "year": 2025,
+      "date": "2025-02-01",
+      "venue": "Journal of Vessel Studies",
+      "type": "journal",
+      "doi": "https://doi.org/10.5555/bucket",
+      "cited_by_count": 0,
+      "abstract": "Handles matter.",
+      "open_access": null,
+      "tags": [],
+      "is_retracted": false,
+      "source": "manual"
+    },
+    {
+      "id": "W1001",
+      "title": "Toward a Unified Theory of High-Energy Metaphysics",
+      "authors": [
+        {
+          "name": "Josiah Carberry",
+          "orcid": "https://orcid.org/0000-0002-1825-0097",
+          "tracked": true
+        },
+        {
+          "name": "Priya Nair",
+          "orcid": null,
+          "tracked": false
+        }
+      ],
+      "year": 2024,
+      "date": "2024-03-01",
+      "venue": "Journal of Psychoceramics (Series B)",
+      "type": "journal",
+      "doi": "https://doi.org/10.5555/xyz123",
+      "cited_by_count": 42,
+      "abstract": "We posit that all pots crack.",
+      "open_access": {
+        "url": "https://arxiv.example.org/abs/2311.00001"
+      },
+      "tags": [
+        "featured"
+      ],
+      "is_retracted": false,
+      "source": "openalex"
+    },
+    {
+      "id": "W1003",
+      "title": "Chemistry of Cracked Pots",
+      "authors": [
+        {
+          "name": "Josiah Carberry",
+          "orcid": "https://orcid.org/0000-0002-1825-0097",
+          "tracked": true
+        },
+        {
+          "name": "María Domínguez",
+          "orcid": null,
+          "tracked": false
+        },
+        {
+          "name": "Vera Chan",
+          "orcid": null,
+          "tracked": true
+        }
+      ],
+      "year": 2023,
+      "date": "2023-07-15",
+      "venue": "Annals of Improbable Ceramics",
+      "type": "journal",
+      "doi": "https://doi.org/10.5555/cracked",
+      "cited_by_count": 7,
+      "abstract": null,
+      "open_access": null,
+      "tags": [],
+      "is_retracted": true,
+      "source": "openalex"
+    },
+    {
+      "id": "W1004",
+      "title": "Psychoceramics Field Survey Dataset",
+      "authors": [
+        {
+          "name": "Vera Chan",
+          "orcid": null,
+          "tracked": true
+        }
+      ],
+      "year": 2022,
+      "date": "2022-05-10",
+      "venue": null,
+      "type": "dataset",
+      "doi": "https://doi.org/10.5281/zenodo.7777",
+      "cited_by_count": 3,
+      "abstract": null,
+      "open_access": {
+        "url": "https://zenodo.example.org/records/7777"
+      },
+      "tags": [
+        "featured"
+      ],
+      "is_retracted": false,
+      "source": "openalex"
+    },
+    {
+      "id": "W1009",
+      "title": "Annual Report on Pot Integrity",
+      "authors": [
+        {
+          "name": "Josiah Carberry",
+          "orcid": "https://orcid.org/0000-0002-1825-0097",
+          "tracked": true
+        }
+      ],
+      "year": 2022,
+      "date": "2022-12-01",
+      "venue": "Psychoceramics Bulletin",
+      "type": "journal",
+      "doi": "https://doi.org/10.5555/report2022",
+      "cited_by_count": 0,
+      "abstract": null,
+      "open_access": null,
+      "tags": [],
+      "is_retracted": false,
+      "source": "openalex"
+    },
+    {
+      "id": "W1008",
+      "title": "Annual Report on Pot Integrity",
+      "authors": [
+        {
+          "name": "Josiah Carberry",
+          "orcid": "https://orcid.org/0000-0002-1825-0097",
+          "tracked": true
+        }
+      ],
+      "year": 2021,
+      "date": "2021-12-01",
+      "venue": "Psychoceramics Bulletin",
+      "type": "journal",
+      "doi": "https://doi.org/10.5555/report2021",
+      "cited_by_count": 2,
+      "abstract": null,
+      "open_access": null,
+      "tags": [],
+      "is_retracted": false,
+      "source": "openalex"
+    },
+    {
+      "id": "W1010",
+      "title": "On the Resonance of Teacups",
+      "authors": [
+        {
+          "name": "Josiah Carberry",
+          "orcid": "https://orcid.org/0000-0002-1825-0097",
+          "tracked": true
+        }
+      ],
+      "year": 2020,
+      "date": "2020-04-01",
+      "venue": "Teacup Quarterly",
+      "type": "journal",
+      "doi": "https://doi.org/10.5555/teacup",
+      "cited_by_count": 12,
+      "abstract": null,
+      "open_access": null,
+      "tags": [],
+      "is_retracted": false,
+      "source": "openalex"
+    },
+    {
+      "id": "manual-the-lost-lectures-of-josiah-carberry",
+      "title": "The Lost Lectures of Josiah Carberry",
+      "authors": [
+        {
+          "name": "J. S. Carberry",
+          "orcid": "https://orcid.org/0000-0002-1825-0097",
+          "tracked": true
+        }
+      ],
+      "year": 2020,
+      "date": null,
+      "venue": "Brown University Press",
+      "type": "book",
+      "doi": null,
+      "cited_by_count": 0,
+      "abstract": null,
+      "open_access": null,
+      "tags": [
+        "legacy"
+      ],
+      "is_retracted": false,
+      "source": "manual"
+    }
+  ]
+}

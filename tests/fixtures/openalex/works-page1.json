@@ -1,0 +1,137 @@
+{
+  "meta": { "count": 10, "next_cursor": "page-two" },
+  "results": [
+    {
+      "id": "https://openalex.org/W1001",
+      "title": "Toward a Unified Theory of High-Energy Metaphysics",
+      "authorships": [
+        {
+          "author": {
+            "id": "https://openalex.org/A5000000001",
+            "display_name": "Josiah Carberry",
+            "orcid": "https://orcid.org/0000-0002-1825-0097"
+          },
+          "raw_author_name": "Josiah S. Carberry"
+        },
+        {
+          "author": {
+            "id": "https://openalex.org/A5999999901",
+            "display_name": "Priya Nair",
+            "orcid": null
+          },
+          "raw_author_name": "Priya Nair"
+        }
+      ],
+      "publication_year": 2024,
+      "publication_date": "2024-03-01",
+      "primary_location": {
+        "source": { "display_name": "Journal of Psychoceramics", "type": "journal" }
+      },
+      "type": "article",
+      "doi": "https://doi.org/10.5555/xyz123",
+      "cited_by_count": 42,
+      "abstract_inverted_index": null,
+      "open_access": { "is_oa": false, "oa_url": null },
+      "best_oa_location": null,
+      "is_retracted": false
+    },
+    {
+      "id": "https://openalex.org/W1002",
+      "title": "Toward a Unified Theory of High‐Energy Metaphysics",
+      "authorships": [
+        {
+          "author": {
+            "id": "https://openalex.org/A5000000001",
+            "display_name": "Josiah Carberry",
+            "orcid": "https://orcid.org/0000-0002-1825-0097"
+          },
+          "raw_author_name": "J. Carberry"
+        }
+      ],
+      "publication_year": 2023,
+      "publication_date": "2023-11-20",
+      "primary_location": { "source": null },
+      "type": "preprint",
+      "doi": "https://doi.org/10.48550/arXiv.2311.00001",
+      "cited_by_count": 5,
+      "abstract_inverted_index": {
+        "We": [0],
+        "posit": [1],
+        "that": [2],
+        "all": [3],
+        "pots": [4],
+        "crack.": [5]
+      },
+      "open_access": { "is_oa": true, "oa_url": "https://arxiv.example.org/abs/2311.00001" },
+      "best_oa_location": {
+        "pdf_url": "https://arxiv.example.org/pdf/2311.00001",
+        "landing_page_url": "https://arxiv.example.org/abs/2311.00001"
+      },
+      "is_retracted": false
+    },
+    {
+      "id": "https://openalex.org/W1003",
+      "title": "Chemistry of Cracked Pots",
+      "authorships": [
+        {
+          "author": {
+            "id": "https://openalex.org/A5000000001",
+            "display_name": "Josiah Carberry",
+            "orcid": "https://orcid.org/0000-0002-1825-0097"
+          },
+          "raw_author_name": "Josiah Carberry"
+        },
+        {
+          "author": {
+            "id": "https://openalex.org/A5999999902",
+            "display_name": "María Domínguez",
+            "orcid": null
+          },
+          "raw_author_name": "Maria Dominguez"
+        },
+        {
+          "author": {
+            "id": "https://openalex.org/A5000000002",
+            "display_name": "Vera Chan",
+            "orcid": null
+          },
+          "raw_author_name": "Vera Chan"
+        }
+      ],
+      "publication_year": 2023,
+      "publication_date": "2023-07-15",
+      "primary_location": null,
+      "type": "article",
+      "doi": "https://doi.org/10.5555/cracked",
+      "cited_by_count": 7,
+      "abstract_inverted_index": null,
+      "open_access": { "is_oa": false, "oa_url": null },
+      "best_oa_location": null,
+      "is_retracted": true
+    },
+    {
+      "id": "https://openalex.org/W1004",
+      "title": "Psychoceramics Field Survey Dataset",
+      "authorships": [
+        {
+          "author": {
+            "id": "https://openalex.org/A5000000002",
+            "display_name": "Vera Chan",
+            "orcid": null
+          },
+          "raw_author_name": "Vera Chan"
+        }
+      ],
+      "publication_year": 2022,
+      "publication_date": "2022-05-10",
+      "primary_location": { "source": { "display_name": null, "type": "repository" } },
+      "type": "dataset",
+      "doi": "https://doi.org/10.5281/zenodo.7777",
+      "cited_by_count": 3,
+      "abstract_inverted_index": null,
+      "open_access": { "is_oa": true, "oa_url": "https://zenodo.example.org/records/7777" },
+      "best_oa_location": null,
+      "is_retracted": false
+    }
+  ]
+}
