@@ -38,7 +38,10 @@ tags), `pipeline` (stage orchestration), `output` (deterministic JSON),
   OpenAlex responses (synthetic or CC0 data only, never real curated
   personal data)
 - `docs/`: design docs and `todo.md`
-- `local/`: gitignored scratch space (session notes, reference material)
+- `local/`: gitignored scratch space (session notes, reference material).
+  Session continuity lives here: `local/next-session-prompt.md`, never a
+  tracked `feedback/` — public-from-commit-1 discipline, no session state
+  in the repo or its history
 
 ## Conventions
 
