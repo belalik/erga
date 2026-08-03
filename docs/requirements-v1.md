@@ -1,8 +1,9 @@
 # erga v1 Requirements
 
-Status: draft for review, 2026-08-03. Product identity and scope were fixed at
-kickoff; this document records the research-backed design decisions and the
-concrete v1 surface. Sources: OpenAlex API documentation and live API
+Status: adopted 2026-08-03. Maintained as a living spec: current state only,
+superseded content is replaced rather than appended. Product identity and
+scope were fixed at kickoff; this document records the research-backed design
+decisions and the concrete v1 surface. Sources: OpenAlex API documentation and live API
 verification (2026-08-03), CSL-JSON schema analysis, GitHub Action delivery
 research, and an audit of the origin pipeline (a production Jekyll lab site
 that this tool generalizes).
@@ -49,9 +50,10 @@ canonical schema is declared stable.
 The origin pipeline had a `featured` boolean fed by a flat DOI list. v1
 generalizes this to a single mechanism: every record carries `tags`
 (list of strings), and a curation file maps tag names to DOI/id lists.
-"featured" becomes an ordinary tag by convention. Manual entries may declare
-their own tags inline. Sites decide what any tag means; erga attaches them
-and nothing more.
+Manual entries may declare their own tags inline. Tag names carry no
+semantics for erga: sites decide what a tag means and whether it exists at
+all. A "featured" highlight list is one pattern a site can implement (the
+origin site does); the docs present it as an example, never a default.
 
 ### 2.3 Action output mode: compose, do not embed
 
@@ -228,6 +230,8 @@ All three survive every refresh; a missing file means "none".
     - https://doi.org/10.5555/12345678
   ```
 
+  Tag names are arbitrary; "featured" above is only an example.
+
 ## 7. Pipeline stages
 
 Ported from the production origin pipeline with generalization deltas noted.
@@ -326,16 +330,3 @@ mode this tool exists to replace), no database, no hosted service, no
 sources beyond OpenAlex plus manual entries. Multi-source merging (PubMed,
 ADS, DBLP) stays a documented architectural possibility only.
 
-## 13. Open points for review
-
-1. `include_xpac` default false: agreed, or should repository-heavy fields
-   (datasets, preprints) default on?
-2. Top-level wrapper `{schema_version, works}`: Jekyll consumers reach
-   records via `site.data.publications.works`. Acceptable, or is a bare
-   array with schema version documented out-of-band preferred?
-3. Tags-only generalization (no `featured` boolean in the schema): agreed?
-4. Recipe ordering in docs: commit-back-in-build-workflow presented as the
-   default, PR mode as the cautious alternative. The delivery research
-   argued PR-first for cautious strangers; production experience argues
-   commit-back-first. Current draft follows production experience.
-5. Author field name `tracked` (vs `member`, `listed`): naming preference?
