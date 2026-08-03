@@ -1,8 +1,9 @@
 # TODO
 
 ## High
-- Finalize and commit the v1 requirements document (docs/requirements-v1.md)
+- Resolve the open review points in docs/requirements-v1.md section 13
 
 ## Normal
+- Implement v0.1: CLI end-to-end per docs/requirements-v1.md
 
 ## Low
