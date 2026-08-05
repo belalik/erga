@@ -15,6 +15,7 @@ def test_reconstruct_abstract() -> None:
 def test_map_type_vocabulary() -> None:
     assert map_type({"type": "article"}) == "journal"
     assert map_type({"type": "review"}) == "journal"
+    assert map_type({"type": "conference-paper"}) == "conference"
     assert map_type({"type": "dissertation"}) == "thesis"
     assert map_type({"type": "software-paper"}) == "software"
     assert map_type({"type": "erratum"}) == "other"

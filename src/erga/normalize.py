@@ -14,6 +14,7 @@ from erga.openalex import strip_openalex_host
 TYPE_MAP = {
     "article": "journal",
     "review": "journal",
+    "conference-paper": "conference",
     "book": "book",
     "book-chapter": "book-chapter",
     "dissertation": "thesis",
@@ -37,7 +38,8 @@ def reconstruct_abstract(inverted_index: dict[str, list[int]] | None) -> str | N
 
 def map_type(raw: dict[str, Any]) -> str:
     """Canonical type; journal articles published at a conference source
-    become "conference" (OpenAlex has no first-class conference type)."""
+    also become "conference" — records predating OpenAlex's first-class
+    conference-paper type still carry "article"."""
     mapped = TYPE_MAP.get(raw.get("type") or "", "other")
     if mapped == "journal":
         source = (raw.get("primary_location") or {}).get("source") or {}

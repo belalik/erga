@@ -63,13 +63,13 @@ def test_golden_build_byte_exact(tmp_path: Path) -> None:
     expected = (GOLDEN / "expected-publications.json").read_bytes()
     assert produced == expected
 
-    assert stats.fetched == 9  # W1003 arrives on both pages, counted once
+    assert stats.fetched == 10  # W1003 arrives on both pages, counted once
     assert stats.manual == 2
     assert stats.deduplicated == 2  # W1002 into W1001, W1005 into manual entry
     assert stats.excluded == 1  # W1007
     assert stats.backfilled_previous == 1  # W1010 via the ratchet
     assert stats.backfilled_crossref == 1  # W1003
-    assert stats.total == 8
+    assert stats.total == 9
     assert stats.warnings == []
     assert stats.written
 
@@ -88,6 +88,6 @@ def test_golden_build_is_idempotent(tmp_path: Path) -> None:
 def test_golden_dry_run_leaves_output_untouched(tmp_path: Path) -> None:
     stats = run_golden(tmp_path, dry_run=True)
     assert not stats.written
-    assert stats.total == 8
+    assert stats.total == 9
     previous = (GOLDEN / "previous-publications.json").read_bytes()
     assert (tmp_path / "publications.json").read_bytes() == previous

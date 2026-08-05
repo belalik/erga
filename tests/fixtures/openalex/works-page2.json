@@ -1,5 +1,5 @@
 {
-  "meta": { "count": 10, "next_cursor": null },
+  "meta": { "count": 11, "next_cursor": null },
   "results": [
     {
       "id": "https://openalex.org/W1003",
@@ -148,6 +148,35 @@
       "type": "article",
       "doi": "https://doi.org/10.5555/teacup",
       "cited_by_count": 12,
+      "abstract_inverted_index": null,
+      "open_access": { "is_oa": false, "oa_url": null },
+      "best_oa_location": null,
+      "is_retracted": false
+    },
+    {
+      "id": "https://openalex.org/W1011",
+      "title": "Cracked Pots at Scale: A Field Study",
+      "authorships": [
+        {
+          "author": {
+            "id": "https://openalex.org/A5000000001",
+            "display_name": "Josiah Carberry",
+            "orcid": "https://orcid.org/0000-0002-1825-0097"
+          },
+          "raw_author_name": "Josiah Carberry"
+        }
+      ],
+      "publication_year": 2023,
+      "publication_date": "2023-11-20",
+      "primary_location": {
+        "source": {
+          "display_name": "Proceedings of the 12th International Psychoceramics Symposium",
+          "type": "conference"
+        }
+      },
+      "type": "conference-paper",
+      "doi": "https://doi.org/10.5555/potscale",
+      "cited_by_count": 5,
       "abstract_inverted_index": null,
       "open_access": { "is_oa": false, "oa_url": null },
       "best_oa_location": null,

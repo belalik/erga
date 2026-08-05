@@ -92,6 +92,28 @@
       "source": "openalex"
     },
     {
+      "id": "W1011",
+      "title": "Cracked Pots at Scale: A Field Study",
+      "authors": [
+        {
+          "name": "Josiah Carberry",
+          "orcid": "https://orcid.org/0000-0002-1825-0097",
+          "tracked": true
+        }
+      ],
+      "year": 2023,
+      "date": "2023-11-20",
+      "venue": "Proceedings of the 12th International Psychoceramics Symposium",
+      "type": "conference",
+      "doi": "https://doi.org/10.5555/potscale",
+      "cited_by_count": 5,
+      "abstract": null,
+      "open_access": null,
+      "tags": [],
+      "is_retracted": false,
+      "source": "openalex"
+    },
+    {
       "id": "W1004",
       "title": "Psychoceramics Field Survey Dataset",
       "authors": [
