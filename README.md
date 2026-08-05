@@ -3,8 +3,9 @@
 Keep a website's academic publications list current, automatically, without
 giving up control of the data.
 
-**Status: early development.** The CLI pipeline works end-to-end; not yet
-released or battle-tested against a production site.
+**Status: early development.** The CLI pipeline works end-to-end and its
+output has converged with a production lab site's existing pipeline in a
+parallel run against live OpenAlex; not yet released.
 
 ## What it does
 
