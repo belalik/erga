@@ -7,7 +7,7 @@ the transport, in request_with_retry, so it is exercised by the same fakes.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -46,18 +46,30 @@ class Pacer:
 
 
 class UrlTransport:
-    """requests-backed transport with a fixed User-Agent."""
+    """requests-backed transport with a fixed User-Agent.
 
-    def __init__(self, user_agent: str, timeout: float = 30.0) -> None:
+    secrets are redacted from network-error messages: requests embeds the
+    full request URL — query string and thus api_key included — in
+    ConnectionError/Timeout text, which would otherwise surface in stderr
+    and CI logs whenever a failure propagates.
+    """
+
+    def __init__(self, user_agent: str, timeout: float = 30.0, secrets: Sequence[str] = ()) -> None:
         self._session = requests.Session()
         self._session.headers["User-Agent"] = user_agent
         self._timeout = timeout
+        self._secrets = [s for s in secrets if s]
 
     def __call__(self, url: str, params: dict[str, str]) -> Response:
         try:
             resp = self._session.get(url, params=params, timeout=self._timeout)
         except requests.RequestException as exc:
-            raise TransportError(str(exc)) from exc
+            message = str(exc)
+            for secret in self._secrets:
+                message = message.replace(secret, "***")
+            # from None: chaining would put the unredacted original back
+            # into the printed traceback.
+            raise TransportError(message) from None
         try:
             data = resp.json()
         except ValueError:

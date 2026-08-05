@@ -23,9 +23,16 @@ def _user_agent(mailto: str) -> str:
 
 def _clients(config: Config) -> tuple[OpenAlexClient, CrossrefClient]:
     # One transport for both APIs. The key never touches disk: read from the
-    # configured env var, passed as a query parameter, nothing else.
-    transport = UrlTransport(_user_agent(config.mailto))
+    # configured env var, passed as a query parameter, nothing else. The
+    # transport redacts it from network-error text (requests embeds the full
+    # request URL in its exception messages).
     api_key = os.environ.get(config.api_key_env) or None
+    if not api_key:
+        print(
+            f"erga: note: {config.api_key_env} not set; using OpenAlex's keyless per-IP quota",
+            file=sys.stderr,
+        )
+    transport = UrlTransport(_user_agent(config.mailto), secrets=[api_key] if api_key else [])
     return (
         OpenAlexClient(transport, mailto=config.mailto, api_key=api_key),
         CrossrefClient(transport, mailto=config.mailto),
