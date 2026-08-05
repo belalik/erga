@@ -335,10 +335,11 @@ consumer sites can run the CLI directly in their workflows meanwhile.
 - **v0.3**: GitHub Action packaging; consumer #2, an Astro 5 department
   site (tens of authors), stress-tests scale and disambiguation.
 - **CSL-JSON and BibTeX emitters** slot in after v0.1 as demand warrants,
-  before the public flip.
-- **Public + v1.0**: strong README (before/after dedup story, head-on
-  "why not BibBase" answer), schema declared stable, PyPI via Trusted
-  Publishing, promotion in the channels where the demand already sits.
+  before the v1.0 promotion push.
+- **v1.0**: strong README (before/after dedup story, head-on "why not
+  BibBase" answer), schema declared stable, promotion in the channels
+  where the demand already sits. Repo visibility and PyPI Trusted
+  Publishing moved up to v0.1.
 
 ## 12. Non-goals (v1)
 
