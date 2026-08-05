@@ -62,6 +62,14 @@ def test_verify_report_split_orcid_and_zero_works() -> None:
     assert any("zero works" in w for w in warnings)
 
 
+def test_verify_report_tracking_only_author_resolves_nothing() -> None:
+    config = Config(mailto="m@example.org", authors=[AuthorConfig(name="Priya Nair")])
+    client = OpenAlexClient(FakeTransport(), mailto=config.mailto, delay=0.0, sleep=no_sleep)
+    report, warnings = verify_report(config, client)
+    assert "Priya Nair (no ids; tracked by name only, nothing fetched)" in report
+    assert warnings == []
+
+
 def test_verify_report_unresolved_orcid_warns_without_aborting() -> None:
     transport = FakeTransport()
     transport.add("/authors", {"filter": "orcid:0000-0002-1825-0097"}, {"results": []})

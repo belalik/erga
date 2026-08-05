@@ -93,19 +93,24 @@ def build(
 
     tracked_ids: set[str] = set()
     for author in config.authors:
+        # Tracking-only entries resolve to nothing by construction, no
+        # network involved; that is not the failure this error guards.
         resolved = openalex.resolve_author(author)
-        if not resolved.ids:
+        if not author.tracking_only and not resolved.ids:
             raise FetchError(
                 f"author {author.name!r}: ORCID {author.orcid} resolved to no "
                 f"OpenAlex author; check it or pin openalex_id (see `erga verify`)"
             )
         tracked_ids.update(resolved.ids)
     tracked_orcids = {a.orcid for a in config.authors if a.orcid}
+    tracked_names = {name for a in config.authors for name in a.match_names()}
 
     raw_works = openalex.fetch_works(sorted(tracked_ids), include_xpac=config.include_xpac)
     stats.fetched = len(raw_works)
 
-    works = manual + [normalize_work(raw, tracked_ids, tracked_orcids) for raw in raw_works]
+    works = manual + [
+        normalize_work(raw, tracked_ids, tracked_orcids, tracked_names) for raw in raw_works
+    ]
     stats.manual = len(manual)
 
     mark_keep_distinct(works, overrides)

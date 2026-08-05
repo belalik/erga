@@ -27,6 +27,11 @@ class AuthorConfig:
         """Casefolded name and aliases, for matching manual entries."""
         return {n.casefold().strip() for n in [self.name, *self.aliases]}
 
+    @property
+    def tracking_only(self) -> bool:
+        """No registrar ids: contributes names to tracking, fetches nothing."""
+        return self.orcid is None and self.openalex_id is None
+
 
 @dataclass
 class Config:
@@ -88,8 +93,9 @@ def _parse_author(entry: Any, path: Path, index: int) -> AuthorConfig:
         openalex_id = str(openalex_id).strip()
         if not _OPENALEX_AUTHOR_RE.match(openalex_id):
             raise ConfigError(f"{where}: invalid OpenAlex author id {openalex_id!r}")
-    if orcid is None and openalex_id is None:
-        raise ConfigError(f"{where}: needs 'orcid' or 'openalex_id'")
+    # Neither id is fine: the entry contributes its names to the tracked
+    # flag but resolves and fetches nothing (authors without any registrar
+    # identity, or whose works OpenAlex misassigns to a conflated profile).
     aliases = expect_str_list(entry.get("aliases", []), f"{where}: 'aliases'")
     return AuthorConfig(name=name.strip(), orcid=orcid, openalex_id=openalex_id, aliases=aliases)
 

@@ -61,12 +61,15 @@ def normalize_work(
     raw: dict[str, Any],
     tracked_ids: set[str],
     tracked_orcids: set[str],
+    tracked_names: set[str],
 ) -> Work:
     """Map one raw OpenAlex work to a canonical record.
 
-    An author is tracked when their OpenAlex id is among the resolved ids or
+    An author is tracked when their OpenAlex id is among the resolved ids,
     their ORCID matches a configured one (split profiles make the id alone
-    insufficient). Name matching is reserved for manual entries.
+    insufficient), or their name matches a configured name/alias — OpenAlex
+    misassigns some authorships to conflated homonym profiles whose ids can
+    never be configured, and the flag's consumer renders the name anyway.
     """
     authors = []
     for authorship in raw.get("authorships") or []:
@@ -77,6 +80,7 @@ def normalize_work(
         tracked = bool(
             (author_id and author_id in tracked_ids)
             or (orcid and normalize_orcid(orcid) in tracked_orcids)
+            or name.casefold().strip() in tracked_names
         )
         authors.append(WorkAuthor(name=name, orcid=orcid, tracked=tracked))
 

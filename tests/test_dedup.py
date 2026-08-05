@@ -75,17 +75,28 @@ def test_title_cluster_has_doi_then_citations_then_newest() -> None:
     )
     assert [w.id for w in cluster_by_title([no_doi, low_cited, high_cited])] == ["W3"]
 
-    older = Work(id="W4", title="Dated Sufficiently Long Title", date="2020-01-01")
-    newer = Work(id="W5", title="Dated Sufficiently Long Title", date="2021-06-01")
-    assert [w.id for w in cluster_by_title([older, newer])] == ["W5"]
+    # Newest OpenAlex record wins the final tie — numerically, so W10 beats
+    # W9 despite sorting before it as a string. Dates deliberately do not
+    # participate: deposit versions carry later dates than the version of
+    # record.
+    older = Work(id="W9", title="Dated Sufficiently Long Title", date="2021-06-01")
+    newer = Work(id="W10", title="Dated Sufficiently Long Title", date="2020-01-01")
+    assert [w.id for w in cluster_by_title([older, newer])] == ["W10"]
+    assert [w.id for w in cluster_by_title([newer, older])] == ["W10"]
 
 
-def test_title_cluster_deterministic_tiebreak_smallest_id() -> None:
-    twins = [
-        Work(id="W9", title="Tie Sufficiently Long Title"),
-        Work(id="W2", title="Tie Sufficiently Long Title"),
-    ]
-    assert [w.id for w in cluster_by_title(twins)] == ["W2"]
+def test_repository_prefixes_include_institutional_repositories() -> None:
+    publica = Work(
+        id="W1",
+        title="Institutional Copy of a Sufficiently Long Title",
+        doi="https://doi.org/10.24406/publica-7036",
+    )
+    journal = Work(
+        id="W2",
+        title="Institutional Copy of a Sufficiently Long Title",
+        doi="https://doi.org/10.1016/j.bdr.2025.100575",
+    )
+    assert [w.id for w in cluster_by_title([publica, journal])] == ["W2"]
 
 
 def test_short_titles_bypass_clustering() -> None:

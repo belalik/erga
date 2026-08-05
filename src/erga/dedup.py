@@ -8,12 +8,14 @@ open-access URL from the copies it absorbs.
 
 from __future__ import annotations
 
+import re
 import unicodedata
 
 from erga.model import Work
 
 # DOI prefixes of repository deposits that lose to a version of record:
-# arXiv, Zenodo, figshare, Research Square, bioRxiv/medRxiv, SSRN, OSF.
+# arXiv, Zenodo, figshare, Research Square, bioRxiv/medRxiv, SSRN, OSF,
+# Fraunhofer publica.
 REPOSITORY_DOI_PREFIXES = frozenset(
     {
         "10.48550",
@@ -26,10 +28,13 @@ REPOSITORY_DOI_PREFIXES = frozenset(
         "10.31219",
         "10.31234",
         "10.31235",
+        "10.24406",
     }
 )
 
 MIN_CLUSTER_TITLE_LENGTH = 12
+
+_W_ID_RE = re.compile(r"W(\d+)")
 
 
 def normalize_title(title: str) -> str:
@@ -47,19 +52,33 @@ def is_repository_deposit(work: Work) -> bool:
     return key is not None and key.split("/", 1)[0] in REPOSITORY_DOI_PREFIXES
 
 
-def _rank_key(work: Work) -> tuple[bool, bool, bool, int, str]:
+def _numeric_id(work: Work) -> int:
+    match = _W_ID_RE.fullmatch(work.id)
+    return int(match.group(1)) if match else 0
+
+
+def _rank_key(work: Work) -> tuple[bool, bool, bool, int, int]:
+    # Final tie: newest OpenAlex record (numeric W-id). Publication dates
+    # would be the intuitive key, but within a same-title cluster they mostly
+    # differ by deposit-version artifacts, which made date favor exactly the
+    # wrong copies. Manual ids rank 0; the first key already puts manual first.
     return (
         work.source == "manual",
         not is_repository_deposit(work),
         work.doi is not None,
         work.cited_by_count,
-        work.date or "",
+        _numeric_id(work),
     )
 
 
 def merge_group(group: list[Work]) -> Work:
-    """Pick the group's winner and let it inherit what it lacks."""
-    ordered = sorted(sorted(group, key=lambda w: w.id), key=_rank_key, reverse=True)
+    """Pick the group's winner and let it inherit what it lacks.
+
+    No explicit tiebreak needed: the numeric W-id is unique per OpenAlex
+    record, and equally-ranked manual entries keep manual.yml order via
+    sort stability.
+    """
+    ordered = sorted(group, key=_rank_key, reverse=True)
     winner = ordered[0]
     for absorbed in ordered[1:]:
         winner.abstract = winner.abstract or absorbed.abstract

@@ -20,6 +20,10 @@ def verify_report(config: Config, client: OpenAlexClient) -> tuple[str, list[str
     lines: list[str] = []
     warnings: list[str] = []
     for author in config.authors:
+        if author.tracking_only:
+            lines.append(f"{author.name} (no ids; tracked by name only, nothing fetched)")
+            lines.append("")
+            continue
         identity = author.orcid or author.openalex_id or ""
         lines.append(f"{author.name} ({identity})")
         resolved = client.resolve_author(author)

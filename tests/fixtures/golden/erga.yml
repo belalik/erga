@@ -7,3 +7,5 @@ authors:
     aliases: ["J. S. Carberry"]
   - name: Vera Chan
     openalex_id: A5000000002
+  # Tracking-only entry: no registrar ids, matched by name, fetches nothing.
+  - name: Priya Nair

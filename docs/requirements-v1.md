@@ -155,7 +155,7 @@ Per work, all keys always present:
 |---|---|---|
 | `id` | string | OpenAlex work id without host (`"W4406028178"`), or `"manual-<slug>"` |
 | `title` | string | |
-| `authors` | array | `{ "name": str, "orcid": str\|null, "tracked": bool }`; `tracked` = matches a configured author |
+| `authors` | array | `{ "name": str, "orcid": str\|null, "tracked": bool }`; `tracked` = matches a configured author by resolved OpenAlex id, ORCID, or name/alias |
 | `year` | int \| null | |
 | `date` | string \| null | ISO publication date `"2026-01-15"` |
 | `venue` | string \| null | null when unknown (origin pipeline used `""`) |
@@ -192,6 +192,7 @@ authors:
     aliases: ["J. S. Carberry"]  # optional, for matching manual entries
   - name: Another Person
     openalex_id: A5000000000     # alternative when ORCID is missing/wrong
+  - name: Third Person           # no ids at all: tracked by name only
 
 openalex:
   api_key_env: OPENALEX_API_KEY  # optional; env var name, never the key itself
@@ -209,7 +210,11 @@ curation:                        # optional; defaults shown, relative to config
 Author resolution: ORCID resolves via the OpenAlex authors endpoint
 (singleton lookups are free). An author entry may pin `openalex_id`
 explicitly, and both may coexist (some profiles are split across multiple
-OpenAlex author IDs).
+OpenAlex author IDs). An entry with neither id is a tracking-only author:
+it contributes its name and aliases to the `tracked` flag and to manual-
+entry matching but resolves and fetches nothing (for authors without any
+registrar identity, or whose works OpenAlex misassigns to a conflated
+homonym profile that must not be fetched).
 
 ## 6. Curation files
 
@@ -255,10 +260,12 @@ Ported from the production origin pipeline with generalization deltas noted.
    titles under 12 normalized characters and `keep_distinct` records bypass
    clustering. Rank within a cluster: manual first, then version-of-record
    over repository deposits (known repository DOI prefixes: arXiv, Zenodo,
-   figshare, Research Square, bio/medRxiv, SSRN, OSF, and `preprint` type),
-   then has-DOI, then citation count, then newest record. The winner
-   inherits `abstract` and `open_access` from absorbed copies when it lacks
-   them.
+   figshare, Research Square, bio/medRxiv, SSRN, OSF, Fraunhofer publica,
+   and `preprint` type), then has-DOI, then citation count, then newest
+   OpenAlex record (numeric W-id; publication dates deliberately play no
+   part — within a same-title cluster they differ by deposit-version
+   artifacts and favor the wrong copies). The winner inherits `abstract`
+   and `open_access` from absorbed copies when it lacks them.
 8. Apply overrides (patch or exclude).
 9. Crossref venue backfill with the last-known-good ratchet: reuse venues
    from the previous output first, then query Crossref (polite mailto

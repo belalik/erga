@@ -88,7 +88,9 @@ def raw_work(**extra: Any) -> dict[str, Any]:
 
 
 def test_normalize_work_tracked_by_id() -> None:
-    work = normalize_work(raw_work(), tracked_ids={"A5000000001"}, tracked_orcids=set())
+    work = normalize_work(
+        raw_work(), tracked_ids={"A5000000001"}, tracked_orcids=set(), tracked_names=set()
+    )
     assert work.id == "W1001"
     assert work.venue == "Journal of Psychoceramics"
     assert work.doi == "https://doi.org/10.5555/xyz123"
@@ -99,7 +101,24 @@ def test_normalize_work_tracked_by_id() -> None:
 
 def test_normalize_work_tracked_by_orcid_despite_unknown_id() -> None:
     # Split profiles: the id is not among the resolved ones, the ORCID still matches.
-    work = normalize_work(raw_work(), tracked_ids=set(), tracked_orcids={"0000-0002-1825-0097"})
+    work = normalize_work(
+        raw_work(),
+        tracked_ids=set(),
+        tracked_orcids={"0000-0002-1825-0097"},
+        tracked_names=set(),
+    )
+    assert [a.tracked for a in work.authors] == [True, False, False]
+
+
+def test_normalize_work_tracked_by_name_despite_unknown_id_and_orcid() -> None:
+    # Conflated homonym profiles: neither id nor ORCID can match, the
+    # configured name (casefolded) still does.
+    work = normalize_work(
+        raw_work(),
+        tracked_ids=set(),
+        tracked_orcids=set(),
+        tracked_names={"josiah carberry"},
+    )
     assert [a.tracked for a in work.authors] == [True, False, False]
 
 
@@ -108,6 +127,7 @@ def test_normalize_work_null_venue_and_defaults() -> None:
         raw_work(primary_location=None, doi=None, title=None, cited_by_count=None),
         tracked_ids=set(),
         tracked_orcids=set(),
+        tracked_names=set(),
     )
     assert work.venue is None
     assert work.doi is None

@@ -72,7 +72,6 @@ curation:
     [
         ("authors:\n  - {name: X, orcid: 0000-0002-1825-0097}\n", "mailto"),
         ("mailto: a@b.c\nauthors: []\n", "non-empty"),
-        ("mailto: a@b.c\nauthors:\n  - {name: X}\n", "orcid"),
         ("mailto: a@b.c\nauthors:\n  - {orcid: 0000-0002-1825-0097}\n", "name"),
         ("mailto: a@b.c\nauthors:\n  - {name: X, orcid: not-an-orcid}\n", "invalid ORCID"),
         ("mailto: a@b.c\nauthors:\n  - {name: X, openalex_id: W123}\n", "OpenAlex author id"),
@@ -83,6 +82,18 @@ curation:
 def test_invalid_configs(tmp_path: Path, content: str, message: str) -> None:
     with pytest.raises(ConfigError, match=message):
         load_config(write_config(tmp_path, content))
+
+
+def test_tracking_only_author_needs_no_ids(tmp_path: Path) -> None:
+    config = load_config(
+        write_config(
+            tmp_path,
+            "mailto: a@b.c\nauthors:\n  - {name: Priya Nair, aliases: [P. Nair]}\n",
+        )
+    )
+    author = config.authors[0]
+    assert author.orcid is None and author.openalex_id is None
+    assert "p. nair" in author.match_names()
 
 
 def test_missing_config_file(tmp_path: Path) -> None:
