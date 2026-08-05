@@ -7,6 +7,7 @@ skipped patch is worse than an aborted run.
 
 from __future__ import annotations
 
+import copy
 import datetime
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -122,6 +123,7 @@ class Override:
     keep_distinct: bool = False
     patch: dict[str, Any] = field(default_factory=dict)
     matched: bool = False
+    changed: bool = False
 
 
 def load_overrides(path: Path) -> list[Override]:
@@ -245,14 +247,34 @@ def apply_overrides(
     for override, work in _iter_matches(overrides, works):
         if override.exclude:
             excluded.add(id(work))
-        else:
+        elif override.patch:
+            # Compare against the pre-patch record: comparing the override
+            # against the output would be circular, the output already has
+            # the override applied and every entry would look load-bearing.
+            # Deep copy so the check stays honest even if a patch branch
+            # ever mutates a list in place instead of reassigning it.
+            before = copy.deepcopy(work)
             _patch_work(work, override.patch, authors_cfg, override.where)
+            if work != before:
+                override.changed = True
     return [w for w in works if id(w) not in excluded], len(excluded)
 
 
 def unmatched_overrides(overrides: list[Override]) -> list[str]:
     """Locations of overrides that touched nothing (stale DOI or id)."""
     return [o.where for o in overrides if not o.matched]
+
+
+def redundant_overrides(overrides: list[Override]) -> list[str]:
+    """Locations of field patches that no longer change anything.
+
+    Upstream caught up with the correction. Redundant is information, not
+    an instruction to delete: an override may stay as insurance against the
+    upstream regressing again. keep_distinct-only entries drop out via the
+    empty-patch check; `exclude` needs its explicit guard because an
+    exclude entry carrying patch fields never runs them.
+    """
+    return [o.where for o in overrides if o.matched and o.patch and not o.exclude and not o.changed]
 
 
 def apply_tags(works: list[Work], tags: dict[str, list[str]]) -> list[str]:

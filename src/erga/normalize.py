@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any
 
 from erga.model import Work, WorkAuthor, normalize_orcid
@@ -24,6 +25,27 @@ TYPE_MAP = {
     "software-paper": "software",
 }
 
+# Raw types deliberately left in "other": corrections and special-issue
+# front matter are not research outputs, paratext is other by definition.
+KNOWN_OTHER_TYPES = frozenset({"editorial", "erratum", "paratext"})
+
+
+def unmapped_types(raw_works: list[dict[str, Any]]) -> dict[str, int]:
+    """Count raw types nothing decided about — the silent-drift trap.
+
+    A catch-all cannot fail: when OpenAlex introduced conference-paper, an
+    origin pipeline misfiled sixty conference papers as "other" for months
+    with no signal. Every type must be either mapped or knowingly other.
+    """
+    counts = Counter(
+        raw_type
+        for raw in raw_works
+        if (raw_type := raw.get("type"))
+        and raw_type not in TYPE_MAP
+        and raw_type not in KNOWN_OTHER_TYPES
+    )
+    return dict(sorted(counts.items()))
+
 
 def reconstruct_abstract(inverted_index: dict[str, list[int]] | None) -> str | None:
     """Plaintext from OpenAlex's abstract_inverted_index (word -> positions)."""
@@ -37,14 +59,20 @@ def reconstruct_abstract(inverted_index: dict[str, list[int]] | None) -> str | N
 
 
 def map_type(raw: dict[str, Any]) -> str:
-    """Canonical type; journal articles published at a conference source
-    also become "conference" — records predating OpenAlex's first-class
-    conference-paper type still carry "article"."""
-    mapped = TYPE_MAP.get(raw.get("type") or "", "other")
-    if mapped == "journal":
-        source = (raw.get("primary_location") or {}).get("source") or {}
-        if source.get("type") == "conference":
-            return "conference"
+    """Canonical type, refined by the venue's source type.
+
+    Journal articles at a conference source become "conference" (records
+    predating OpenAlex's first-class conference-paper type still carry
+    "article"). A software-paper at a journal source is a peer-reviewed
+    article about software (SoftwareX, JOSS), not a software artifact.
+    """
+    raw_type = raw.get("type") or ""
+    source = (raw.get("primary_location") or {}).get("source") or {}
+    mapped = TYPE_MAP.get(raw_type, "other")
+    if mapped == "journal" and source.get("type") == "conference":
+        return "conference"
+    if raw_type == "software-paper" and source.get("type") == "journal":
+        return "journal"
     return mapped
 
 

@@ -119,11 +119,17 @@ founding documents where they conflict.
   explicitly lower and a publications page wants precision over recall.
   Revisit with department-scale evidence.
 - **Type vocabulary drifts**: a July 2026 reclassification changed `type` on
-  ~10% of the catalog and added `software` and `software-paper`; the
-  classifier re-runs daily. `type_crossref` and `raw_type` are absent from
-  live responses (verified). Consequence: rely on `type` alone, expect
-  drift, and treat the overrides file as the stability mechanism for
-  records a site cares about.
+  ~10% of the catalog and added first-class `conference-paper`, `software`
+  and `software-paper`; the classifier re-runs daily. `type_crossref` and
+  `raw_type` are absent from live responses (verified). Consequence: rely
+  on `type` alone, expect drift, and make drift visible — a raw type that
+  is neither mapped nor deliberately "other" raises a build warning
+  (a silent catch-all misfiled sixty conference papers on the origin site
+  for months). `software-paper` at a journal source is classified `journal`:
+  it is a peer-reviewed article about software (SoftwareX, JOSS), not a
+  software artifact. Gotcha, should stats ever use it: `group_by=type`
+  returns full URI keys (`https://openalex.org/types/...`) while `type` on
+  works is the bare string.
 - **OpenAlex already merges many cross-registrar copies**: a single work can
   carry multiple `locations[]` (publisher, DOAJ, Zenodo deposits) with the
   top-level DOI pointing at the published version (verified live on a work
@@ -227,7 +233,11 @@ All three survive every refresh; a missing file means "none".
 - **`overrides.yml`**: list of patches keyed by `doi` (case-insensitive) or
   `id`. Any other key overwrites that field on the merged record. Special
   keys: `exclude: true` drops the record; `keep_distinct: true` exempts it
-  from title clustering.
+  from title clustering. A field patch that no longer changes anything
+  (upstream caught up) raises a build warning, measured against the
+  pre-patch record — measuring against the output would be circular. The
+  warning is information, not an instruction to delete: a redundant
+  override may stay as insurance against upstream regressing.
 - **`tags.yml`**: mapping of tag name to list of DOIs/ids:
 
   ```yaml

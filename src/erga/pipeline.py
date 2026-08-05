@@ -13,12 +13,13 @@ from erga.curation import (
     load_overrides,
     load_tags,
     mark_keep_distinct,
+    redundant_overrides,
     unmatched_overrides,
 )
 from erga.dedup import cluster_by_title, dedup_by_doi
 from erga.errors import FetchError
 from erga.model import Work
-from erga.normalize import normalize_work
+from erga.normalize import normalize_work, unmapped_types
 from erga.openalex import OpenAlexClient
 from erga.output import previous_venues, render, write_atomic
 
@@ -112,6 +113,11 @@ def build(
         normalize_work(raw, tracked_ids, tracked_orcids, tracked_names) for raw in raw_works
     ]
     stats.manual = len(manual)
+    stats.warnings.extend(
+        f'unmapped OpenAlex type {raw_type!r} on {count} work(s) falls back to "other" '
+        f"(upstream vocabulary drift?)"
+        for raw_type, count in unmapped_types(raw_works).items()
+    )
 
     mark_keep_distinct(works, overrides)
     before = len(works)
@@ -120,6 +126,10 @@ def build(
 
     works, stats.excluded = apply_overrides(works, overrides, config.authors)
     stats.warnings.extend(f"override matched nothing: {w}" for w in unmatched_overrides(overrides))
+    stats.warnings.extend(
+        f"override redundant (upstream now agrees; kept as-is): {w}"
+        for w in redundant_overrides(overrides)
+    )
 
     backfill_venues(works, previous_venues(config.output_path), crossref, stats)
 

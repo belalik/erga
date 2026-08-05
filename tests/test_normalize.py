@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from erga.normalize import map_type, normalize_work, open_access_url, reconstruct_abstract
+from erga.normalize import (
+    map_type,
+    normalize_work,
+    open_access_url,
+    reconstruct_abstract,
+    unmapped_types,
+)
 
 
 def test_reconstruct_abstract() -> None:
@@ -29,6 +35,30 @@ def test_map_type_conference_from_source() -> None:
     # Only journal-mapped types get the conference refinement.
     raw = {"type": "dataset", "primary_location": {"source": {"type": "conference"}}}
     assert map_type(raw) == "dataset"
+
+
+def test_map_type_software_paper_at_journal_source_is_journal() -> None:
+    # A peer-reviewed article about software (SoftwareX, JOSS), not an artifact.
+    raw = {"type": "software-paper", "primary_location": {"source": {"type": "journal"}}}
+    assert map_type(raw) == "journal"
+    raw = {"type": "software-paper", "primary_location": {"source": {"type": "repository"}}}
+    assert map_type(raw) == "software"
+    assert map_type({"type": "software-paper"}) == "software"
+    # An actual software record never becomes an article.
+    raw = {"type": "software", "primary_location": {"source": {"type": "journal"}}}
+    assert map_type(raw) == "software"
+
+
+def test_unmapped_types_flags_only_undecided_vocabulary() -> None:
+    raw_works: list[dict[str, Any]] = [
+        {"type": "article"},  # mapped
+        {"type": "erratum"},  # deliberately other
+        {"type": "expression-of-concern"},
+        {"type": "expression-of-concern"},
+        {"type": None},
+        {},
+    ]
+    assert unmapped_types(raw_works) == {"expression-of-concern": 2}
 
 
 def test_open_access_url_preference_order() -> None:

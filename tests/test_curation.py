@@ -12,6 +12,7 @@ from erga.curation import (
     load_overrides,
     load_tags,
     mark_keep_distinct,
+    redundant_overrides,
     unmatched_overrides,
 )
 from erga.errors import ConfigError
@@ -120,6 +121,32 @@ def test_apply_overrides_patch_exclude_and_stale(tmp_path: Path) -> None:
     assert kept[0].venue == "Corrected Journal"
     assert kept[0].type == "conference"
     assert unmatched_overrides(overrides) == [f"{tmp_path / 'overrides.yml'}: entry 3"]
+
+
+def test_redundant_overrides_compare_against_pre_patch_values(tmp_path: Path) -> None:
+    overrides = load_overrides(
+        write(
+            tmp_path,
+            "overrides.yml",
+            """\
+- id: W1
+  type: conference
+- id: W2
+  type: conference
+- id: W3
+  exclude: true
+- id: W404
+  type: conference
+""",
+        )
+    )
+    works = [
+        Work(id="W1", title="A", type="conference"),  # upstream caught up
+        Work(id="W2", title="B", type="other"),  # still load-bearing
+        Work(id="W3", title="C"),
+    ]
+    apply_overrides(works, overrides, [])
+    assert redundant_overrides(overrides) == [f"{tmp_path / 'overrides.yml'}: entry 1"]
 
 
 def test_apply_overrides_open_access_and_authors(tmp_path: Path) -> None:
