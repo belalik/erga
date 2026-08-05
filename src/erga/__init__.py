@@ -4,4 +4,4 @@ Fetches works from OpenAlex, deduplicates them across registrars, applies
 maintainer curation, and writes canonical JSON for any static site to render.
 """
 
-__version__ = "0.1.0.dev0"
+__version__ = "0.1.0"

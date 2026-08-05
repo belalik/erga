@@ -3,9 +3,10 @@
 Keep a website's academic publications list current, automatically, without
 giving up control of the data.
 
-**Status: early development.** The CLI pipeline works end-to-end and its
+**Status: alpha (v0.1).** The CLI pipeline works end-to-end and its
 output has converged with a production lab site's existing pipeline in a
-parallel run against live OpenAlex; not yet released.
+parallel run against live OpenAlex (187/187 records, zero field diffs).
+The JSON schema may still change before v1.0.
 
 ## What it does
 
@@ -23,15 +24,15 @@ Astro, Hugo, anything) renders it however it likes.
 - **Git-owned data**: the output is a diffable, PR-reviewable file in your
   repo: no hosted embed, no runtime dependency, publications present in the
   initial HTML.
-- **Delivery**: a GitHub Action (weekly cron + on push) and a pip-installable
-  CLI.
+- **Delivery**: a pip-installable CLI today; GitHub Action packaging is
+  planned once the CLI is proven on consumer sites.
 
 The name: έργα, "works" — the same term OpenAlex uses for publications.
 
 ## Usage
 
-Not on PyPI yet; install from a checkout with `uv sync` (or
-`pip install -e .`). Write an `erga.yml`:
+Install with `uv tool install erga` or `pip install erga` (or run one-off
+with `uvx erga`). Write an `erga.yml`:
 
 ```yaml
 mailto: you@example.org          # identifies requests to Crossref/OpenAlex
