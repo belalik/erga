@@ -12,14 +12,15 @@ highlights) lives in separate files that survive every automated refresh.
 
 ## Status
 
-Pre-0.1. The pipeline is implemented end-to-end (config, fetch, normalize,
-dedup, curation, Crossref backfill, deterministic output, `build`/`verify`
-CLI) with unit suites plus a byte-exact golden test, and validated against
-live OpenAlex: smoke-tested on real author profiles and run in parallel
-with the origin lab site's embedded pipeline to full convergence (187/187
-records, no field diffs, 2026-08-05). Not yet released. See
-`docs/requirements-v1.md` for the v1 design and `docs/todo.md` for open
-work.
+v0.1.0 released 2026-08-05: PyPI via Trusted Publishing, repo public,
+GitHub Release. The pipeline is implemented end-to-end (config, fetch,
+normalize, dedup, curation, Crossref backfill, deterministic output,
+`build`/`verify` CLI) with unit suites plus a byte-exact golden test, and
+validated against live OpenAlex: smoke-tested on real author profiles and
+run in parallel with the origin lab site's embedded pipeline to full
+convergence (187/187 records, no field diffs). Next up is the v0.2 site
+flip. See `docs/requirements-v1.md` for the v1 design and `docs/todo.md`
+for open work.
 
 Module map (`src/erga/`): `config` (erga.yml), `http` (injectable transport
 + retry), `openalex`/`crossref` (clients), `normalize` (raw work → canonical

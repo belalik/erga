@@ -1,8 +1,6 @@
 # TODO
 
 ## High
-- Release v0.1: bump version, GitHub Release, PyPI Trusted Publishing
-  workflow
 
 ## Normal
 - v0.2 flip: the origin Jekyll lab site switches from its embedded
