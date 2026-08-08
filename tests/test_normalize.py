@@ -130,12 +130,13 @@ def raw_work(**extra: Any) -> dict[str, Any]:
 
 def test_normalize_work_tracked_by_id() -> None:
     work = normalize_work(
-        raw_work(), tracked_ids={"A5000000001"}, tracked_orcids=set(), tracked_names=set()
+        raw_work(), tracked_ids={"A5000000001": "J. Carberry"}, tracked_orcids={}, tracked_names={}
     )
     assert work.id == "W1001"
     assert work.venue == "Journal of Psychoceramics"
     assert work.doi == "https://doi.org/10.5555/xyz123"
     assert [a.tracked for a in work.authors] == [True, False, False]
+    assert [a.tracked_as for a in work.authors] == ["J. Carberry", None, None]
     assert work.authors[2].name == "Anonymous Collaborator"
     assert work.source == "openalex"
 
@@ -144,11 +145,12 @@ def test_normalize_work_tracked_by_orcid_despite_unknown_id() -> None:
     # Split profiles: the id is not among the resolved ones, the ORCID still matches.
     work = normalize_work(
         raw_work(),
-        tracked_ids=set(),
-        tracked_orcids={"0000-0002-1825-0097"},
-        tracked_names=set(),
+        tracked_ids={},
+        tracked_orcids={"0000-0002-1825-0097": "J. Carberry"},
+        tracked_names={},
     )
     assert [a.tracked for a in work.authors] == [True, False, False]
+    assert work.authors[0].tracked_as == "J. Carberry"
 
 
 def test_normalize_work_tracked_by_name_despite_unknown_id_and_orcid() -> None:
@@ -156,19 +158,20 @@ def test_normalize_work_tracked_by_name_despite_unknown_id_and_orcid() -> None:
     # configured name (casefolded) still does.
     work = normalize_work(
         raw_work(),
-        tracked_ids=set(),
-        tracked_orcids=set(),
-        tracked_names={"josiah carberry"},
+        tracked_ids={},
+        tracked_orcids={},
+        tracked_names={"josiah carberry": "J. Carberry"},
     )
     assert [a.tracked for a in work.authors] == [True, False, False]
+    assert work.authors[0].tracked_as == "J. Carberry"
 
 
 def test_normalize_work_null_venue_and_defaults() -> None:
     work = normalize_work(
         raw_work(primary_location=None, doi=None, title=None, cited_by_count=None),
-        tracked_ids=set(),
-        tracked_orcids=set(),
-        tracked_names=set(),
+        tracked_ids={},
+        tracked_orcids={},
+        tracked_names={},
     )
     assert work.venue is None
     assert work.doi is None

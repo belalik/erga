@@ -57,7 +57,10 @@ def test_load_manual_entry(tmp_path: Path) -> None:
     assert work.tags == ["legacy"]
     carberry, outsider = work.authors
     assert carberry.tracked and carberry.orcid == "https://orcid.org/0000-0002-1825-0097"
+    # Matched via alias; tracked_as carries the canonical configured name.
+    assert carberry.tracked_as == "Josiah Carberry"
     assert not outsider.tracked and outsider.orcid is None
+    assert outsider.tracked_as is None
 
 
 def test_load_manual_single_author_string_and_id_collisions(tmp_path: Path) -> None:

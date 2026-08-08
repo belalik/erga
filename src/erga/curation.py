@@ -52,6 +52,7 @@ def _parse_authors(value: Any, authors_cfg: list[AuthorConfig], where: str) -> l
                 name=name,
                 orcid=f"https://orcid.org/{matched.orcid}" if matched and matched.orcid else None,
                 tracked=matched is not None,
+                tracked_as=matched.name if matched else None,
             )
         )
     return parsed

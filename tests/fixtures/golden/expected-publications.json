@@ -8,12 +8,14 @@
         {
           "name": "Vera Chan",
           "orcid": null,
-          "tracked": true
+          "tracked": true,
+          "tracked_as": "Vera Chan"
         },
         {
           "name": "Josiah Carberry",
           "orcid": "https://orcid.org/0000-0002-1825-0097",
-          "tracked": true
+          "tracked": true,
+          "tracked_as": "Josiah Carberry"
         }
       ],
       "year": 2025,
@@ -35,12 +37,14 @@
         {
           "name": "Josiah Carberry",
           "orcid": "https://orcid.org/0000-0002-1825-0097",
-          "tracked": true
+          "tracked": true,
+          "tracked_as": "Josiah Carberry"
         },
         {
           "name": "Priya Nair",
           "orcid": null,
-          "tracked": true
+          "tracked": true,
+          "tracked_as": "Priya Nair"
         }
       ],
       "year": 2024,
@@ -66,17 +70,20 @@
         {
           "name": "Josiah Carberry",
           "orcid": "https://orcid.org/0000-0002-1825-0097",
-          "tracked": true
+          "tracked": true,
+          "tracked_as": "Josiah Carberry"
         },
         {
           "name": "María Domínguez",
           "orcid": null,
-          "tracked": false
+          "tracked": false,
+          "tracked_as": null
         },
         {
           "name": "Vera Chan",
           "orcid": null,
-          "tracked": true
+          "tracked": true,
+          "tracked_as": "Vera Chan"
         }
       ],
       "year": 2023,
@@ -98,7 +105,8 @@
         {
           "name": "Josiah Carberry",
           "orcid": "https://orcid.org/0000-0002-1825-0097",
-          "tracked": true
+          "tracked": true,
+          "tracked_as": "Josiah Carberry"
         }
       ],
       "year": 2023,
@@ -120,7 +128,8 @@
         {
           "name": "Vera Chan",
           "orcid": null,
-          "tracked": true
+          "tracked": true,
+          "tracked_as": "Vera Chan"
         }
       ],
       "year": 2022,
@@ -146,7 +155,8 @@
         {
           "name": "Josiah Carberry",
           "orcid": "https://orcid.org/0000-0002-1825-0097",
-          "tracked": true
+          "tracked": true,
+          "tracked_as": "Josiah Carberry"
         }
       ],
       "year": 2022,
@@ -168,7 +178,8 @@
         {
           "name": "Josiah Carberry",
           "orcid": "https://orcid.org/0000-0002-1825-0097",
-          "tracked": true
+          "tracked": true,
+          "tracked_as": "Josiah Carberry"
         }
       ],
       "year": 2021,
@@ -190,7 +201,8 @@
         {
           "name": "Josiah Carberry",
           "orcid": "https://orcid.org/0000-0002-1825-0097",
-          "tracked": true
+          "tracked": true,
+          "tracked_as": "Josiah Carberry"
         }
       ],
       "year": 2020,
@@ -212,7 +224,8 @@
         {
           "name": "J. S. Carberry",
           "orcid": "https://orcid.org/0000-0002-1825-0097",
-          "tracked": true
+          "tracked": true,
+          "tracked_as": "Josiah Carberry"
         }
       ],
       "year": 2020,

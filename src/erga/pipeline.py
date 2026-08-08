@@ -92,7 +92,9 @@ def build(
     overrides = load_overrides(config.overrides_path)
     tags = load_tags(config.tags_path)
 
-    tracked_ids: set[str] = set()
+    # Each mapping resolves a match key to the configured author's canonical
+    # name, which the output carries as authors[].tracked_as.
+    tracked_ids: dict[str, str] = {}
     for author in config.authors:
         # Tracking-only entries resolve to nothing by construction, no
         # network involved; that is not the failure this error guards.
@@ -102,9 +104,9 @@ def build(
                 f"author {author.name!r}: ORCID {author.orcid} resolved to no "
                 f"OpenAlex author; check it or pin openalex_id (see `erga verify`)"
             )
-        tracked_ids.update(resolved.ids)
-    tracked_orcids = {a.orcid for a in config.authors if a.orcid}
-    tracked_names = {name for a in config.authors for name in a.match_names()}
+        tracked_ids.update((openalex_id, author.name) for openalex_id in resolved.ids)
+    tracked_orcids = {a.orcid: a.name for a in config.authors if a.orcid}
+    tracked_names = {name: a.name for a in config.authors for name in a.match_names()}
 
     raw_works = openalex.fetch_works(sorted(tracked_ids), include_xpac=config.include_xpac)
     stats.fetched = len(raw_works)

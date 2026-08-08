@@ -53,9 +53,19 @@ class WorkAuthor:
     name: str
     orcid: str | None = None
     tracked: bool = False
+    # Canonical configured-author name this authorship matched (None when
+    # untracked). erga holds the alias table and does the matching; without
+    # this, every consumer re-implements alias logic to build per-author
+    # filters against display-name variants.
+    tracked_as: str | None = None
 
     def to_json(self) -> dict[str, Any]:
-        return {"name": self.name, "orcid": self.orcid, "tracked": self.tracked}
+        return {
+            "name": self.name,
+            "orcid": self.orcid,
+            "tracked": self.tracked,
+            "tracked_as": self.tracked_as,
+        }
 
 
 @dataclass

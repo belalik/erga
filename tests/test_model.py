@@ -49,7 +49,7 @@ def test_to_json_key_order_and_shapes() -> None:
         "source",
     ]
     assert data["open_access"] == {"url": "https://example.org/paper.pdf"}
-    assert data["authors"] == [{"name": "A", "orcid": None, "tracked": True}]
+    assert data["authors"] == [{"name": "A", "orcid": None, "tracked": True, "tracked_as": None}]
     assert "keep_distinct" not in data
 
 

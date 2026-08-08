@@ -161,7 +161,7 @@ Per work, all keys always present:
 |---|---|---|
 | `id` | string | OpenAlex work id without host (`"W4406028178"`), or `"manual-<slug>"` |
 | `title` | string | |
-| `authors` | array | `{ "name": str, "orcid": str\|null, "tracked": bool }`; `tracked` = matches a configured author by resolved OpenAlex id, ORCID, or name/alias |
+| `authors` | array | `{ "name": str, "orcid": str\|null, "tracked": bool, "tracked_as": str\|null }`; `tracked` = matches a configured author by resolved OpenAlex id, ORCID, or name/alias; `tracked_as` = that author's canonical configured name (null when untracked), so consumers can filter per author without re-implementing alias matching |
 | `year` | int \| null | |
 | `date` | string \| null | ISO publication date `"2026-01-15"` |
 | `venue` | string \| null | null when unknown (origin pipeline used `""`) |
@@ -183,7 +183,8 @@ Schema changes vs the origin pipeline (its consumer migrates with a
 template tweak during the parallel run): `featured` boolean replaced by
 `tags`, `is_lab_member` renamed `tracked`, empty-string venue becomes null,
 `date` and `is_retracted` added, `dissertation` renamed `thesis`, `software`
-type added, top-level wrapper added.
+type added, top-level wrapper added. `authors[].tracked_as` added in 0.2.0
+from first-consumer feedback.
 
 ## 5. Configuration
 

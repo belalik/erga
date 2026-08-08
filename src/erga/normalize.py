@@ -103,17 +103,19 @@ def open_access_url(raw: dict[str, Any]) -> str | None:
 
 def normalize_work(
     raw: dict[str, Any],
-    tracked_ids: set[str],
-    tracked_orcids: set[str],
-    tracked_names: set[str],
+    tracked_ids: dict[str, str],
+    tracked_orcids: dict[str, str],
+    tracked_names: dict[str, str],
 ) -> Work:
     """Map one raw OpenAlex work to a canonical record.
 
-    An author is tracked when their OpenAlex id is among the resolved ids,
-    their ORCID matches a configured one (split profiles make the id alone
-    insufficient), or their name matches a configured name/alias — OpenAlex
-    misassigns some authorships to conflated homonym profiles whose ids can
-    never be configured, and the flag's consumer renders the name anyway.
+    The tracked_* mappings resolve to the configured author's canonical
+    name. An author is tracked when their OpenAlex id is among the resolved
+    ids, their ORCID matches a configured one (split profiles make the id
+    alone insufficient), or their name matches a configured name/alias —
+    OpenAlex misassigns some authorships to conflated homonym profiles whose
+    ids can never be configured, and the flag's consumer renders the name
+    anyway.
     """
     authors = []
     for authorship in raw.get("authorships") or []:
@@ -121,12 +123,17 @@ def normalize_work(
         name = author.get("display_name") or authorship.get("raw_author_name") or "Unknown"
         orcid = author.get("orcid")
         author_id = strip_openalex_host(author["id"]) if author.get("id") else None
-        tracked = bool(
-            (author_id and author_id in tracked_ids)
-            or (orcid and normalize_orcid(orcid) in tracked_orcids)
-            or name.casefold().strip() in tracked_names
+        tracked_as = (
+            (author_id and tracked_ids.get(author_id))
+            or (orcid and tracked_orcids.get(normalize_orcid(orcid)))
+            or tracked_names.get(name.casefold().strip())
+            or None
         )
-        authors.append(WorkAuthor(name=name, orcid=orcid, tracked=tracked))
+        authors.append(
+            WorkAuthor(
+                name=name, orcid=orcid, tracked=tracked_as is not None, tracked_as=tracked_as
+            )
+        )
 
     source = (raw.get("primary_location") or {}).get("source") or {}
     venue = source.get("display_name") or None
