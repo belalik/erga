@@ -3,12 +3,6 @@
 ## High
 
 ## Normal
-- Normalize reconstructed abstracts: decode HTML entities (unescape
-  until stable — double-encoded `&amp;#039;` exists in the wild) and
-  strip tags (`<br>`). The origin pipeline did this; the convergence
-  compare never covered abstracts, and 6 of smartmove's 187 differ, one
-  visibly (renders a literal `&#039;`). Same gap in open_access: erga
-  correctly finds 2 OA URLs origin missed — fine, but uncompared
 
 ## Low
 - CSL-JSON and BibTeX emitters (before the v1.0 promotion push)

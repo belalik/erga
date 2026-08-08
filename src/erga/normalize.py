@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import html
+import re
 from collections import Counter
 from typing import Any
 
@@ -47,15 +49,29 @@ def unmapped_types(raw_works: list[dict[str, Any]]) -> dict[str, int]:
     return dict(sorted(counts.items()))
 
 
+_HTML_TAG = re.compile(r"<[^>]+>")
+
+
 def reconstruct_abstract(inverted_index: dict[str, list[int]] | None) -> str | None:
-    """Plaintext from OpenAlex's abstract_inverted_index (word -> positions)."""
+    """Plaintext from OpenAlex's abstract_inverted_index (word -> positions).
+
+    Publisher-supplied abstracts carry HTML entities — sometimes
+    double-encoded (&amp;#039; exists in the wild), so unescape until
+    stable — and markup tags (<br>, and entity-encoded ones that only
+    appear after unescaping), which are stripped.
+    """
     if not inverted_index:
         return None
     positions: dict[int, str] = {}
     for word, places in inverted_index.items():
         for place in places:
             positions[place] = word
-    return " ".join(positions[i] for i in sorted(positions))
+    text = " ".join(positions[i] for i in sorted(positions))
+    prev = None
+    while text != prev:
+        prev = text
+        text = html.unescape(text)
+    return _HTML_TAG.sub("", text).strip() or None
 
 
 def map_type(raw: dict[str, Any]) -> str:

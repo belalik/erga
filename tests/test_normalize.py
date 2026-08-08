@@ -18,6 +18,17 @@ def test_reconstruct_abstract() -> None:
     assert reconstruct_abstract({}) is None
 
 
+def test_reconstruct_abstract_decodes_entities_and_strips_tags() -> None:
+    # Single- and double-encoded entities: unescape until stable.
+    assert reconstruct_abstract({"Alice&#039;s": [0], "results": [1]}) == "Alice's results"
+    assert reconstruct_abstract({"Bob&amp;#039;s": [0], "data": [1]}) == "Bob's data"
+    # Literal tags and entity-encoded tags (visible only after unescaping).
+    assert reconstruct_abstract({"line<br>break": [0]}) == "linebreak"
+    assert reconstruct_abstract({"&lt;p&gt;Intro": [0], "text&lt;/p&gt;": [1]}) == "Intro text"
+    # An abstract that is nothing but markup collapses to None, not "".
+    assert reconstruct_abstract({"&lt;p&gt;&lt;/p&gt;": [0]}) is None
+
+
 def test_map_type_vocabulary() -> None:
     assert map_type({"type": "article"}) == "journal"
     assert map_type({"type": "review"}) == "journal"
