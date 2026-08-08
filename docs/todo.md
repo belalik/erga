@@ -3,13 +3,12 @@
 ## High
 
 ## Normal
-- v0.2 flip: the origin Jekyll lab site switches from its embedded
-  pipeline to erga (parallel outputs fully converged 2026-08-05, 187/187
-  records, zero field diffs). Mostly a smartmove-site session: install
-  released erga, port config + curation files (prune the 23 overrides erga
-  reports redundant, or keep deliberately as regression insurance),
-  template tweaks per requirements section 4 schema changes. Erga side:
-  none known
+- Normalize reconstructed abstracts: decode HTML entities (unescape
+  until stable — double-encoded `&amp;#039;` exists in the wild) and
+  strip tags (`<br>`). The origin pipeline did this; the convergence
+  compare never covered abstracts, and 6 of smartmove's 187 differ, one
+  visibly (renders a literal `&#039;`). Same gap in open_access: erga
+  correctly finds 2 OA URLs origin missed — fine, but uncompared
 
 ## Low
 - CSL-JSON and BibTeX emitters (before the v1.0 promotion push)

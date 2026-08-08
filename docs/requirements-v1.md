@@ -327,11 +327,12 @@ consumer sites can run the CLI directly in their workflows meanwhile.
 
 ## 11. Milestones
 
-- **v0.1**: CLI end-to-end (config in, correct curated JSON out), tested,
-  documented. No Action, no emitters.
-- **v0.2**: consumer #1, the origin Jekyll lab site (14 authors), runs erga
-  in parallel with its embedded pipeline until outputs match, then
-  switches.
+- **v0.1** (released 2026-08-05 as v0.1.0): CLI end-to-end (config in,
+  correct curated JSON out), tested, documented. No Action, no emitters.
+- **v0.2** (done 2026-08-05): consumer #1, the origin Jekyll lab site
+  (14 authors), ran erga in parallel with its embedded pipeline to full
+  convergence (187/187 records), then switched its CI to erga 0.1.0. No
+  package release: erga itself was unchanged, so there is no v0.2.0 tag.
 - **v0.3**: GitHub Action packaging; consumer #2, an Astro 5 department
   site (tens of authors), stress-tests scale and disambiguation.
 - **CSL-JSON and BibTeX emitters** slot in after v0.1 as demand warrants,

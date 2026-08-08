@@ -18,9 +18,13 @@ normalize, dedup, curation, Crossref backfill, deterministic output,
 `build`/`verify` CLI) with unit suites plus a byte-exact golden test, and
 validated against live OpenAlex: smoke-tested on real author profiles and
 run in parallel with the origin lab site's embedded pipeline to full
-convergence (187/187 records, no field diffs). Next up is the v0.2 site
-flip. See `docs/requirements-v1.md` for the v1 design and `docs/todo.md`
-for open work.
+convergence (187/187 records, no field diffs). The v0.2 milestone landed
+the same day: the origin lab site now builds its publications with erga
+0.1.0 in CI. No v0.2.0 tag or release, since erga itself was unchanged;
+versions track the package, milestones track the project. Next up is
+v0.3 (GitHub Action packaging, second consumer site). See
+`docs/requirements-v1.md` for the v1 design and `docs/todo.md` for open
+work.
 
 Module map (`src/erga/`): `config` (erga.yml), `http` (injectable transport
 + retry), `openalex`/`crossref` (clients), `normalize` (raw work → canonical
