@@ -20,15 +20,18 @@ suites plus a byte-exact golden test. The v0.2 milestone landed
 2026-08-05: the origin lab site builds its publications with erga in CI,
 after a parallel run to full convergence (187/187 records). 0.2.0
 carries the first consumer-feedback changes: abstract entity/tag cleanup
-and `authors[].tracked_as`. Next up is v0.3 (GitHub Action packaging,
-second consumer site). See `docs/requirements-v1.md` for the v1 design
-and `docs/todo.md` for open work.
+and `authors[].tracked_as`. v0.3 is in progress: the composite GitHub
+Action (`action.yml`) is built and proven in CI, leaving the 0.3.0
+release and consumer #2 (an Astro department site). See
+`docs/requirements-v1.md` for the v1 design, `docs/action.md` for the
+Action, and `docs/todo.md` for open work.
 
 Module map (`src/erga/`): `config` (erga.yml), `http` (injectable transport
 + retry), `openalex`/`crossref` (clients), `normalize` (raw work → canonical
 record), `dedup` (DOI + title clustering), `curation` (manual/overrides/
 tags), `pipeline` (stage orchestration), `output` (deterministic JSON),
-`verify` (disambiguation report), `cli`.
+`verify` (disambiguation report), `cli`. `action.yml` at the root wraps
+`uvx erga build`; it holds no logic of its own.
 
 ## Commands
 
@@ -59,6 +62,8 @@ tags), `pipeline` (stage orchestration), `output` (deterministic JSON),
 - PyPI publishing via Trusted Publishing (OIDC) from a release workflow;
   no stored tokens
 - Config samples, docs, and fixtures use placeholder mailto/ORCID values,
-  never real contact details
+  never real contact details. Sample ORCIDs must be unassignable (9999
+  prefix): ORCID's fictitious-researcher iD and 0000-0000-0000-0000 are
+  both carried by real OpenAlex profiles and fetch strangers' works
 - v1 non-goals: no rendering or UI, no Google Scholar scraping, no database,
   no hosted service, no sources beyond OpenAlex + manual entries

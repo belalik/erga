@@ -45,7 +45,10 @@ therefore usually the entire configuration:
 The Jekyll case is the happy accident that makes the default recipe short:
 `_data/` is exactly where Jekyll looks, and it exposes the config itself as
 `site.data.erga`, so templates can iterate the configured author list without
-a second source of truth.
+a second source of truth. A per-author filter should read `authors[].tracked_as`
+rather than `authors[].name`: `tracked_as` is the configured name, identical
+across every alias and spelling variant the registrars carry, so filtering on
+it needs no alias logic in the template.
 
 ### The API key
 
