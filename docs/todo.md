@@ -3,6 +3,12 @@
 ## High
 
 ## Normal
+- v0.2.0 is consumer-validated (smartmove, 2026-08-08) — fold into docs
+  where useful: pin bumped, CI regeneration byte-identical to the local
+  run, entity-cleaned abstracts confirmed on the live page, and
+  `tracked_as` adopted exactly as the flip review hoped — the author
+  filter fix was a one-line template change (`a.name` → `a.tracked_as`),
+  no alias logic in JS; the worst-hit author went 0 → 57 matching records
 
 ## Low
 - v0.3 Action packaging, notes from the first consumer's CI: pin
