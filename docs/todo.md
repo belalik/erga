@@ -1,10 +1,6 @@
 # TODO
 
 ## High
-- README's sample config uses ORCID's fictional test iD (0000-0002-1825-0097),
-  which 69 real OpenAlex profiles carry: the quickstart as written fetches
-  1022 unrelated works from 25 strangers. Use an ORCID that resolves to
-  nothing, or annotate the sample so nobody runs it verbatim
 - Release v0.3.0 — README and docs/action.md already reference the
   `belalik/erga@v0.3.0` tag and the 0.3.0 PyPI release, neither of which
   exists yet

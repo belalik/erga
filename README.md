@@ -39,7 +39,7 @@ with `uvx erga`). Write an `erga.yml`:
 mailto: you@example.org          # identifies requests to Crossref/OpenAlex
 authors:
   - name: Josiah Carberry
-    orcid: 0000-0002-1825-0097
+    orcid: 9999-9999-9999-9999   # placeholder: no real iD starts 9999
   - name: Another Person
     openalex_id: A5000000000     # alternative when ORCID is missing/wrong
 
@@ -59,6 +59,12 @@ Then:
   what each configured author resolves to on OpenAlex, with warnings for
   split profiles, zero-work authors, and implausible works counts. Run it
   once when setting up, and whenever a build looks off.
+
+Run `erga verify` before your first build, because an ORCID does not
+reliably identify one person on OpenAlex. The same iD can appear on several
+profiles when it has been mistyped or copied into submissions, and erga
+tracks all of them, so a wrong iD shows up as a pile of strangers' papers
+rather than as an error. The report tells you what you are about to fetch.
 
 ## GitHub Action
 

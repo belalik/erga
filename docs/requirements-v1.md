@@ -188,14 +188,17 @@ from first-consumer feedback.
 
 ## 5. Configuration
 
-One YAML file, default `erga.yml`. All examples use placeholder contacts
-(0000-0002-1825-0097 is ORCID's fictitious researcher Josiah Carberry).
+One YAML file, default `erga.yml`. All examples use placeholder contacts.
+The iD below is deliberately unassignable: ORCID's own fictitious researcher
+(0000-0002-1825-0097) is carried by 69 real OpenAlex profiles, because people
+paste it into submissions, so a sample using it fetches over a thousand
+strangers' works instead of failing.
 
 ```yaml
 mailto: you@example.org          # identifies requests to Crossref/OpenAlex
 authors:
   - name: Josiah Carberry
-    orcid: 0000-0002-1825-0097
+    orcid: 9999-9999-9999-9999   # placeholder: no real iD starts 9999
     aliases: ["J. S. Carberry"]  # optional, for matching manual entries
   - name: Another Person
     openalex_id: A5000000000     # alternative when ORCID is missing/wrong
