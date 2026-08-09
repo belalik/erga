@@ -12,19 +12,20 @@ highlights) lives in separate files that survive every automated refresh.
 
 ## Status
 
-v0.2.0 released 2026-08-08 (PyPI via Trusted Publishing, GitHub
-Releases; repo public since v0.1.0, 2026-08-05). The pipeline is
-implemented end-to-end (config, fetch, normalize, dedup, curation,
-Crossref backfill, deterministic output, `build`/`verify` CLI) with unit
-suites plus a byte-exact golden test. The v0.2 milestone landed
-2026-08-05: the origin lab site builds its publications with erga in CI,
-after a parallel run to full convergence (187/187 records). 0.2.0
-carries the first consumer-feedback changes: abstract entity/tag cleanup
-and `authors[].tracked_as`. v0.3 is in progress: the composite GitHub
-Action (`action.yml`) is built and proven in CI, leaving the 0.3.0
-release and consumer #2 (an Astro department site). See
-`docs/requirements-v1.md` for the v1 design, `docs/action.md` for the
-Action, and `docs/todo.md` for open work.
+v0.3.0 released 2026-08-09 (PyPI via Trusted Publishing, GitHub
+Releases; repo public since v0.1.0, 2026-08-05): the composite GitHub
+Action, the post-dedup override-match fix, unassignable sample ORCIDs.
+The pipeline is implemented end-to-end (config, fetch, normalize, dedup,
+curation, Crossref backfill, deterministic output, `build`/`verify` CLI)
+with unit suites plus a byte-exact golden test. The origin lab site (the
+v0.2 milestone) builds its publications with erga in CI. Post-release,
+main carries department-scale intake hardening shaped by the consumer #2
+scope decisions: verify separates split profiles from contaminated
+ORCIDs by name matching, name-searches for unconfigured same-name
+profiles, and `output.exclude_types` filters noise types wholesale.
+Next: consumer #2 (an Astro department site) adoption via a planned
+handoff. See `docs/requirements-v1.md` for the v1 design,
+`docs/action.md` for the Action, and `docs/todo.md` for open work.
 
 Module map (`src/erga/`): `config` (erga.yml), `http` (injectable transport
 + retry), `openalex`/`crossref` (clients), `normalize` (raw work → canonical
