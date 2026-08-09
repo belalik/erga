@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./
         with:
-          version: "0.2.0"
+          version: "0.3.0"
           config: tests/fixtures/action/erga.yml
       - name: Check the action produced the expected JSON
         run: |
@@ -77,7 +77,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./
         with:
-          version: "0.2.0"
+          version: "0.3.0"
           config: tests/fixtures/action-live/erga.yml
           # No such secret exists yet, and fork PRs never receive one. Empty
           # falls back to OpenAlex's keyless quota, so this passes either way

@@ -1,8 +1,6 @@
 # TODO
 
 ## High
-- Release v0.3.0; README and docs/action.md already reference the
-  `belalik/erga@v0.3.0` tag and PyPI release, neither of which exists yet
 
 ## Normal
 
