@@ -53,6 +53,7 @@ def test_load_manual_entry(tmp_path: Path) -> None:
     (work,) = load_manual(path, [CARBERRY])
     assert work.id == "manual-the-lost-lectures"
     assert work.source == "manual"
+    assert work.keep is True  # explicit curation: exempt from exclude_types
     assert work.doi == "https://doi.org/10.5555/lost"
     assert work.type == "book"
     assert work.tags == ["legacy"]
@@ -125,6 +126,30 @@ def test_apply_overrides_patch_exclude_and_stale(tmp_path: Path) -> None:
     assert kept[0].venue == "Corrected Journal"
     assert kept[0].type == "conference"
     assert unmatched_overrides(overrides) == [f"{tmp_path / 'overrides.yml'}: entry 3"]
+
+
+def test_apply_overrides_explicit_exclude_false_marks_keep(tmp_path: Path) -> None:
+    overrides = load_overrides(
+        write(
+            tmp_path,
+            "overrides.yml",
+            """\
+- id: W1
+  exclude: false
+  venue: Kept and Patched
+- id: W2
+  venue: Only Patched
+""",
+        )
+    )
+    works = [Work(id="W1", title="A"), Work(id="W2", title="B")]
+    kept, excluded = apply_overrides(works, overrides, [])
+    assert excluded == 0
+    assert kept[0].keep is True
+    assert kept[0].venue == "Kept and Patched"
+    # An override that merely patches must not exempt the record.
+    assert kept[1].keep is False
+    assert kept[1].venue == "Only Patched"
 
 
 def test_redundant_overrides_compare_against_pre_patch_values(tmp_path: Path) -> None:

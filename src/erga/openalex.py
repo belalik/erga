@@ -51,10 +51,28 @@ class AuthorProfile:
 class ResolvedAuthor:
     config: AuthorConfig
     profiles: list[AuthorProfile]
+    # Total ORCID matches reported by the API; exceeds the fetched page when
+    # a heavily contaminated iD (copied into strangers' submissions) overflows
+    # it. The count is the interesting signal, not the tail entries.
+    orcid_profile_total: int = 0
+    # How many head entries of `profiles` the ORCID query produced; a pinned
+    # openalex_id contributes at most one entry after these. Warnings about
+    # the ORCID must judge only its own profiles, not the pinned one.
+    orcid_profile_count: int = 0
 
     @property
     def ids(self) -> list[str]:
         return [p.id for p in self.profiles]
+
+    @property
+    def orcid_profiles(self) -> list[AuthorProfile]:
+        """The profiles the ORCID itself resolved to."""
+        return self.profiles[: self.orcid_profile_count]
+
+
+def _meta_total(data: Any, rows: list[Any]) -> int:
+    """API-reported total match count, falling back to the fetched page."""
+    return int((data.get("meta") or {}).get("count") or len(rows))
 
 
 def _profile_from(data: dict[str, Any]) -> AuthorProfile:
@@ -103,12 +121,16 @@ class OpenAlexClient:
         matching nothing yields an empty list for the caller to judge.
         """
         profiles: list[AuthorProfile] = []
+        orcid_total = 0
         if author.orcid:
             data = self._get(
                 "/authors",
                 {"filter": f"orcid:{author.orcid}", "select": AUTHOR_SELECT, "per-page": "25"},
             )
-            profiles.extend(_profile_from(row) for row in data.get("results", []))
+            results = data.get("results", [])
+            profiles.extend(_profile_from(row) for row in results)
+            orcid_total = _meta_total(data, results)
+        orcid_count = len(profiles)
         if author.openalex_id and author.openalex_id not in {p.id for p in profiles}:
             data = self._get(
                 f"/authors/{author.openalex_id}", {"select": AUTHOR_SELECT}, ok_missing=True
@@ -118,7 +140,25 @@ class OpenAlexClient:
                     f"configured openalex_id {author.openalex_id} for {author.name!r} not found"
                 )
             profiles.append(_profile_from(data))
-        return ResolvedAuthor(config=author, profiles=profiles)
+        return ResolvedAuthor(
+            config=author,
+            profiles=profiles,
+            orcid_profile_total=orcid_total,
+            orcid_profile_count=orcid_count,
+        )
+
+    def search_authors(self, name: str, count: int = 10) -> tuple[list[AuthorProfile], int]:
+        """Author profiles matching a name search, plus the total match count.
+
+        Search covers display names and their alternatives, so this surfaces
+        homonym and conflated profiles a configured id never resolves to.
+        """
+        data = self._get(
+            "/authors",
+            {"search": name, "select": AUTHOR_SELECT, "per-page": str(count)},
+        )
+        rows = data.get("results", [])
+        return [_profile_from(row) for row in rows], _meta_total(data, rows)
 
     def fetch_works(
         self, author_ids: list[str], *, include_xpac: bool = False

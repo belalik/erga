@@ -10,7 +10,7 @@ from typing import Any
 import yaml
 
 from erga.errors import ConfigError
-from erga.model import normalize_orcid
+from erga.model import normalize_orcid, validate_work_type
 
 _ORCID_RE = re.compile(r"^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$")
 _OPENALEX_AUTHOR_RE = re.compile(r"^A\d+$")
@@ -40,6 +40,7 @@ class Config:
     api_key_env: str = "OPENALEX_API_KEY"
     include_xpac: bool = False
     output_path: Path = Path("publications.json")
+    exclude_types: frozenset[str] = frozenset()
     manual_path: Path = Path("manual.yml")
     overrides_path: Path = Path("overrides.yml")
     tags_path: Path = Path("tags.yml")
@@ -124,8 +125,14 @@ def load_config(path: Path) -> Config:
     authors = [_parse_author(entry, path, i) for i, entry in enumerate(raw_authors)]
 
     openalex = _section(data, "openalex", path, {"api_key_env", "include_xpac"})
-    output = _section(data, "output", path, {"path"})
+    output = _section(data, "output", path, {"path", "exclude_types"})
     curation = _section(data, "curation", path, {"manual", "overrides", "tags"})
+
+    exclude_types = expect_str_list(
+        output.get("exclude_types", []), f"{path}: output.exclude_types"
+    )
+    for value in exclude_types:
+        validate_work_type(value, f"{path}: output.exclude_types")
 
     return Config(
         mailto=mailto.strip(),
@@ -133,6 +140,7 @@ def load_config(path: Path) -> Config:
         api_key_env=str(openalex.get("api_key_env", "OPENALEX_API_KEY")),
         include_xpac=bool(openalex.get("include_xpac", False)),
         output_path=base / str(output.get("path", "publications.json")),
+        exclude_types=frozenset(exclude_types),
         manual_path=base / str(curation.get("manual", "manual.yml")),
         overrides_path=base / str(curation.get("overrides", "overrides.yml")),
         tags_path=base / str(curation.get("tags", "tags.yml")),

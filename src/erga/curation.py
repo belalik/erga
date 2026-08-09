@@ -16,7 +16,7 @@ from typing import Any
 
 from erga.config import AuthorConfig, expect_str_list, load_yaml, reject_unknown_keys
 from erga.errors import ConfigError
-from erga.model import WORK_TYPES, Work, WorkAuthor, doi_key, doi_url, slugify
+from erga.model import Work, WorkAuthor, doi_key, doi_url, slugify, validate_work_type
 
 MANUAL_KEYS = {"title", "authors", "venue", "year", "date", "doi", "type", "tags", "abstract"}
 PATCH_KEYS = {
@@ -56,13 +56,6 @@ def _parse_authors(value: Any, authors_cfg: list[AuthorConfig], where: str) -> l
             )
         )
     return parsed
-
-
-def _parse_type(value: Any, where: str) -> str:
-    if not isinstance(value, str) or value not in WORK_TYPES:
-        allowed = ", ".join(sorted(WORK_TYPES))
-        raise ConfigError(f"{where}: type {value!r} is not one of: {allowed}")
-    return value
 
 
 def _opt_str(entry: dict[str, Any], key: str) -> str | None:
@@ -105,11 +98,13 @@ def load_manual(path: Path, authors_cfg: list[AuthorConfig]) -> list[Work]:
                 year=year,
                 date=_opt_str(entry, "date"),
                 venue=_opt_str(entry, "venue"),
-                type=_parse_type(entry.get("type", "other"), where),
+                type=validate_work_type(entry.get("type", "other"), where),
                 doi=doi_url(str(entry["doi"])) if entry.get("doi") else None,
                 abstract=_opt_str(entry, "abstract"),
                 tags=expect_str_list(entry.get("tags", []), f"{where}: 'tags'"),
                 source="manual",
+                # Manual entries are explicit curation: never type-filtered.
+                keep=True,
             )
         )
     return works
@@ -120,7 +115,9 @@ class Override:
     where: str
     match_doi: str | None = None  # doi_key form
     match_id: str | None = None
-    exclude: bool = False
+    # Tri-state: absent (None) does nothing; True drops the record; an
+    # explicit False exempts it from the exclude_types filter.
+    exclude: bool | None = None
     keep_distinct: bool = False
     patch: dict[str, Any] = field(default_factory=dict)
     matched: bool = False
@@ -147,7 +144,7 @@ def load_overrides(path: Path) -> list[Override]:
                 where=where,
                 match_doi=doi_key(str(entry["doi"])) if "doi" in entry else None,
                 match_id=str(entry["id"]) if "id" in entry else None,
-                exclude=bool(entry.get("exclude", False)),
+                exclude=bool(entry["exclude"]) if "exclude" in entry else None,
                 keep_distinct=bool(entry.get("keep_distinct", False)),
                 patch=patch,
             )
@@ -239,7 +236,7 @@ def _patch_work(
         elif key == "doi":
             work.doi = doi_url(str(value)) if value else None
         elif key == "type":
-            work.type = _parse_type(value, where)
+            work.type = validate_work_type(value, where)
         elif key == "tags":
             work.tags = expect_str_list(value, f"{where}: 'tags'")
         elif key == "date":
@@ -262,7 +259,10 @@ def apply_overrides(
     for override, work in _iter_matches(overrides, works):
         if override.exclude:
             excluded.add(id(work))
-        elif override.patch:
+            continue
+        if override.exclude is False:
+            work.keep = True
+        if override.patch:
             # Compare against the pre-patch record: comparing the override
             # against the output would be circular, the output already has
             # the override applied and every entry would look load-bearing.

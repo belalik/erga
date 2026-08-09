@@ -53,6 +53,7 @@ openalex:
   include_xpac: true
 output:
   path: data/publications.json
+  exclude_types: [preprint, other]
 curation:
   manual: curation/manual.yml
 """,
@@ -64,6 +65,7 @@ curation:
     assert config.api_key_env == "MY_KEY"
     assert config.include_xpac is True
     assert config.output_path == tmp_path / "data" / "publications.json"
+    assert config.exclude_types == frozenset({"preprint", "other"})
     assert config.manual_path == tmp_path / "curation" / "manual.yml"
 
 
@@ -77,6 +79,8 @@ curation:
         ("mailto: a@b.c\nauthors:\n  - {name: X, openalex_id: W123}\n", "OpenAlex author id"),
         (MINIMAL + "surprise: true\n", "unknown keys"),
         (MINIMAL + "openalex: {polite: yes}\n", "unknown keys"),
+        (MINIMAL + "output: {exclude_types: [sonnet]}\n", "not one of"),
+        (MINIMAL + "output: {exclude_types: preprint}\n", "list of strings"),
     ],
 )
 def test_invalid_configs(tmp_path: Path, content: str, message: str) -> None:

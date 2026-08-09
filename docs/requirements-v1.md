@@ -210,6 +210,7 @@ openalex:
 
 output:
   path: publications.json
+  exclude_types: [other]         # optional: types dropped from the output
 
 curation:                        # optional; defaults shown, relative to config
   manual: manual.yml
@@ -236,8 +237,9 @@ All three survive every refresh; a missing file means "none".
   name/alias for the `tracked` flag.
 - **`overrides.yml`**: list of patches keyed by `doi` (case-insensitive) or
   `id`. Any other key overwrites that field on the merged record. Special
-  keys: `exclude: true` drops the record; `keep_distinct: true` exempts it
-  from title clustering. A field patch that no longer changes anything
+  keys: `exclude: true` drops the record; an explicit `exclude: false`
+  exempts it from the `output.exclude_types` filter; `keep_distinct: true`
+  exempts it from title clustering. A field patch that no longer changes anything
   (upstream caught up) raises a build warning, measured against the
   pre-patch record — measuring against the output would be circular. The
   warning is information, not an instruction to delete: a redundant
@@ -280,7 +282,9 @@ Ported from the production origin pipeline with generalization deltas noted.
    part — within a same-title cluster they differ by deposit-version
    artifacts and favor the wrong copies). The winner inherits `abstract`
    and `open_access` from absorbed copies when it lacks them.
-8. Apply overrides (patch or exclude).
+8. Apply overrides (patch or exclude), then drop `output.exclude_types`
+   records. Manual entries are explicit curation and never type-filtered;
+   an `exclude: false` override rescues an individual fetched record.
 9. Crossref venue backfill with the last-known-good ratchet: reuse venues
    from the previous output first, then query Crossref (polite mailto
    User-Agent) only for records still lacking one; DataCite DOIs 404 there
@@ -299,8 +303,17 @@ Ported from the production origin pipeline with generalization deltas noted.
 - `erga verify [--config PATH]`: the author-disambiguation report, a
   first-class feature because OpenAlex author IDs split and conflate
   people. Per configured author: resolved ID(s), works count, name
-  variants, most recent titles; warnings for ORCIDs resolving to multiple
-  author IDs, zero-work authors, and implausible works counts.
+  variants, most recent titles, and a name search listing same-name
+  profiles the config does not cover (homonyms, and conflated profiles
+  holding misassigned works — surfaced for tracking-only authors too).
+  Warnings separate the ORCID failure modes by comparing profile names
+  to the configured name/aliases: a split profile (several ids, names
+  all match; pin `openalex_id`) versus an iD carried by apparently
+  different people (strangers' works would be fetched; remove the
+  `orcid` and pin `openalex_id` — judged only against the profiles the
+  ORCID itself resolved to), plus any resolved profile whose name does
+  not look like the configured author (mistyped id), zero-work authors,
+  and implausible works counts.
 
 Python >= 3.10. Runtime dependencies: `requests` and `PyYAML` only.
 

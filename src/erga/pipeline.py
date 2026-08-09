@@ -30,6 +30,7 @@ class BuildStats:
     manual: int = 0
     deduplicated: int = 0
     excluded: int = 0
+    excluded_types: int = 0
     backfilled_previous: int = 0
     backfilled_crossref: int = 0
     total: int = 0
@@ -40,11 +41,26 @@ class BuildStats:
         return (
             f"fetched {self.fetched}, manual {self.manual}, "
             f"deduplicated {self.deduplicated}, excluded {self.excluded}, "
+            f"excluded by type {self.excluded_types}, "
             f"backfilled {self.backfilled_previous + self.backfilled_crossref} "
             f"({self.backfilled_previous} from previous output, "
             f"{self.backfilled_crossref} from Crossref), "
             f"total {self.total}"
         )
+
+
+def exclude_by_type(works: list[Work], types: frozenset[str]) -> tuple[list[Work], int]:
+    """Drop fetched records of unwanted types (editorial front matter, errata).
+
+    `keep` records are exempt: manual entries carry it from construction, and
+    an explicit `exclude: false` override rescues an individual fetched
+    record. Runs after overrides so a patched type is judged in its corrected
+    form.
+    """
+    if not types:
+        return works, 0
+    kept = [w for w in works if w.type not in types or w.keep]
+    return kept, len(works) - len(kept)
 
 
 def backfill_venues(
@@ -132,6 +148,8 @@ def build(
         f"override redundant (upstream now agrees; kept as-is): {w}"
         for w in redundant_overrides(overrides)
     )
+
+    works, stats.excluded_types = exclude_by_type(works, config.exclude_types)
 
     backfill_venues(works, previous_venues(config.output_path), crossref, stats)
 

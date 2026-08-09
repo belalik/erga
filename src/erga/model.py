@@ -7,6 +7,8 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
 
+from erga.errors import ConfigError
+
 WORK_TYPES = frozenset(
     {
         "journal",
@@ -20,6 +22,15 @@ WORK_TYPES = frozenset(
         "other",
     }
 )
+
+
+def validate_work_type(value: Any, where: str) -> str:
+    """The value as a validated work type; anything else is a ConfigError."""
+    if not isinstance(value, str) or value not in WORK_TYPES:
+        allowed = ", ".join(sorted(WORK_TYPES))
+        raise ConfigError(f"{where}: type {value!r} is not one of: {allowed}")
+    return value
+
 
 _DOI_HOST = re.compile(r"^https?://(dx\.)?doi\.org/", re.IGNORECASE)
 _ORCID_HOST = re.compile(r"^https?://orcid\.org/", re.IGNORECASE)
@@ -86,6 +97,10 @@ class Work:
     source: str = "openalex"
     # Internal only, set from overrides; never serialized.
     keep_distinct: bool = False
+    # Internal only: exempts the record from the exclude_types filter. Set
+    # at construction for manual entries and by an explicit `exclude: false`
+    # override for fetched records.
+    keep: bool = False
 
     @property
     def doi_key(self) -> str | None:

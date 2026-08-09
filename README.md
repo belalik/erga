@@ -48,6 +48,7 @@ openalex:
 
 output:
   path: publications.json
+  # exclude_types: [other]       # optional: drop e.g. errata/editorial noise
 ```
 
 Then:
@@ -56,9 +57,12 @@ Then:
   `publications.json`. With `--dry-run` it prints a summary (fetched, merged,
   deduplicated, excluded, backfilled) without writing.
 - `erga verify [--config PATH]` prints the author-disambiguation report:
-  what each configured author resolves to on OpenAlex, with warnings for
-  split profiles, zero-work authors, and implausible works counts. Run it
-  once when setting up, and whenever a build looks off.
+  what each configured author resolves to on OpenAlex, plus a name search
+  for same-name profiles the config does not cover. Warnings tell a split
+  profile (one person, several ids) apart from an iD carried by strangers,
+  and flag resolved profiles whose name does not match the configured
+  author, zero-work authors, and implausible works counts. Run it once
+  when setting up, and whenever a build looks off.
 
 Run `erga verify` before your first build, because an ORCID does not
 reliably identify one person on OpenAlex. The same iD can appear on several
