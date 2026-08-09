@@ -15,6 +15,7 @@ from erga.curation import (
     redundant_overrides,
     unmatched_overrides,
 )
+from erga.dedup import cluster_by_title, dedup_by_doi
 from erga.errors import ConfigError
 from erga.model import Work
 
@@ -207,7 +208,42 @@ def test_mark_keep_distinct(tmp_path: Path) -> None:
     works = [Work(id="W1", title="A"), Work(id="W2", title="A")]
     mark_keep_distinct(works, overrides)
     assert works[0].keep_distinct and not works[1].keep_distinct
+    # A pin whose record survives must not warn: matched is settled by the
+    # patch stage, so that verdict only exists once apply_overrides has run.
+    apply_overrides(works, overrides, [])
     assert unmatched_overrides(overrides) == []
+
+
+def test_keep_distinct_pin_lost_to_doi_merge_reports_unmatched(tmp_path: Path) -> None:
+    """keep_distinct exempts from title clustering only, never from DOI merging.
+
+    When the pinned record loses that merge, the entry's patch cannot apply.
+    The build must say so instead of reporting the correction as redundant.
+    """
+    overrides = load_overrides(
+        write(
+            tmp_path,
+            "overrides.yml",
+            "- id: W1\n  keep_distinct: true\n  venue: Corrected Venue\n",
+        )
+    )
+    works = [
+        Work(id="W1", title="A Study of Things", doi="https://doi.org/10.5555/abc"),
+        Work(
+            id="W9",
+            title="A Study of Things",
+            doi="https://doi.org/10.5555/abc",
+            cited_by_count=42,
+        ),
+    ]
+    mark_keep_distinct(works, overrides)
+    survivors = cluster_by_title(dedup_by_doi(works))
+    assert [w.id for w in survivors] == ["W9"]
+
+    kept, _ = apply_overrides(survivors, overrides, [])
+    assert kept[0].venue is None
+    assert unmatched_overrides(overrides) == [f"{tmp_path / 'overrides.yml'}: entry 1"]
+    assert redundant_overrides(overrides) == []
 
 
 def test_apply_tags_by_doi_and_id(tmp_path: Path) -> None:

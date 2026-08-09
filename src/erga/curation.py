@@ -169,12 +169,19 @@ def load_tags(path: Path) -> dict[str, list[str]]:
     return tags
 
 
-def _iter_matches(overrides: list[Override], works: list[Work]) -> Iterator[tuple[Override, Work]]:
+def _iter_matches(
+    overrides: list[Override], works: list[Work], *, record_match: bool = True
+) -> Iterator[tuple[Override, Work]]:
     """Pair each override with the works it hits, in override file order.
 
     Indexes the works once, and flips `matched` in this one place so the
     stale-override detection cannot drift between callers. Pre-dedup, several
     works can share a DOI, so the indexes map to lists.
+
+    `record_match=False` is for passes that run before dedup: a work they hit
+    may not survive to the patch stage, and a match recorded against a record
+    that later loses a DOI merge would mask the override as bound when nothing
+    it names still exists.
     """
     by_doi: dict[str, list[Work]] = {}
     by_id: dict[str, list[Work]] = {}
@@ -188,14 +195,21 @@ def _iter_matches(overrides: list[Override], works: list[Work]) -> Iterator[tupl
         else:
             hits = by_id.get(override.match_id or "", [])
         for work in hits:
-            override.matched = True
+            if record_match:
+                override.matched = True
             yield override, work
 
 
 def mark_keep_distinct(works: list[Work], overrides: list[Override]) -> None:
-    """Applied before title clustering, ahead of the override patch stage."""
+    """Applied before title clustering, ahead of the override patch stage.
+
+    Deliberately does not record matches: `keep_distinct` exempts a record
+    from title clustering only, so a marked work can still lose an earlier
+    DOI-level merge. Whether an override bound to anything is decided by
+    `apply_overrides`, against the records that actually survived.
+    """
     keep = [o for o in overrides if o.keep_distinct]
-    for _, work in _iter_matches(keep, works):
+    for _, work in _iter_matches(keep, works, record_match=False):
         work.keep_distinct = True
 
 
