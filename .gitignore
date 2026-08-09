@@ -9,6 +9,10 @@ dist/
 build/
 *.egg-info/
 
+# Written by the CI jobs that exercise action.yml (and by local reruns)
+tests/fixtures/action/publications.json
+tests/fixtures/action-live/publications.json
+
 # Tool caches
 .pytest_cache/
 .mypy_cache/

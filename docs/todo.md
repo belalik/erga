@@ -1,37 +1,35 @@
 # TODO
 
 ## High
+- README's sample config uses ORCID's fictional test iD (0000-0002-1825-0097),
+  which 69 real OpenAlex profiles carry: the quickstart as written fetches
+  1022 unrelated works from 25 strangers. Use an ORCID that resolves to
+  nothing, or annotate the sample so nobody runs it verbatim
+- Release v0.3.0 — README and docs/action.md already reference the
+  `belalik/erga@v0.3.0` tag and the 0.3.0 PyPI release, neither of which
+  exists yet
 
 ## Normal
-- v0.2.0 is consumer-validated (smartmove, 2026-08-08) — fold into docs
-  where useful: pin bumped, CI regeneration byte-identical to the local
-  run, entity-cleaned abstracts confirmed on the live page, and
-  `tracked_as` adopted exactly as the flip review hoped — the author
-  filter fix was a one-line template change (`a.name` → `a.tracked_as`),
-  no alias logic in JS; the worst-hit author went 0 → 57 matching records
 
 ## Low
-- v0.3 Action packaging, notes from the first consumer's CI: pin
-  setup-uv to an exact version inside `action.yml` (its repo has no
-  moving major tags), set `enable-cache: false` for the uvx pattern
-  (cache warns every run without a lockfile), give the `version` input
-  no default so consumer pins stay deliberate, and mint the moving `v1`
-  tag deliberately (requirements promise one)
-- Consumer recipes doc once a second consumer exists; start with the
-  Jekyll recipe proven in the flip: config at `_data/erga.yml` puts
-  output where Jekyll wants it, and Jekyll exposes the config as
-  `site.data.erga` so templates iterate the authors list directly
-- Second consumer should exercise the surface the first didn't: manual
-  entries, `exclude`/`keep_distinct` override paths, ORCID-based
-  resolution, `erga verify`, thesis/software types in templates,
-  keyless runs
-- Parallel-run harnesses for future adoptions must diff every schema
-  field with an explicit ignore-list (cited_by_count), not identity
-  fields only — in the v0.2 run both real deltas (abstract entities,
-  open-access URLs) sat exactly in the uncompared fields
+- Mint the moving `v1` tag with the 1.0 release; policy in docs/action.md
+- Consumer recipes doc once a second consumer exists; start with the Jekyll
+  recipe proven in the flip: config at `_data/erga.yml` puts output where
+  Jekyll wants it, Jekyll exposes the config as `site.data.erga` so templates
+  iterate the authors list directly, and the author filter is a one-line
+  `a.tracked_as` template change with no alias logic in JS
+- Second consumer should exercise the surface the first didn't:
+  `exclude`/`keep_distinct` override paths, ORCID-based resolution,
+  `erga verify`, thesis/software types in templates, keyless runs (manual
+  entries and alias tracking now covered by the action CI job)
+- Parallel-run harnesses for future adoptions must diff every schema field
+  with an explicit ignore-list (cited_by_count), not identity fields only —
+  in the v0.2 run both real deltas (abstract entities, open-access URLs) sat
+  exactly in the uncompared fields
 - CSL-JSON and BibTeX emitters (before the v1.0 promotion push)
-- `erga verify`: also search OpenAlex by configured names and flag
-  same-name profiles missing from the config (would have surfaced the
-  conflated homonym profile the v0.2 run found)
-- Config knob to exclude types from output (erratum/editorial front
-  matter); until then, per-record `exclude: true` overrides cover it
+- `erga verify`: also search OpenAlex by configured names and flag same-name
+  profiles missing from the config (would have surfaced the conflated homonym
+  profile the v0.2 run found), and flag a configured ORCID carried by many
+  profiles at all — the fictional iD above is the extreme case at 69
+- Config knob to exclude types from output (erratum/editorial front matter);
+  until then, per-record `exclude: true` overrides cover it

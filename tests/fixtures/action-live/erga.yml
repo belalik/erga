@@ -1,0 +1,19 @@
+# Config for the scheduled job that runs action.yml against live OpenAlex.
+#
+# Deliberately a historical figure pinned by openalex_id: the profile is
+# small and stable, and no living person becomes a permanent test subject in
+# a public repo. Pinning the id rather than an ORCID also keeps the fetch
+# bounded — ORCID's fictional test iD, the placeholder used elsewhere in this
+# suite, is carried by 69 real OpenAlex profiles and pulls over a thousand
+# unrelated works.
+#
+# If OpenAlex ever merges this profile away the build fails loudly, which is
+# the signal this job exists to give.
+mailto: erga-ci@example.org
+
+authors:
+  - name: Ada Lovelace
+    openalex_id: A5052223708
+
+output:
+  path: publications.json

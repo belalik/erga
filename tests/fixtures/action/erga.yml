@@ -1,0 +1,19 @@
+# Config for the CI job that exercises action.yml.
+#
+# The author is deliberately tracking-only (no orcid, no openalex_id), so
+# resolve_author skips both of its lookups and fetch_works never enters its
+# batch loop: the build makes no OpenAlex request at all. The manual entries
+# carry venues, so the Crossref backfill has nothing to ask for either. What
+# remains is a real end-to-end build whose output is fixed, which is exactly
+# what a wiring check wants — and it covers manual.yml, a curation path no
+# consumer has exercised yet.
+#
+# Every path below resolves against this file's directory.
+mailto: erga-ci@example.org
+
+authors:
+  - name: Josiah Carberry
+    aliases: ["J. S. Carberry"]
+
+output:
+  path: publications.json

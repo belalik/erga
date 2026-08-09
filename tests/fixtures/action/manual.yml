@@ -1,0 +1,16 @@
+# Manual entries for the action wiring check. Venues are set on purpose:
+# a record missing one would send the build to Crossref and make the job
+# depend on the network.
+- title: The Lost Lectures
+  authors: ["J. S. Carberry", "An Outsider"]
+  venue: Brown University Press
+  year: 2020
+  doi: 10.5555/LOST
+  type: book
+
+- title: Toward a Unified Theory of Bucket Handles
+  authors: ["Josiah Carberry"]
+  venue: Journal of Psychoceramics
+  year: 2018
+  doi: 10.5555/BUCKET
+  type: journal

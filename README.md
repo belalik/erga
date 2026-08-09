@@ -3,10 +3,11 @@
 Keep a website's academic publications list current, automatically, without
 giving up control of the data.
 
-**Status: alpha (v0.1).** The CLI pipeline works end-to-end and its
+**Status: alpha (v0.3).** The CLI pipeline works end-to-end and its
 output has converged with a production lab site's existing pipeline in a
 parallel run against live OpenAlex (187/187 records, zero field diffs).
-The JSON schema may still change before v1.0.
+That site now builds its publications with erga in CI. The JSON schema may
+still change before v1.0.
 
 ## What it does
 
@@ -24,8 +25,8 @@ Astro, Hugo, anything) renders it however it likes.
 - **Git-owned data**: the output is a diffable, PR-reviewable file in your
   repo: no hosted embed, no runtime dependency, publications present in the
   initial HTML.
-- **Delivery**: a pip-installable CLI today; GitHub Action packaging is
-  planned once the CLI is proven on consumer sites.
+- **Delivery**: a pip-installable CLI, or a GitHub Action. One workflow file
+  plus one config file is the whole setup.
 
 The name: έργα, "works" — the same term OpenAlex uses for publications.
 
@@ -58,6 +59,78 @@ Then:
   what each configured author resolves to on OpenAlex, with warnings for
   split profiles, zero-work authors, and implausible works counts. Run it
   once when setting up, and whenever a build looks off.
+
+## GitHub Action
+
+The action runs the build and stops there. It writes `publications.json` and
+leaves delivery to your workflow, so you compose it with whatever you already
+use to commit or open pull requests.
+
+```yaml
+- uses: actions/checkout@v5
+- uses: belalik/erga@v0.3.0
+  with:
+    version: "0.3.0"                 # pin explicitly; no default
+    config: _data/erga.yml
+    api-key: ${{ secrets.OPENALEX_API_KEY }}   # optional
+```
+
+Paths inside the config resolve against the config's own directory, so
+putting `erga.yml` where the site wants its data is usually the whole
+configuration: `_data/erga.yml` writes `_data/publications.json`.
+
+**Recipe 1, commit back inside your build workflow.** The default, and what
+the origin site runs. Because the build happens in the same job, it sidesteps
+the rule that pushes made with `GITHUB_TOKEN` never trigger another workflow.
+
+```yaml
+permissions:
+  contents: write
+
+steps:
+  - uses: actions/checkout@v5
+  - uses: belalik/erga@v0.3.0
+    with:
+      version: "0.3.0"
+      config: _data/erga.yml
+      api-key: ${{ secrets.OPENALEX_API_KEY }}
+  - run: |
+      git config user.name "github-actions[bot]"
+      git config user.email "github-actions[bot]@users.noreply.github.com"
+      git add _data/publications.json
+      git diff --cached --quiet || git commit -m "Update publications"
+      git push
+  # ...then build and deploy the site as usual, in this same job.
+```
+
+**Recipe 2, open a pull request.** The right default when you want a review
+gate, and the only clean path on a protected branch. Repeated runs update one
+branch and one PR, so quiet weeks produce no noise, and merging is an ordinary
+push that fires your deploy workflow.
+
+```yaml
+permissions:
+  contents: write
+  pull-requests: write
+
+steps:
+  - uses: actions/checkout@v5
+  - uses: belalik/erga@v0.3.0
+    with:
+      version: "0.3.0"
+      config: _data/erga.yml
+      api-key: ${{ secrets.OPENALEX_API_KEY }}
+  - uses: peter-evans/create-pull-request@v7
+    with:
+      commit-message: Update publications
+      branch: erga/publications
+      title: Update publications
+```
+
+Inputs, permissions, scheduling and version-pinning notes:
+[docs/action.md](docs/action.md).
+
+## Curation
 
 Three optional curation files next to the config survive every refresh:
 `manual.yml` (records the APIs miss), `overrides.yml` (per-record patches,

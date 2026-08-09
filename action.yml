@@ -1,0 +1,51 @@
+name: erga
+description: Build a curated publications.json from OpenAlex and your curation files.
+author: belalik
+
+branding:
+  icon: book-open
+  color: blue
+
+inputs:
+  version:
+    description: >-
+      erga release to run, for example "0.2.0". Required and deliberately
+      un-defaulted, so upgrading is always a visible change to your workflow
+      rather than something that happens under you on a Tuesday.
+    required: true
+  config:
+    description: >-
+      Path to erga.yml. Every other path in the config (output, curation
+      files) resolves against this file's directory, so placing the config
+      where your site wants the JSON is usually the whole configuration.
+    required: false
+    default: erga.yml
+  api-key:
+    description: >-
+      OpenAlex API key. Pass a secret, never a literal. Optional: without one
+      erga uses OpenAlex's keyless per-IP quota and says so in the log. Only
+      wired to the default OPENALEX_API_KEY name; if your config renames
+      openalex.api_key_env, set that variable as job-level env instead.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    # Pinned to an exact tag on purpose: this repo publishes no moving major
+    # tag, so astral-sh/setup-uv@v9 does not resolve. Caching is off because
+    # the uvx pattern has no lockfile to key on and warns on every run.
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v9.0.0
+      with:
+        enable-cache: false
+
+    # Inputs travel as env vars rather than ${{ }} interpolated into the
+    # script, so a path containing shell metacharacters cannot run as code.
+    - name: Build publications
+      shell: bash
+      run: uvx "erga==${ERGA_VERSION}" build --config "${ERGA_CONFIG}"
+      env:
+        ERGA_VERSION: ${{ inputs.version }}
+        ERGA_CONFIG: ${{ inputs.config }}
+        OPENALEX_API_KEY: ${{ inputs.api-key }}

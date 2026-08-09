@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Off the top of the hour, the same etiquette the docs ask of consumers.
+  # GitHub disables scheduled workflows after 60 days without repo activity.
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
 
 jobs:
   test:
@@ -22,3 +27,72 @@ jobs:
       - run: uv run ruff format --check
       - run: uv run mypy
       - run: uv run pytest
+
+  # Exercises action.yml itself: inputs reaching the CLI, the setup-uv pin
+  # resolving, config-relative paths, curation files, output written. The
+  # fixture author is tracking-only and its manual entries carry venues, so
+  # the build touches neither OpenAlex nor Crossref and the result is fixed.
+  #
+  # Note this installs the *published* erga — uvx pulls from PyPI — so it
+  # says nothing about the working tree, which the job above covers. The pin
+  # needs no bump per release: any known-good version proves the wiring.
+  action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./
+        with:
+          version: "0.2.0"
+          config: tests/fixtures/action/erga.yml
+      - name: Check the action produced the expected JSON
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, sys
+
+          out = pathlib.Path("tests/fixtures/action/publications.json")
+          if not out.exists():
+              sys.exit(f"action wrote no output at {out}")
+          doc = json.loads(out.read_text(encoding="utf-8"))
+
+          if doc.get("schema_version") != 1:
+              sys.exit(f"unexpected schema_version: {doc.get('schema_version')!r}")
+          titles = [w["title"] for w in doc["works"]]
+          expected = ["The Lost Lectures", "Toward a Unified Theory of Bucket Handles"]
+          if titles != expected:
+              sys.exit(f"expected {expected}, got {titles}")
+          # The alias in erga.yml must resolve to the configured name.
+          first = doc["works"][0]["authors"][0]
+          if first["name"] != "J. S. Carberry" or first["tracked_as"] != "Josiah Carberry":
+              sys.exit(f"alias tracking did not resolve: {first}")
+          print(f"action built {len(titles)} work(s) as expected")
+          PY
+
+  # The only thing the deterministic job cannot see: OpenAlex still answering
+  # in the shape erga expects. Weekly is enough, and unmapped-type warnings in
+  # this log are the early signal of upstream vocabulary drift.
+  action-live:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./
+        with:
+          version: "0.2.0"
+          config: tests/fixtures/action-live/erga.yml
+          # No such secret exists yet, and fork PRs never receive one. Empty
+          # falls back to OpenAlex's keyless quota, so this passes either way
+          # while still proving the input reaches the CLI.
+          api-key: ${{ secrets.OPENALEX_API_KEY }}
+      - name: Check the live build produced works
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, sys
+
+          out = pathlib.Path("tests/fixtures/action-live/publications.json")
+          if not out.exists():
+              sys.exit(f"action wrote no output at {out}")
+          doc = json.loads(out.read_text(encoding="utf-8"))
+          if not doc.get("works"):
+              sys.exit("live build produced zero works; the fetch path is broken")
+          print(f"live build fetched {len(doc['works'])} work(s)")
+          PY

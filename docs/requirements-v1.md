@@ -309,8 +309,9 @@ or PR logic inside the action (section 2.3). Full semver tags plus a moving
 `v1` major tag, actions/checkout convention. The README pitch stays "one
 workflow file plus one config file", with the two delivery recipes.
 
-Action packaging lands after the CLI is proven (see milestones); the
-consumer sites can run the CLI directly in their workflows meanwhile.
+Landed in v0.3. Operational detail (inputs, path resolution, permissions,
+scheduling, the `v1` tag policy, how CI exercises it) lives in
+[action.md](action.md); this section stays the design decision only.
 
 ## 10. Testing and fixtures
 
