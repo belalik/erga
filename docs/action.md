@@ -72,6 +72,24 @@ keyless run until the rate limit hits.
 token, and it documents for the next reader what the workflow is allowed to
 touch.
 
+**A push made with the workflow's `GITHUB_TOKEN` never triggers other
+workflows.** GitHub suppresses downstream events from the default token to
+prevent recursion, so recipe 1's commit will not fire a site's separate
+`on: push` build or deploy workflow: the JSON updates and the site silently
+never rebuilds. Build and deploy in the same workflow after the erga step, or
+grant the job `actions: write` and dispatch the build explicitly with
+`gh workflow run`.
+
+**Fine-grained PATs are scoped to exactly one resource owner.** The recipes
+need no PAT — the default token covers in-repo commits — but the moment a
+workflow pushes across repos or owners, a fine-grained token 404s on every
+repo outside its owner, indistinguishable from "file not found". A PAT for an
+org you are only a member of behaves the same way while its approval sits
+pending; `GET /user/memberships/orgs/{org}` → `.role` is the check that
+distinguishes the cases. Local `gh` credentials are usually broader than the
+workflow's, so a push that works from your terminal proves nothing about CI —
+verify with the token the workflow will actually use.
+
 **Use a concurrency group** so a scheduled run and a manual one cannot race
 each other into a conflicting commit:
 
