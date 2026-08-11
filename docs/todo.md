@@ -7,7 +7,9 @@
 ## Low
 - Mint the moving `v1` tag with the 1.0 release; policy in docs/action.md
 - Consumer recipes doc once a second consumer exists; the Jekyll specifics
-  proven in the flip are already in docs/action.md
+  proven in the flip are already in docs/action.md. Open it with the
+  consumer contract: what erga asks of a consumer site (ORCID iDs, owned
+  config, reviewed curation, API key at scale) and what it guarantees
 - Second consumer should exercise the surface the first didn't:
   `exclude`/`keep_distinct` overrides, ORCID-based resolution, `erga verify`,
   thesis/software types in templates, keyless runs
