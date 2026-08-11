@@ -68,3 +68,5 @@ tags), `pipeline` (stage orchestration), `output` (deterministic JSON),
   both carried by real OpenAlex profiles and fetch strangers' works
 - v1 non-goals: no rendering or UI, no Google Scholar scraping, no database,
   no hosted service, no sources beyond OpenAlex + manual entries
+- No `.claudeignore`, deliberately: every noise dir is gitignored and CC
+  search respects `.gitignore`, so it would duplicate that for no gain
