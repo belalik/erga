@@ -23,9 +23,13 @@ main carries department-scale intake hardening shaped by the consumer #2
 scope decisions: verify separates split profiles from contaminated
 ORCIDs by name matching, name-searches for unconfigured same-name
 profiles, and `output.exclude_types` filters noise types wholesale.
-Next: consumer #2 (an Astro department site) adoption via a planned
-handoff. See `docs/requirements-v1.md` for the v1 design,
-`docs/action.md` for the Action, and `docs/todo.md` for open work.
+The consumer #2 (dpsd-new, an Astro department site) handoff is routed
+(2026-08-11): an adoption brief in `local/`, a pointer in that repo's
+inbox. The ball is with the pilot there; findings return via this
+repo's `docs/inbox.md`, and the pilot-keyed todo items (authors roster,
+review export, recipes doc) wait on them. See `docs/requirements-v1.md`
+for the v1 design, `docs/action.md` for the Action, and `docs/todo.md`
+for open work.
 
 Module map (`src/erga/`): `config` (erga.yml), `http` (injectable transport
 + retry), `openalex`/`crossref` (clients), `normalize` (raw work → canonical

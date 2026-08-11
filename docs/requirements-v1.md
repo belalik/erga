@@ -352,10 +352,11 @@ scheduling, the `v1` tag policy, how CI exercises it) lives in
   convergence (187/187 records), then switched its CI to erga 0.1.0.
   The v0.2.0 package release followed on 2026-08-08 with the first
   changes driven by that adoption (abstract cleanup, tracked_as).
-- **v0.3** (in progress): GitHub Action packaging, built and exercised by
-  CI on 2026-08-09; remaining is the 0.3.0 release and consumer #2, an
-  Astro 5 department site (tens of authors) that stress-tests scale and
-  disambiguation.
+- **v0.3** (released 2026-08-09 as v0.3.0): GitHub Action packaging,
+  built and exercised by CI. Consumer #2, an Astro 5 department site
+  (tens of authors) stress-testing scale and disambiguation, is handed
+  off (2026-08-11) and pilots on its own side; its findings drive the
+  next changes.
 - **CSL-JSON and BibTeX emitters** slot in after v0.1 as demand warrants,
   before the v1.0 promotion push.
 - **v1.0**: strong README (before/after dedup story, head-on "why not
