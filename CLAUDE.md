@@ -10,6 +10,13 @@ Design principle: the fetch is disposable, the curated JSON is the durable,
 reviewable artifact. Curation (manual additions, per-record overrides,
 highlights) lives in separate files that survive every automated refresh.
 
+erga is a contract, not a service (settled 2026-08-11): consumers supply
+ORCID iDs, an owned config, reviewed curation and an API key at scale; erga
+guarantees deterministic JSON, `verify` as the input-checking handshake, and
+schema stability at v1.0. Consumer-side detail — faculty composition, ORCID
+coverage, where the site renders it — is theirs, stated as a requirement with
+a fallback, never solved inside erga.
+
 ## Status
 
 v0.3.0 released 2026-08-09 (PyPI via Trusted Publishing, GitHub
@@ -23,13 +30,18 @@ main carries department-scale intake hardening shaped by the consumer #2
 scope decisions: verify separates split profiles from contaminated
 ORCIDs by name matching, name-searches for unconfigured same-name
 profiles, and `output.exclude_types` filters noise types wholesale.
-The consumer #2 (dpsd-new, an Astro department site) handoff is routed
-(2026-08-11): an adoption brief in `local/`, a pointer in that repo's
-inbox. The ball is with the pilot there; findings return via this
-repo's `docs/inbox.md`, and the pilot-keyed todo items (authors roster,
-review export, recipes doc) wait on them. See `docs/requirements-v1.md`
-for the v1 design, `docs/action.md` for the Action, and `docs/todo.md`
-for open work.
+Consumer #2 (dpsd-new, an Astro department site) ran its pilot to
+completion on 2026-08-11 — 5 authors, 228 works, live page — and its
+findings are triaged: the authors roster is declined, the raw-`other`
+warning noise is fixed, and the recipes doc is unblocked. Main now also
+carries a work-level contamination check for a homonym whose Latinized
+name matches, which `verify` cannot see. That check is **built but
+unsettled and unreleased**: its false-positive load is measured, its
+recall is not and cannot be here, so three deciding questions are routed
+to the pilot (2026-08-16). Do not tune it further on local data —
+`docs/requirements-v1.md` section 7 states both measured variants and
+what is missing. See that doc for the v1 design, `docs/action.md` for the
+Action, and `docs/todo.md` for open work.
 
 Module map (`src/erga/`): `config` (erga.yml), `http` (injectable transport
 + retry), `openalex`/`crossref` (clients), `normalize` (raw work → canonical

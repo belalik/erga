@@ -314,7 +314,10 @@ Ported from the production origin pipeline with generalization deltas noted.
    of works and carries a field/domain hierarchy, and a stranger publishes
    outside the author's field where a sabbatical does not. Routed to the
    pilot 2026-08-16 rather than tuned blind again; see docs/inbox.md for
-   the answer when it lands.
+   the answer when it lands. One caveat on every rate above: the sample
+   was authors holding 80-400 works, who publish well beyond a typical
+   department member, so the per-author figures are untested at the
+   smaller corpora a department page actually carries.
 5. Merge manual entries; their DOIs seed the dedup set so manual always
    wins.
 6. DOI-level dedup, case-insensitive.
