@@ -10,8 +10,13 @@ careers alone. Measured over 40 sampled careers: "worked abroad" flags 7.4%
 of all works, because academics move and collaborate; "team of strangers"
 flags 9.5%, because new collaborations are constant. Requiring both, and
 then requiring a cluster of at least two works sharing one institution,
-leaves 3 clusters across those 40 authors — while the contamination that
+leaves a fraction of a cluster per author — while the contamination that
 motivated this is a cluster of four.
+
+"Stranger" is measured against the career, not the corpus. A homonym's works
+usually come from one group, so counting collaborators across everything
+fetched let those works vouch for each other and the cluster vanished. The
+network is therefore built from the works that are not themselves outliers.
 
 Two silences are as important as the signal. A work with no affiliation
 data is never anomalous: roughly a third carry none, so absence means the
@@ -140,18 +145,21 @@ def _clusters_for(author: str, views: list[_WorkView], labels: _Labels) -> list[
     home = min(country_counts.items(), key=lambda item: (-item[1], item[0]))[0]
     home_institutions = {i for v in affiliated if home in v.countries for i in v.institutions}
 
-    # The collaboration network spans the whole corpus, including works with
-    # no affiliation: a shared co-author vouches for a work either way.
-    collaborators = Counter(author_id for v in views for author_id in v.team)
-
-    candidates = [
+    outliers = [
         v
         for v in affiliated
-        if v.team
-        and home not in v.countries
-        and not (v.institutions & home_institutions)
-        and all(collaborators[author_id] <= 1 for author_id in v.team)
+        if v.team and home not in v.countries and not (v.institutions & home_institutions)
     ]
+    outlying = {v.work_id for v in outliers}
+
+    # The career's own network: every work that is not itself an affiliation
+    # outlier, including works with no affiliation at all, since a shared
+    # co-author vouches for a work either way. Outliers are held out because
+    # a stranger's works must not vouch for each other — counting them let a
+    # whole foreign lab pass, which is the likeliest shape of the real thing.
+    network = Counter(author_id for v in views if v.work_id not in outlying for author_id in v.team)
+
+    candidates = [v for v in outliers if not any(network[a] for a in v.team)]
 
     by_institution: dict[str, list[_WorkView]] = defaultdict(list)
     for view in candidates:

@@ -294,13 +294,27 @@ Ported from the production origin pipeline with generalization deltas noted.
    `verify` cannot see because the names match): a work is a candidate
    only when it has affiliation data, falls outside the author's majority
    country, shares no institution with it, is not solo-authored, and its
-   whole co-author team appears nowhere else in the corpus; candidates are
-   then reported only in groups of two or more sharing an institution.
-   Every threshold there is a false-positive guard measured against live
-   data, not a guess — either half alone flags 7-10% of legitimate works,
-   the conjunction 0.55%, and the clustering requirement takes it to
-   ~0.1 clusters per author. Output is warnings only: erga names the
-   cluster, the maintainer decides and excludes.
+   co-author team appears nowhere in the rest of that career; candidates
+   are then reported only in groups of two or more sharing an institution.
+   Output is warnings only: erga names the cluster, the maintainer decides
+   and excludes.
+
+   **The rule is not settled, and the check is not ready to release.** Its
+   thresholds were measured against 40 live careers, but only for false
+   positives; recall has never been measured and cannot be here, since the
+   one known contamination lives in a consumer's data. Two variants exist
+   and neither is good enough. Counting collaborators across the whole
+   fetched corpus keeps noise at ~0.1 clusters per author but lets a
+   contaminating lab vouch for itself, so a run of works by one foreign
+   group — the likeliest real shape — goes undetected. Counting them
+   across the career only (the current code) catches that shape but raises
+   noise to ~0.38 clusters per author, in sizes up to nine, because a
+   genuine research stay abroad is structurally identical to a homonym.
+   The missing third signal is field: `primary_topic` is present on 100%
+   of works and carries a field/domain hierarchy, and a stranger publishes
+   outside the author's field where a sabbatical does not. Routed to the
+   pilot 2026-08-16 rather than tuned blind again; see docs/inbox.md for
+   the answer when it lands.
 5. Merge manual entries; their DOIs seed the dedup set so manual always
    wins.
 6. DOI-level dedup, case-insensitive.

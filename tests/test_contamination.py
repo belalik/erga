@@ -93,6 +93,24 @@ def test_flags_a_cluster_of_strangers_works() -> None:
     ]
 
 
+def test_a_foreign_lab_cannot_vouch_for_itself() -> None:
+    """The likeliest real shape: one group, recurring across the stray works.
+
+    Counting collaborators over the whole corpus made these works alibi each
+    other — every stranger appeared more than once, so none looked like a
+    stranger, and the cluster disappeared.
+    """
+    raw = [
+        *home_corpus(),
+        work("W900", institutions=[PALACKY], team=["A5000009001", "A5000009002"]),
+        work("W901", institutions=[PALACKY], team=["A5000009001", "A5000009003"]),
+        work("W902", institutions=[PALACKY], team=["A5000009002", "A5000009003"]),
+    ]
+    clusters = find_contamination(raw, TRACKED_IDS)
+    assert [c.institution for c in clusters] == ["Palacký University"]
+    assert clusters[0].work_ids == ["W900", "W901", "W902"]
+
+
 def test_clean_corpus_is_silent() -> None:
     assert find_contamination(home_corpus(), TRACKED_IDS) == []
 

@@ -3,10 +3,13 @@
 ## High
 
 ## Normal
-- Contamination check is built and its false-positive load measured; its
-  sensitivity is not. Remove this line once the dpsd-new pilot reports
-  whether the four Palacký works surface as one cluster. Design and measured
-  rates: `src/erga/contamination.py`, docs/requirements-v1.md section 7
+- Settle the contamination rule on the pilot's answer (routed 2026-08-16),
+  not on another local guess: whether the stray works share co-authors with
+  each other, what field they carry, and whether the affiliation is even
+  populated. Then add the field leg if it is the discriminator, re-run
+  `local/contamination-probes/validate_module.py`, and only then ask for
+  `/code-review high 4b825dc..HEAD -- src/erga/contamination.py`. Current
+  state and both measured variants: docs/requirements-v1.md section 7
 
 ## Low
 - Mint the moving `v1` tag with the 1.0 release; policy in docs/action.md
