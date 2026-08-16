@@ -29,7 +29,9 @@ TYPE_MAP = {
 
 # Raw types deliberately left in "other": corrections and special-issue
 # front matter are not research outputs, paratext is other by definition.
-KNOWN_OTHER_TYPES = frozenset({"editorial", "erratum", "paratext"})
+# Raw "other" belongs here too — upstream already classified it, so the
+# fallback is an identity and a warning would alarm without informing.
+KNOWN_OTHER_TYPES = frozenset({"editorial", "erratum", "other", "paratext"})
 
 
 def unmapped_types(raw_works: list[dict[str, Any]]) -> dict[str, int]:

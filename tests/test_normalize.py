@@ -64,6 +64,7 @@ def test_unmapped_types_flags_only_undecided_vocabulary() -> None:
     raw_works: list[dict[str, Any]] = [
         {"type": "article"},  # mapped
         {"type": "erratum"},  # deliberately other
+        {"type": "other"},  # upstream said other; the fallback is an identity
         {"type": "expression-of-concern"},
         {"type": "expression-of-concern"},
         {"type": None},
