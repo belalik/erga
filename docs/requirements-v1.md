@@ -186,6 +186,12 @@ template tweak during the parallel run): `featured` boolean replaced by
 type added, top-level wrapper added. `authors[].tracked_as` added in 0.2.0
 from first-consumer feedback.
 
+A top-level `authors` roster was considered and declined at the second
+consumer: that site joined its staff pages to publications entirely on
+`tracked_as`, so the roster would have been a convenience for enumerating
+tracked authors, not a capability anything needed. Reopen it only if a
+consumer is blocked, not because it would be tidy.
+
 ## 5. Configuration
 
 One YAML file, default `erga.yml`. All examples use placeholder contacts.
@@ -220,8 +226,12 @@ curation:                        # optional; defaults shown, relative to config
 
 Author resolution: ORCID resolves via the OpenAlex authors endpoint
 (singleton lookups are free). An author entry may pin `openalex_id`
-explicitly, and both may coexist (some profiles are split across multiple
-OpenAlex author IDs). An entry with neither id is a tracking-only author:
+explicitly, and both may coexist for two different reasons: some profiles
+are split across multiple OpenAlex author IDs, and a correct iD may
+resolve to nothing at all when OpenAlex never linked it to the profile
+holding the works. In the second case the pin supplies the works while
+the iD still earns the author their byline tagging, so keep both rather
+than dropping the iD. An entry with neither id is a tracking-only author:
 it contributes its name and aliases to the `tracked` flag and to manual-
 entry matching but resolves and fetches nothing (for authors without any
 registrar identity, or whose works OpenAlex misassigns to a conflated
