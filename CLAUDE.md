@@ -33,9 +33,10 @@ for open work.
 
 Module map (`src/erga/`): `config` (erga.yml), `http` (injectable transport
 + retry), `openalex`/`crossref` (clients), `normalize` (raw work → canonical
-record), `dedup` (DOI + title clustering), `curation` (manual/overrides/
-tags), `pipeline` (stage orchestration), `output` (deterministic JSON),
-`verify` (disambiguation report), `cli`. `action.yml` at the root wraps
+record), `dedup` (DOI + title clustering), `contamination` (homonym works
+inside a correct profile), `curation` (manual/overrides/tags), `pipeline`
+(stage orchestration), `output` (deterministic JSON), `verify`
+(disambiguation report), `cli`. `action.yml` at the root wraps
 `uvx erga build`; it holds no logic of its own.
 
 ## Commands

@@ -289,7 +289,18 @@ Ported from the production origin pipeline with generalization deltas noted.
    API failure must never shrink a published list.
 4. Normalize to the canonical schema: type mapping, abstract
    reconstruction, OA URL from `best_oa_location`/`open_access.oa_url`,
-   author `tracked` flags.
+   author `tracked` flags. The raw works are also read for contamination
+   (a homonym's works sitting inside a correctly-named profile, which
+   `verify` cannot see because the names match): a work is a candidate
+   only when it has affiliation data, falls outside the author's majority
+   country, shares no institution with it, is not solo-authored, and its
+   whole co-author team appears nowhere else in the corpus; candidates are
+   then reported only in groups of two or more sharing an institution.
+   Every threshold there is a false-positive guard measured against live
+   data, not a guess — either half alone flags 7-10% of legitimate works,
+   the conjunction 0.55%, and the clustering requirement takes it to
+   ~0.1 clusters per author. Output is warnings only: erga names the
+   cluster, the maintainer decides and excludes.
 5. Merge manual entries; their DOIs seed the dedup set so manual always
    wins.
 6. DOI-level dedup, case-insensitive.

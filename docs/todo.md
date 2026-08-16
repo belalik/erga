@@ -3,17 +3,10 @@
 ## High
 
 ## Normal
-- Work-level contamination check, riding on build's raw works (verify would
-  have to refetch everything; affiliation is already in `select=authorships`).
-  Rule settled against live data 2026-08-16: flag a work only when it has
-  affiliation data, sits outside the author's majority country, shares no
-  institution with it, is not solo-authored, and carries a co-author team
-  where nobody appears elsewhere in the corpus — then report only groups of
-  ≥2 such works sharing an institution. Measured false-positive load over 40
-  real careers: 7.4% of works for affiliation alone, 0.55% for the
-  conjunction, 0.11% once clustered — 3 clusters across 40 authors, all of
-  size 2, against a true positive of size 4. Sensitivity is unverified and
-  only the consumer can confirm it
+- Contamination check is built and its false-positive load measured; its
+  sensitivity is not. Remove this line once the dpsd-new pilot reports
+  whether the four Palacký works surface as one cluster. Design and measured
+  rates: `src/erga/contamination.py`, docs/requirements-v1.md section 7
 
 ## Low
 - Mint the moving `v1` tag with the 1.0 release; policy in docs/action.md

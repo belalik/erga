@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from erga.config import Config
+from erga.contamination import contamination_warnings, find_contamination
 from erga.crossref import CrossrefClient
 from erga.curation import (
     apply_overrides,
@@ -136,6 +137,9 @@ def build(
         f"(upstream vocabulary drift?)"
         for raw_type, count in unmapped_types(raw_works).items()
     )
+    # Reads the raw works, not the canonical ones: affiliation is what the
+    # check reasons about and the canonical record deliberately drops it.
+    stats.warnings.extend(contamination_warnings(find_contamination(raw_works, tracked_ids)))
 
     mark_keep_distinct(works, overrides)
     before = len(works)
