@@ -3,11 +3,17 @@
 ## High
 
 ## Normal
-- Work-level contamination check: a homonym sharing the exact Latinized name
-  passes every profile-level test verify has, so flag intra-profile outliers
-  (works whose affiliation and topic cluster apart from the majority) as
-  informational lines. Open: verify fetches 3 titles per profile, so decide
-  whether it grows a deeper mode or the check rides on build's work list
+- Work-level contamination check, riding on build's raw works (verify would
+  have to refetch everything; affiliation is already in `select=authorships`).
+  Rule settled against live data 2026-08-16: flag a work only when it has
+  affiliation data, sits outside the author's majority country, shares no
+  institution with it, is not solo-authored, and carries a co-author team
+  where nobody appears elsewhere in the corpus — then report only groups of
+  ≥2 such works sharing an institution. Measured false-positive load over 40
+  real careers: 7.4% of works for affiliation alone, 0.55% for the
+  conjunction, 0.11% once clustered — 3 clusters across 40 authors, all of
+  size 2, against a true positive of size 4. Sensitivity is unverified and
+  only the consumer can confirm it
 
 ## Low
 - Mint the moving `v1` tag with the 1.0 release; policy in docs/action.md

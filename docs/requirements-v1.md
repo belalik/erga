@@ -143,6 +143,19 @@ founding documents where they conflict.
   `raw_author_name`; only ~30% of recent works have publisher-asserted
   ORCID data, so ORCID cannot be the only identity signal. `is_retracted`
   is available and reliable (Retraction Watch data).
+- **Authorships also carry affiliation** (verified live 2026-08-16, and
+  absent from this doc until a consumer needed it): each entry has
+  `institutions[]` (`id`, `display_name`, `ror`, `country_code`, `type`,
+  `lineage`), a flattened `countries[]`, `affiliations[]`,
+  `raw_affiliation_strings[]`, `author_position`, `is_corresponding` and
+  `raw_orcid`. All of it arrives under the existing `select=authorships`,
+  so affiliation-based checks cost no extra request and no wider response.
+  Coverage is partial and is the binding constraint: ~62% of a tracked
+  author's own entries carry at least one institution (~52% across a random
+  slice of 2024 works), and raw strings add only ~3 points where the parsed
+  institution is missing. Consequence for any check built on this: absent
+  affiliation must never read as anomalous, since roughly a third of works
+  have none.
 
 ## 4. Canonical output schema
 
