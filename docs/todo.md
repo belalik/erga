@@ -3,13 +3,22 @@
 ## High
 
 ## Normal
-- Settle the contamination rule on the pilot's answer (routed 2026-08-16),
-  not on another local guess: whether the stray works share co-authors with
-  each other, what field they carry, and whether the affiliation is even
-  populated. Then add the field leg if it is the discriminator, re-run
-  `local/contamination-probes/validate_module.py`, and only then ask for
-  `/code-review high 4b825dc..HEAD -- src/erga/contamination.py`. Current
-  state and both measured variants: docs/requirements-v1.md section 7
+- Review and release the contamination check: ask Thomas for
+  `/code-review high 4b825dc..HEAD -- src/erga/contamination.py`. That range
+  renders the module as added; a plain path target on clean history reviews
+  nothing and returns a meaningless clean bill. The rule itself is settled —
+  rationale and its two standing caveats: docs/requirements-v1.md section 7
+- Build-delta summary: diff the `publications.json` already at the output path
+  against the new build and report what changed, with schema knowledge of which
+  fields are cosmetic (cited_by_count) versus audit-critical — consumers need it
+  to review a weekly PR too large for GitHub to render. Additive, so not a v1.0
+  gate. Proposal received in f77de08; working spec
+  `~/projects/dpsd-new/scripts/publications_summary.py`
+  - Subsumes the parallel-run lesson: diff every schema field against an
+    explicit ignore-list, not identity fields only
+  - Name the partial-fetch hazard in the docs alongside it: a rate-limited
+    fetch yields valid-but-smaller JSON that reads as mass removals
+  - Undecided: stdout only or also an `action.yml` output; shrink guard in scope
 
 ## Low
 - Mint the moving `v1` tag with the 1.0 release; policy in docs/action.md
@@ -23,9 +32,6 @@
 - Surface no consumer has exercised yet, so unproven in the field before
   v1.0: `keep_distinct` overrides, thesis/software types in templates,
   keyless runs
-- Parallel-run harnesses must diff every schema field with an explicit
-  ignore-list (cited_by_count), not identity fields only: in the v0.2 run
-  both real deltas sat exactly in the uncompared fields
 - Publish a formal JSON Schema for the output and validate against it in
   tests (pre-v1.0): consumers get machine-checkable contract + generated
   types (Astro/TS)
