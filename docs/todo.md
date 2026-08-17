@@ -3,14 +3,20 @@
 ## High
 
 ## Normal
-- Release the contamination check. Reviewed 2026-08-17, the two severe
-  findings fixed; four remain, none of them severe: an institution with a
-  null `country_code` reads as structurally abroad, the warning's country is
-  decided by fetch order, `titles` and `work_ids` are not positionally
-  aligned, and a duplicate authorship entry may lose the affiliation
-  (unverified against real API shapes). Then re-measure the false-positive
-  load on `local/contamination-probes/`, which the fixes invalidated.
-  Rationale and standing caveats: docs/requirements-v1.md section 7
+- Release the contamination check. Reviewed 2026-08-17 and every finding
+  closed but one, which waits on the decision below: an institution whose
+  `country_code` is null everywhere reads as structurally abroad. Three
+  further gates: an independent review of the fixes, which never happened
+  because three of four `/code-review` runs stalled at 600s mid-gathering;
+  a re-measurement of the false-positive load on
+  `local/contamination-probes/`, which the fixes invalidated upward; and
+  docs/requirements-v1.md section 7 for the standing caveats
+- Decide whether `erga.yml` gains an optional institution per author before
+  v1. It would close the residual home-inversion, fix the null-country
+  finding for free, and demote the plurality heuristic to a fallback. Weigh
+  against the case where the wrong same-name profile carries the right
+  institution, which makes a declared home actively misleading for
+  discovery even while it helps here
 - Build-delta summary: diff the `publications.json` already at the output path
   against the new build and report what changed, with schema knowledge of which
   fields are cosmetic (cited_by_count) versus audit-critical — consumers need it

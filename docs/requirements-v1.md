@@ -335,7 +335,11 @@ Ported from the production origin pipeline with generalization deltas noted.
    home-country work counted as home, so one dual-affiliation paper
    whitelisted a foreign institution for the whole career and later
    clusters there went unreported; only institutions whose own country is
-   home now count.
+   home now count. That match reads a country recorded per institution, so
+   a record arriving without one no longer erases a country another record
+   carried: before the whitelist change that was cosmetic, affecting only
+   the warning text, and afterwards it could push the author's own
+   institution out of home.
 
    **The ~0.38 figure predates both fixes and is now an underestimate.**
    The whitelist bug was suppressing clusters, so removing it can only add

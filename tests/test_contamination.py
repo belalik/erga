@@ -148,6 +148,26 @@ def test_the_career_the_pilot_measured() -> None:
     ]
 
 
+def test_a_missing_country_does_not_erase_a_known_one() -> None:
+    """Which record lands last is fetch order, not a fact about the place.
+
+    The same institution arrives carrying its country on one work and without
+    it on another. Letting the later write win made the reported country
+    depend on iteration order, and once home institutions began matching on
+    that country, a dropped one could push the author's own institution out
+    of home and turn their own papers into outliers.
+    """
+    palacky_no_country = {**PALACKY, "country_code": None}
+    with_country = work("W900", institutions=[PALACKY], team=["A5000009001"])
+    without_country = work(
+        "W901", institutions=[palacky_no_country], countries=[], team=["A5000009002"]
+    )
+    forward = find_contamination([*home_corpus(), with_country, without_country], TRACKED_IDS)
+    reverse = find_contamination([*home_corpus(), without_country, with_country], TRACKED_IDS)
+    assert [c.country for c in forward] == ["CZ"]
+    assert [c.country for c in reverse] == ["CZ"]
+
+
 def test_clean_corpus_is_silent() -> None:
     assert find_contamination(home_corpus(), TRACKED_IDS) == []
 
@@ -323,6 +343,33 @@ def test_build_surfaces_the_cluster(tmp_path: Path) -> None:
         dry_run=True,
     )
     assert [w for w in stats.warnings if "Palacký University (CZ)" in w]
+
+
+def test_titles_stay_paired_with_work_ids() -> None:
+    # An untitled work used to shorten `titles` without shortening `work_ids`,
+    # so anything reading them as pairs silently mismatched.
+    untitled = work("W902", institutions=[PALACKY], team=["A5000009003"], title="")
+    raw = [
+        *home_corpus(),
+        work("W900", institutions=[PALACKY], team=["A5000009001"], title="Sports science I"),
+        work("W901", institutions=[PALACKY], team=["A5000009002"], title="Sports science II"),
+        untitled,
+    ]
+    (cluster,) = find_contamination(raw, TRACKED_IDS)
+    assert cluster.work_ids == ["W900", "W901", "W902"]
+    assert cluster.titles == ["Sports science I", "Sports science II", ""]
+
+
+def test_an_untitled_first_work_still_yields_an_example() -> None:
+    cluster = Cluster(
+        author="Katerina Malisova",
+        institution="Palacký University",
+        country="CZ",
+        work_ids=["W900", "W901"],
+        titles=["", "Sports science II"],
+    )
+    (warning,) = contamination_warnings([cluster])
+    assert "Sports science II" in warning
 
 
 def test_warning_names_the_place_and_what_to_do() -> None:

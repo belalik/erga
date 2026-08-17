@@ -10,8 +10,10 @@ careers alone. Measured over 40 sampled careers: "worked abroad" flags 7.4%
 of all works, because academics move and collaborate; "team of strangers"
 flags 9.5%, because new collaborations are constant. Requiring both, and
 then requiring a cluster of at least two works sharing one institution,
-leaves a fraction of a cluster per author — while the contamination that
-motivated this is a cluster of four.
+left a fraction of a cluster per author — while the contamination that
+motivated this is a cluster of four. That rate was measured before the two
+corrections below and now understates the noise; docs/requirements-v1.md
+section 7 says by how much it is unknown.
 
 "Stranger" is measured against the career, not the corpus. A homonym's works
 usually come from one group, so counting collaborators across everything
@@ -116,11 +118,17 @@ def _index(
             seen.add(author_id)
             appearances[author_id].append((raw, authorships, entry))
             for institution in entry.get("institutions") or []:
-                if institution.get("id") and institution.get("display_name"):
-                    labels[strip_openalex_host(institution["id"])] = (
-                        institution["display_name"],
-                        institution.get("country_code"),
-                    )
+                if not (institution.get("id") and institution.get("display_name")):
+                    continue
+                key = strip_openalex_host(institution["id"])
+                country = institution.get("country_code")
+                known = labels.get(key)
+                # A country absent from one record must not erase one another
+                # record carried: which entry lands last is an accident of
+                # fetch order, and home institutions are matched on this.
+                if known and country is None:
+                    country = known[1]
+                labels[key] = (institution["display_name"], country)
     return appearances, labels
 
 
@@ -210,7 +218,10 @@ def _clusters_for(author: str, views: list[_WorkView], labels: _Labels) -> list[
                 institution=name,
                 country=country,
                 work_ids=[v.work_id for v in remaining],
-                titles=[v.title for v in remaining if v.title],
+                # Positional, one per work id, empty where OpenAlex has no
+                # title. Filtering the blanks out here silently misaligned the
+                # two lists for anything that reads them as pairs.
+                titles=[v.title for v in remaining],
             )
         )
     return sorted(clusters, key=lambda c: (c.institution, c.work_ids[0]))
@@ -243,7 +254,10 @@ def contamination_warnings(clusters: Iterable[Cluster]) -> list[str]:
             if cluster.country
             else (cluster.institution)
         )
-        example = f" (e.g. {cluster.titles[0]!r})" if cluster.titles else ""
+        # First work with a title, since titles are positional and some are
+        # empty; an untitled first work should not cost the reader the example.
+        sample = next((title for title in cluster.titles if title), None)
+        example = f" (e.g. {sample!r})" if sample else ""
         warnings.append(
             f"{cluster.author}: {len(cluster.work_ids)} work(s) tie to {where}, sharing no "
             f"institution and no collaborator with the rest of the profile{example} — a "

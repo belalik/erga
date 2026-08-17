@@ -70,6 +70,14 @@ profiles when it has been mistyped or copied into submissions, and erga
 tracks all of them, so a wrong iD shows up as a pile of strangers' papers
 rather than as an error. The report tells you what you are about to fetch.
 
+`verify` works by comparing names, so the opposite failure is invisible to
+it: an iD that is correct, on a profile that has collected a same-name
+stranger's works. Two people who Latinize to the same string are one name to
+OpenAlex, and re-checking the iD does not help, because the iD is right. So
+a verified ORCID means erga fetched the person you meant. It does not mean
+every work it returned is theirs. Read the first build against what you
+expect, and exclude what does not belong in your overrides file.
+
 ## GitHub Action
 
 The action runs the build and stops there. It writes `publications.json` and
