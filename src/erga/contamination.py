@@ -18,6 +18,14 @@ usually come from one group, so counting collaborators across everything
 fetched let those works vouch for each other and the cluster vanished. The
 network is therefore built from the works that are not themselves outliers.
 
+The check assumes the real career is the majority of the profile: home is the
+country holding more than half the affiliated works, and everything else is
+read as a deviation from it. Where that does not hold, the two sides are
+structurally symmetric — a stranger's cluster looks exactly like a career with
+a stranger's cluster in it — so the check stays silent rather than guess which
+side is the career. A profile that is mostly someone else's work is a wrong
+profile, which is `verify`'s question, not this one's.
+
 Two silences are as important as the signal. A work with no affiliation
 data is never anomalous: roughly a third carry none, so absence means the
 check has nothing to say. A solo-authored work has no team to be a stranger
@@ -37,9 +45,9 @@ from typing import Any
 
 from erga.openalex import strip_openalex_host
 
-# Under this many affiliated works, a "majority country" describes a thin
+# Under this many works at the home country, a "majority" describes a thin
 # record rather than a career, and the check stays quiet.
-MIN_AFFILIATED_WORKS = 5
+MIN_HOME_WORKS = 5
 # Contamination arrives as a run from one place; a single paper abroad is
 # ordinary academic life, and singletons were most of the residual noise.
 MIN_CLUSTER = 2
@@ -135,15 +143,32 @@ def _view(appearance: _Appearance, tracked_id: str) -> _WorkView:
 
 def _clusters_for(author: str, views: list[_WorkView], labels: _Labels) -> list[Cluster]:
     affiliated = [v for v in views if v.countries or v.institutions]
-    if len(affiliated) < MIN_AFFILIATED_WORKS:
-        return []
-
     country_counts = Counter(c for v in affiliated for c in v.countries)
     if not country_counts:
         return []
     # Most frequent country, alphabetical on ties so the report is stable.
-    home = min(country_counts.items(), key=lambda item: (-item[1], item[0]))[0]
-    home_institutions = {i for v in affiliated if home in v.countries for i in v.institutions}
+    home, home_works = min(country_counts.items(), key=lambda item: (-item[1], item[0]))
+
+    # Everything downstream reads as a deviation from home, so a home that is
+    # merely the largest minority cannot carry that weight. On a thin record a
+    # big enough stranger cluster wins the count, and the check then reports
+    # the genuine career as the anomaly — the exact inversion of its purpose.
+    # A plain majority is not enough either: at four against four the tie broke
+    # alphabetically, by country code.
+    if home_works < MIN_HOME_WORKS or home_works * 2 <= len(affiliated):
+        return []
+
+    # Only institutions that are themselves at home. Taking every institution
+    # co-listed on a home work instead let one dual-affiliation paper whitelist
+    # a foreign institution for the whole career, and every later cluster there
+    # went unreported.
+    home_institutions = {
+        i
+        for v in affiliated
+        if home in v.countries
+        for i in v.institutions
+        if labels.get(i, ("", None))[1] == home
+    }
 
     outliers = [
         v

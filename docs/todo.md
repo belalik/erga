@@ -3,11 +3,14 @@
 ## High
 
 ## Normal
-- Review and release the contamination check: ask Thomas for
-  `/code-review high 4b825dc..HEAD -- src/erga/contamination.py`. That range
-  renders the module as added; a plain path target on clean history reviews
-  nothing and returns a meaningless clean bill. The rule itself is settled —
-  rationale and its two standing caveats: docs/requirements-v1.md section 7
+- Release the contamination check. Reviewed 2026-08-17, the two severe
+  findings fixed; four remain, none of them severe: an institution with a
+  null `country_code` reads as structurally abroad, the warning's country is
+  decided by fetch order, `titles` and `work_ids` are not positionally
+  aligned, and a duplicate authorship entry may lose the affiliation
+  (unverified against real API shapes). Then re-measure the false-positive
+  load on `local/contamination-probes/`, which the fixes invalidated.
+  Rationale and standing caveats: docs/requirements-v1.md section 7
 - Build-delta summary: diff the `publications.json` already at the output path
   against the new build and report what changed, with schema knowledge of which
   fields are cosmetic (cited_by_count) versus audit-critical — consumers need it

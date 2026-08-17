@@ -189,6 +189,49 @@ def test_solo_works_cannot_be_judged() -> None:
     assert find_contamination(raw, TRACKED_IDS) == []
 
 
+def test_a_stranger_who_outnumbers_the_career_is_not_flagged_in_reverse() -> None:
+    """The inversion: whoever holds the plurality becomes the baseline.
+
+    Two genuine works against four strangers made the strangers' country home,
+    and the check then reported the author's own papers as the intruders — at
+    their own institution, advising the maintainer to exclude them by DOI.
+    """
+    raw = [
+        *home_corpus(2),
+        *(work(f"W90{i}", institutions=[PALACKY], team=[f"A500000900{i}"]) for i in range(4)),
+    ]
+    assert find_contamination(raw, TRACKED_IDS) == []
+
+
+def test_an_even_split_picks_no_home_at_all() -> None:
+    # Five against five: the tie broke alphabetically, so the country code
+    # decided which half of the profile got accused.
+    raw = [
+        *home_corpus(5),
+        *(work(f"W90{i}", institutions=[PALACKY], team=[f"A500000900{i}"]) for i in range(5)),
+    ]
+    assert find_contamination(raw, TRACKED_IDS) == []
+
+
+def test_one_dual_affiliation_paper_does_not_whitelist_the_place() -> None:
+    """A single work listing home and abroad together used to silence the rest.
+
+    Every institution co-listed on a home-country work counted as home, so one
+    such paper vouched for that institution across the whole career and later
+    clusters there went unreported.
+    """
+    raw = [
+        *home_corpus(),
+        work("W500", institutions=[AEGEAN, PALACKY], team=["A5000000900"], title="Joint venture"),
+        work("W900", institutions=[PALACKY], team=["A5000009001"], title="Sports science I"),
+        work("W901", institutions=[PALACKY], team=["A5000009002"], title="Sports science II"),
+    ]
+    clusters = find_contamination(raw, TRACKED_IDS)
+    assert [(c.institution, c.work_ids) for c in clusters] == [
+        ("Palacký University", ["W900", "W901"])
+    ]
+
+
 def test_thin_record_has_no_majority_to_argue_from() -> None:
     raw = [
         work("W000", team=["A5000000900"]),

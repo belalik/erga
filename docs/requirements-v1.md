@@ -325,11 +325,38 @@ Ported from the production origin pipeline with generalization deltas noted.
    erga does not have and which n=1 does not justify building. No field
    leg ships, and `primary_topic` stays out of `WORKS_SELECT`.
 
-   Two caveats stand. Recall is n=1: one career, one homonym. And the
+   Review on 2026-08-17 found two defects in that code, both now fixed
+   and both invisible to the 40-career measurement. Home was the plurality
+   country, so on a thin record a large enough stranger cluster won the
+   count and the check reported the genuine career as the intruder — at
+   the author's own institution, advising exclusion by DOI. Home now
+   requires a strict majority and at least `MIN_HOME_WORKS` works, and is
+   silent otherwise. Separately, every institution co-listed on a
+   home-country work counted as home, so one dual-affiliation paper
+   whitelisted a foreign institution for the whole career and later
+   clusters there went unreported; only institutions whose own country is
+   home now count.
+
+   **The ~0.38 figure predates both fixes and is now an underestimate.**
+   The whitelist bug was suppressing clusters, so removing it can only add
+   warnings; the majority rule removes some in the other direction, and
+   the net is unmeasured. Re-run `local/contamination-probes/` before
+   release.
+
+   Three caveats stand. Recall is n=1: one career, one homonym. The
    false-positive sample was authors holding 80-400 works, who publish
    well beyond a typical department member, so the per-author rates are
-   untested at the smaller corpora a department page actually carries.
-   Both are arguments for the output staying advisory, which it is.
+   untested at the smaller corpora a department page actually carries. And
+   the majority rule bounds the inversion without closing it: where a
+   stranger's works both outnumber the genuine ones and clear
+   `MIN_HOME_WORKS`, the two sides are structurally symmetric and the
+   check will still pick the wrong one. That profile is mostly not its
+   author's, which is `verify`'s question; erga has no declared home
+   institution to break the tie, since neither `erga.yml` nor
+   `AUTHOR_SELECT` carries one. Adding it would end the ambiguity and is
+   the obvious move if this check ever needs to be stronger.
+
+   All of the above argue for the output staying advisory, which it is.
 5. Merge manual entries; their DOIs seed the dedup set so manual always
    wins.
 6. DOI-level dedup, case-insensitive.
