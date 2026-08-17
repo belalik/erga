@@ -111,6 +111,43 @@ def test_a_foreign_lab_cannot_vouch_for_itself() -> None:
     assert clusters[0].work_ids == ["W900", "W901", "W902"]
 
 
+def test_the_career_the_pilot_measured() -> None:
+    """The whole shape at once, as consumer #2 measured it on 2026-08-17.
+
+    Nine home works, two carrying no affiliation, and five by a same-name
+    stranger who shares not one collaborator with any of them. The strangers'
+    own team recurs across all five, so they vouch for each other unless
+    outliers are held out of the network.
+
+    The older of the unaffiliated pair is why the rule is not phrased as "flag
+    every disconnected component": by co-author network alone that genuine
+    paper is exactly as isolated as the strangers are. Keying on affiliation
+    makes it unflaggable rather than merely unflagged, so what this asserts is
+    narrower — that an isolated work does not perturb the home country or the
+    network enough to hide the real cluster.
+    """
+    czech_lab = ["A5000009001", "A5000009002"]
+    raw = [
+        *home_corpus(9),
+        # No affiliation: one with the home lab aboard, one from before it.
+        work("W700", institutions=[], countries=[], team=["A5000000900"], title="Late untagged"),
+        work("W701", institutions=[], countries=[], team=["A5000007001"], title="Tangram quests"),
+        *(
+            work(
+                f"W90{i}",
+                institutions=[PALACKY],
+                team=[*czech_lab, f"A500000901{i}"],
+                title=f"Sports science {i}",
+            )
+            for i in range(5)
+        ),
+    ]
+    clusters = find_contamination(raw, TRACKED_IDS)
+    assert [(c.institution, c.work_ids) for c in clusters] == [
+        ("Palacký University", ["W900", "W901", "W902", "W903", "W904"])
+    ]
+
+
 def test_clean_corpus_is_silent() -> None:
     assert find_contamination(home_corpus(), TRACKED_IDS) == []
 

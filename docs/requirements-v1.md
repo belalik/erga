@@ -299,25 +299,37 @@ Ported from the production origin pipeline with generalization deltas noted.
    Output is warnings only: erga names the cluster, the maintainer decides
    and excludes.
 
-   **The rule is not settled, and the check is not ready to release.** Its
-   thresholds were measured against 40 live careers, but only for false
-   positives; recall has never been measured and cannot be here, since the
-   one known contamination lives in a consumer's data. Two variants exist
-   and neither is good enough. Counting collaborators across the whole
-   fetched corpus keeps noise at ~0.1 clusters per author but lets a
-   contaminating lab vouch for itself, so a run of works by one foreign
-   group — the likeliest real shape — goes undetected. Counting them
-   across the career only (the current code) catches that shape but raises
-   noise to ~0.38 clusters per author, in sizes up to nine, because a
+   **The rule is settled (2026-08-17); the check still wants a review
+   before release.** Two variants were measured against 40 live careers,
+   but only for false positives. Counting collaborators across the whole
+   fetched corpus keeps noise at ~0.1 clusters per author; counting them
+   across the career only, holding outliers out of the network, raises
+   noise to ~0.38 clusters per author in sizes up to nine, because a
    genuine research stay abroad is structurally identical to a homonym.
-   The missing third signal is field: `primary_topic` is present on 100%
-   of works and carries a field/domain hierarchy, and a stranger publishes
-   outside the author's field where a sabbatical does not. Routed to the
-   pilot 2026-08-16 rather than tuned blind again; see docs/inbox.md for
-   the answer when it lands. One caveat on every rate above: the sample
-   was authors holding 80-400 works, who publish well beyond a typical
-   department member, so the per-author figures are untested at the
-   smaller corpora a department page actually carries.
+   Recall separated them, and it could only be measured where the one
+   known contamination lives: consumer #2 measured that career on
+   2026-08-17. The stray works share 15 co-authors with each other and
+   **zero** with the real corpus, so the corpus-wide variant lets the lab
+   alibi itself and reports nothing, while the career-scoped variant
+   reports the cluster whole. The career-scoped variant is therefore the
+   rule, and ~0.38 clusters per author is the accepted price of seeing the
+   shape the check exists for. `tests/test_contamination.py` carries that
+   career as a synthetic fixture; it fails under the corpus-wide variant.
+
+   Field was expected to be the deciding third signal and is not.
+   `primary_topic` is present on 100% of works, and on the measured career
+   the stray field set and the real one are disjoint — but that career
+   spans six fields over eleven works, so "differs from the author's modal
+   field" would also flag its genuine Neuroscience and Demography papers.
+   The discriminator is field *distance*, which needs a hierarchy metric
+   erga does not have and which n=1 does not justify building. No field
+   leg ships, and `primary_topic` stays out of `WORKS_SELECT`.
+
+   Two caveats stand. Recall is n=1: one career, one homonym. And the
+   false-positive sample was authors holding 80-400 works, who publish
+   well beyond a typical department member, so the per-author rates are
+   untested at the smaller corpora a department page actually carries.
+   Both are arguments for the output staying advisory, which it is.
 5. Merge manual entries; their DOIs seed the dedup set so manual always
    wins.
 6. DOI-level dedup, case-insensitive.
