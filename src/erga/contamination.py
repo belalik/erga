@@ -12,8 +12,9 @@ flags 9.5%, because new collaborations are constant. Requiring both, and
 then requiring a cluster of at least two works sharing one institution,
 left a fraction of a cluster per author — while the contamination that
 motivated this is a cluster of four. That rate was measured before the two
-corrections below and now understates the noise; docs/requirements-v1.md
-section 7 says by how much it is unknown.
+corrections below and no longer describes this code; it has not been
+re-measured, and docs/requirements-v1.md section 7 says why the direction
+is not guessable.
 
 "Stranger" is measured against the career, not the corpus. A homonym's works
 usually come from one group, so counting collaborators across everything

@@ -341,11 +341,12 @@ Ported from the production origin pipeline with generalization deltas noted.
    the warning text, and afterwards it could push the author's own
    institution out of home.
 
-   **The ~0.38 figure predates both fixes and is now an underestimate.**
-   The whitelist bug was suppressing clusters, so removing it can only add
-   warnings; the majority rule removes some in the other direction, and
-   the net is unmeasured. Re-run `local/contamination-probes/` before
-   release.
+   **The ~0.38 figure predates both fixes and no longer describes this
+   code.** It moved in both directions and the net is unmeasured: the
+   whitelist bug was suppressing clusters, so removing it can only add
+   warnings, while the majority rule is a new silence gate that can only
+   remove them. Re-run `local/contamination-probes/` before release rather
+   than reasoning about which effect won.
 
    Three caveats stand. Recall is n=1: one career, one homonym. The
    false-positive sample was authors holding 80-400 works, who publish

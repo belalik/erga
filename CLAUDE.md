@@ -38,11 +38,14 @@ carries a work-level contamination check for a homonym whose Latinized
 name matches, which `verify` cannot see. The pilot measured the one known
 contaminated career on 2026-08-17, which settled the rule: "stranger" is
 counted against the career with outliers held out of the network, no
-field leg ships, and the output stays advisory. The check is **settled
-but unreleased**, pending a review of the module. Recall rests on that
-single career, so do not tune the rule on local data —
-`docs/requirements-v1.md` section 7 states what was measured and what the
-two standing caveats are. See that doc for the v1 design, `docs/action.md`
+field leg ships, and the output stays advisory. Review the same day found
+the check accusing the career it protects whenever a stranger held the
+plurality; that and three lesser defects are fixed, but the fixes are
+themselves unreviewed and the measured false-positive rate no longer
+describes the code. The check is **settled but unreleased**. Recall rests
+on that single career, so do not tune the rule on local data —
+`docs/requirements-v1.md` section 7 states what was measured, the three
+standing caveats, and what has to happen before release. See that doc for the v1 design, `docs/action.md`
 for the Action, and `docs/todo.md` for open work.
 
 Module map (`src/erga/`): `config` (erga.yml), `http` (injectable transport
