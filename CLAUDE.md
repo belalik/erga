@@ -19,37 +19,26 @@ a fallback, never solved inside erga.
 
 ## Status
 
-v0.3.0 released 2026-08-09 (PyPI via Trusted Publishing, GitHub
-Releases; repo public since v0.1.0, 2026-08-05): the composite GitHub
-Action, the post-dedup override-match fix, unassignable sample ORCIDs.
-The pipeline is implemented end-to-end (config, fetch, normalize, dedup,
-curation, Crossref backfill, deterministic output, `build`/`verify` CLI)
-with unit suites plus a byte-exact golden test. The origin lab site (the
-v0.2 milestone) builds its publications with erga in CI. Post-release,
-main carries department-scale intake hardening shaped by the consumer #2
-scope decisions: verify separates split profiles from contaminated
-ORCIDs by name matching, name-searches for unconfigured same-name
-profiles, and `output.exclude_types` filters noise types wholesale.
-Consumer #2 (dpsd-new, an Astro department site) ran its pilot to
-completion on 2026-08-11 — 5 authors, 228 works, live page — and its
-findings are triaged: the authors roster is declined, the raw-`other`
-warning noise is fixed, and the recipes doc is unblocked. Main now also
-carries a work-level contamination check for a homonym whose Latinized
-name matches, which `verify` cannot see. The pilot measured the one known
-contaminated career on 2026-08-17, which settled the rule: "stranger" is
-counted against the career with outliers held out of the network, no
-field leg ships, and the output stays advisory. Review the same day found
-the check accusing the career it protects whenever a stranger held the
-plurality; that and three lesser defects are fixed, and an independent
-review of the fixes on 2026-09-02 found one more, a majority-test
-denominator admitting works that could not vote, also fixed, and the
-false-positive load was re-measured the same day (section 7 has the
-numbers). The check is **settled but unreleased**, pending the
-declared-home decision. Recall rests
-on that single career, so do not tune the rule on local data —
-`docs/requirements-v1.md` section 7 states what was measured, the three
-standing caveats, and what has to happen before release. See that doc for the v1 design, `docs/action.md`
-for the Action, and `docs/todo.md` for open work.
+v0.4.0 released 2026-09-02 (PyPI via Trusted Publishing, GitHub
+Releases; repo public since v0.1.0, 2026-08-05). The pipeline is
+implemented end-to-end (config, fetch, normalize, dedup, curation,
+Crossref backfill, deterministic output, `build`/`verify` CLI) with unit
+suites plus a byte-exact golden test. Two consumers build with it in CI:
+the origin Jekyll lab site (v0.2) and dpsd-new, an Astro department site
+whose pilot (5 authors, 228 works, 2026-08-11) shaped the department-scale
+intake that v0.4.0 ships: verify separates split profiles from
+contaminated ORCIDs by name matching and name-searches for unconfigured
+same-name profiles, `output.exclude_types` filters noise types wholesale,
+and a work-level contamination check warns about a homonym whose
+Latinized name matches, which `verify` cannot see. The check is advisory
+and its rule is settled on the one career that could measure recall, so
+do not tune it on local data: `docs/requirements-v1.md` section 7 has
+the measurements and the three standing caveats. Identity is a line, not
+a feature: finding an iD is the consumer's step and the ORCID is trusted
+as given (README). Next is the declared home for the check (v0.5.0, work
+order in `docs/todo.md`). See `docs/requirements-v1.md` for the v1
+design, `docs/action.md` for the Action, and `docs/todo.md` for open
+work.
 
 Module map (`src/erga/`): `config` (erga.yml), `http` (injectable transport
 + retry), `openalex`/`crossref` (clients), `normalize` (raw work → canonical
@@ -84,7 +73,7 @@ inside a correct profile), `curation` (manual/overrides/tags), `pipeline`
 - uv manages the environment and lockfile; ruff lints and formats; mypy is
   strict; all four checks must pass in CI
 - Releases: GitHub Releases only, no CHANGELOG file; semver from 0.x
-  (v1.0 = the JSON schema is declared stable)
+  (v1.0 = the JSON schema is declared stable). Procedure: `docs/release.md`
 - PyPI publishing via Trusted Publishing (OIDC) from a release workflow;
   no stored tokens
 - Config samples, docs, and fixtures use placeholder mailto/ORCID values,

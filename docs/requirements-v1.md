@@ -299,10 +299,9 @@ Ported from the production origin pipeline with generalization deltas noted.
    Output is warnings only: erga names the cluster, the maintainer decides
    and excludes.
 
-   **The rule is settled (2026-08-17) and the code was independently
-   reviewed on 2026-09-02; what still stands before release is the
-   re-measurement below and the declared-home decision in `docs/todo.md`.**
-   Two variants were measured against 40 live careers,
+   **The rule is settled (2026-08-17); the code was independently
+   reviewed on 2026-09-02 and released in v0.4.0 the same day. The
+   declared home in `docs/todo.md` follows in v0.5.** Two variants were measured against 40 live careers,
    but only for false positives. Counting collaborators across the whole
    fetched corpus keeps noise at ~0.1 clusters per author; counting them
    across the career only, holding outliers out of the network, raises

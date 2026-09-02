@@ -3,8 +3,9 @@
 ## High
 - Declared home for the contamination check, target v0.5.0. Decided
   2026-09-02 together with dpsd-new's identity entry: optional `home:` at the
-  top level (a ROR id; OpenAlex authorship institutions carry `ror` under the
-  existing select) with a per-author override. Used only by the check: home
+  top level (a ROR id; OpenAlex authorship institutions carry `ror` as a
+  full `https://ror.org/...` URL under the existing select, verified live
+  2026-09-02) with a per-author override. Used only by the check: home
   country and home institution come from the declaration instead of the
   plurality, the majority gate is bypassed, and when most affiliated works
   are not at home the check says the profile looks wrong (verify's question)
