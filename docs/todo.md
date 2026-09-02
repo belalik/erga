@@ -3,11 +3,11 @@
 ## High
 
 ## Normal
-- Release the contamination check, once three gates clear: the declared-home
-  decision below, which settles the last open finding; an independent review
-  of the fixes; and a re-measurement of the false-positive load on
-  `local/contamination-probes/`. State and caveats:
-  docs/requirements-v1.md section 7
+- Release the contamination check, once the declared-home decision below
+  settles the last open finding. The other two gates cleared 2026-09-02:
+  independent review (`/code-review medium`, one finding, fixed in 3b547e3)
+  and re-measurement (0.25 clusters per author on the original band, 0.23
+  at 20-80 works). State and caveats: docs/requirements-v1.md section 7
 - Decide whether `erga.yml` gains an optional institution per author before
   v1: it closes the residual home-inversion and the null-country finding,
   and demotes the plurality heuristic to a fallback. Counter-case to weigh:

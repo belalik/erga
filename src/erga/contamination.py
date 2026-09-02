@@ -11,10 +11,11 @@ of all works, because academics move and collaborate; "team of strangers"
 flags 9.5%, because new collaborations are constant. Requiring both, and
 then requiring a cluster of at least two works sharing one institution,
 left a fraction of a cluster per author — while the contamination that
-motivated this is a cluster of four. That rate was measured before the two
-corrections below and no longer describes this code; it has not been
-re-measured, and docs/requirements-v1.md section 7 says why the direction
-is not guessable.
+motivated this is a cluster of four. Re-measured on 2026-09-02 with the
+corrections below in place: 0.25 clusters per author on the original
+80-400-work band and 0.23 on a 20-80 band, both upper bounds since the
+samples carry no labelled positives; docs/requirements-v1.md section 7 has
+the detail.
 
 "Stranger" is measured against the career, not the corpus. A homonym's works
 usually come from one group, so counting collaborators across everything

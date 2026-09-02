@@ -40,9 +40,12 @@ contaminated career on 2026-08-17, which settled the rule: "stranger" is
 counted against the career with outliers held out of the network, no
 field leg ships, and the output stays advisory. Review the same day found
 the check accusing the career it protects whenever a stranger held the
-plurality; that and three lesser defects are fixed, but the fixes are
-themselves unreviewed and the measured false-positive rate no longer
-describes the code. The check is **settled but unreleased**. Recall rests
+plurality; that and three lesser defects are fixed, and an independent
+review of the fixes on 2026-09-02 found one more, a majority-test
+denominator admitting works that could not vote, also fixed, and the
+false-positive load was re-measured the same day (section 7 has the
+numbers). The check is **settled but unreleased**, pending the
+declared-home decision. Recall rests
 on that single career, so do not tune the rule on local data —
 `docs/requirements-v1.md` section 7 states what was measured, the three
 standing caveats, and what has to happen before release. See that doc for the v1 design, `docs/action.md`

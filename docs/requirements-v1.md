@@ -299,8 +299,10 @@ Ported from the production origin pipeline with generalization deltas noted.
    Output is warnings only: erga names the cluster, the maintainer decides
    and excludes.
 
-   **The rule is settled (2026-08-17); the check still wants a review
-   before release.** Two variants were measured against 40 live careers,
+   **The rule is settled (2026-08-17) and the code was independently
+   reviewed on 2026-09-02; what still stands before release is the
+   re-measurement below and the declared-home decision in `docs/todo.md`.**
+   Two variants were measured against 40 live careers,
    but only for false positives. Counting collaborators across the whole
    fetched corpus keeps noise at ~0.1 clusters per author; counting them
    across the career only, holding outliers out of the network, raises
@@ -341,18 +343,35 @@ Ported from the production origin pipeline with generalization deltas noted.
    the warning text, and afterwards it could push the author's own
    institution out of home.
 
-   **The ~0.38 figure predates both fixes and no longer describes this
-   code.** It moved in both directions and the net is unmeasured: the
-   whitelist bug was suppressing clusters, so removing it can only add
-   warnings, while the majority rule is a new silence gate that can only
-   remove them. Re-run `local/contamination-probes/` before release rather
-   than reasoning about which effect won.
+   An independent review of those fixes on 2026-09-02 found a third
+   defect, in the majority rule itself, now fixed. The test's denominator
+   admitted a work on institution alone while only a work's own countries
+   could vote, so an entry naming the institution but carrying no country
+   counted against home without ever counting for it; enough of them and a
+   genuine career failed its own majority, and the check fell silent on a
+   real cluster. A work's countries now include the country the label pass
+   resolved for each of its institutions. A work whose institutions carry
+   no country anywhere in the corpus still dilutes the count, and is left
+   that way deliberately: the check prefers silence to a guess.
+
+   **Re-measured on 2026-09-02 with all three fixes in:** 10 clusters
+   across 7 of the same 40 authors, sizes two to six, 0.25 per author,
+   with 37 of 40 clearing the majority gate. The net moved down from
+   ~0.38. The whitelist and denominator bugs were suppressing clusters, so
+   removing them could only add warnings, while the majority rule is a
+   new silence gate that can only remove them, and the gate won. The same
+   day a `works_count:20-80` band, closer to a department member, gave 9
+   clusters across 7 of 40 authors, 0.23 per author, 33 of 40 clearing
+   the gate, but sizes up to eleven inside careers of under eighty works.
+   Both figures are upper bounds on false positives: the samples carry no
+   labelled positives, and a cluster of eleven in a forty-work profile is
+   what a homonym looks like. `local/contamination-probes/` is the
+   harness; re-run it after any rule change.
 
    Three caveats stand. Recall is n=1: one career, one homonym. The
-   false-positive sample was authors holding 80-400 works, who publish
-   well beyond a typical department member, so the per-author rates are
-   untested at the smaller corpora a department page actually carries. And
-   the majority rule bounds the inversion without closing it: where a
+   per-author rate is measured at department scale now, but on unlabelled
+   samples, so it bounds the noise without separating it from any
+   contamination the samples genuinely contain. And the majority rule bounds the inversion without closing it: where a
    stranger's works both outnumber the genuine ones and clear
    `MIN_HOME_WORKS`, the two sides are structurally symmetric and the
    check will still pick the wrong one. That profile is mostly not its
