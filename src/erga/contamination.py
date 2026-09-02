@@ -133,7 +133,7 @@ def _index(
     return appearances, labels
 
 
-def _view(appearance: _Appearance, tracked_id: str) -> _WorkView:
+def _view(appearance: _Appearance, tracked_id: str, labels: _Labels) -> _WorkView:
     """Reduce one work to what the check reasons about, from this author's seat."""
     raw, authorships, own = appearance
     institutions = {
@@ -141,10 +141,16 @@ def _view(appearance: _Appearance, tracked_id: str) -> _WorkView:
         for institution in own.get("institutions") or []
         if institution.get("id")
     }
+    countries = {c for c in (own.get("countries") or []) if c}
+    countries.update(
+        country
+        for institution_id in institutions
+        if (country := labels.get(institution_id, ("", None))[1]) is not None
+    )
     return _WorkView(
         work_id=strip_openalex_host(raw["id"]),
         title=raw.get("title") or "",
-        countries=frozenset(c for c in (own.get("countries") or []) if c),
+        countries=frozenset(countries),
         institutions=frozenset(institutions),
         team=frozenset(author_id for author_id, _ in authorships if author_id != tracked_id),
     )
@@ -241,7 +247,7 @@ def find_contamination(
     appearances, labels = _index(raw_works, tracked_ids)
     clusters: list[Cluster] = []
     for tracked_id in sorted(tracked_ids):
-        views = [_view(a, tracked_id) for a in appearances.get(tracked_id, [])]
+        views = [_view(a, tracked_id, labels) for a in appearances.get(tracked_id, [])]
         clusters.extend(_clusters_for(tracked_ids[tracked_id], views, labels))
     return clusters
 

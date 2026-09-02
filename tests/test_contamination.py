@@ -168,6 +168,23 @@ def test_a_missing_country_does_not_erase_a_known_one() -> None:
     assert [c.country for c in reverse] == ["CZ"]
 
 
+def test_an_institution_country_fills_a_missing_authorship_country() -> None:
+    """Missing authorship countries diluted home out of its own majority."""
+    raw = [
+        *home_corpus(5),
+        *(
+            work(f"W10{i}", institutions=[AEGEAN], countries=[], team=["A5000000900"])
+            for i in range(4)
+        ),
+        work("W900", institutions=[PALACKY], team=["A5000009001"]),
+        work("W901", institutions=[PALACKY], team=["A5000009002"]),
+    ]
+    clusters = find_contamination(raw, TRACKED_IDS)
+    assert [(c.institution, c.work_ids) for c in clusters] == [
+        ("Palacký University", ["W900", "W901"])
+    ]
+
+
 def test_clean_corpus_is_silent() -> None:
     assert find_contamination(home_corpus(), TRACKED_IDS) == []
 
