@@ -114,7 +114,7 @@ every run costs API budget and a commit's worth of noise.
 ## Versioning and tags
 
 Releases carry a full semver tag, so today you reference the action as
-`belalik/erga@v0.3.0`. There is deliberately no moving tag yet: while the
+`belalik/erga@v0.4.0`. There is deliberately no moving tag yet: while the
 schema can still change, a tag that silently advances is the wrong default.
 A moving `v1` will be minted with the 1.0 release, per the `actions/checkout`
 convention, and `belalik/erga@v1` will track the current major line from then

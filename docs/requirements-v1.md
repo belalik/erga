@@ -376,9 +376,11 @@ Ported from the production origin pipeline with generalization deltas noted.
    `MIN_HOME_WORKS`, the two sides are structurally symmetric and the
    check will still pick the wrong one. That profile is mostly not its
    author's, which is `verify`'s question; erga has no declared home
-   institution to break the tie, since neither `erga.yml` nor
-   `AUTHOR_SELECT` carries one. Adding it would end the ambiguity and is
-   the obvious move if this check ever needs to be stronger.
+   institution to break the tie yet. Decided 2026-09-02: an optional
+   ROR-keyed `home:` lands next (work order in `docs/todo.md`), used only
+   by this check and never as evidence that a profile is the right person.
+   It also ends the majority gate's silence, which at 20-80 works skips 7
+   of 40 authors.
 
    All of the above argue for the output staying advisory, which it is.
 5. Merge manual entries; their DOIs seed the dedup set so manual always
@@ -471,6 +473,12 @@ scheduling, the `v1` tag policy, how CI exercises it) lives in
   (tens of authors) stress-testing scale and disambiguation, is handed
   off (2026-08-11) and pilots on its own side; its findings drive the
   next changes.
+- **v0.4** (released 2026-09-02 as v0.4.0): the department-scale intake
+  hardening from the consumer #2 pilot (verify separating split profiles
+  from contaminated iDs, the same-name search, `output.exclude_types`) and
+  the work-level contamination check, advisory, with its rule settled on
+  the one career that could measure recall.
+- **v0.5**: declared home for the contamination check (`docs/todo.md`).
 - **CSL-JSON and BibTeX emitters** slot in after v0.1 as demand warrants,
   before the v1.0 promotion push.
 - **v1.0**: strong README (before/after dedup story, head-on "why not

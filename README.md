@@ -76,7 +76,20 @@ stranger's works. Two people who Latinize to the same string are one name to
 OpenAlex, and re-checking the iD does not help, because the iD is right. So
 a verified ORCID means erga fetched the person you meant. It does not mean
 every work it returned is theirs. Read the first build against what you
-expect, and exclude what does not belong in your overrides file.
+expect, and exclude what does not belong in your overrides file. Where a
+career is mostly in one place, `build` also warns about clusters of works
+tied to an institution that share no collaborator and no institution with
+the rest of the profile, which is what a same-name stranger's works look
+like. The warning is advisory; whether to exclude them is your call.
+
+Finding the iD in the first place is your step, and erga does not guess at
+it. An ORCID in `erga.yml` is trusted as given. What worked for a department
+that had iDs on file for five of sixty-three staff: search OpenAlex under
+every Latinization the person has published with, read each candidate's
+`last_known_institutions`, confirm the candidate's ORCID against the
+employment history on orcid.org, and only then scan the profile for works
+that look like someone else's. Name plus institution is not enough on its
+own; a same-name stranger can carry your institution on OpenAlex too.
 
 ## GitHub Action
 
@@ -86,9 +99,9 @@ use to commit or open pull requests.
 
 ```yaml
 - uses: actions/checkout@v5
-- uses: belalik/erga@v0.3.0
+- uses: belalik/erga@v0.4.0
   with:
-    version: "0.3.0"                 # pin explicitly; no default
+    version: "0.4.0"                 # pin explicitly; no default
     config: _data/erga.yml
     api-key: ${{ secrets.OPENALEX_API_KEY }}   # optional
 ```
@@ -107,9 +120,9 @@ permissions:
 
 steps:
   - uses: actions/checkout@v5
-  - uses: belalik/erga@v0.3.0
+  - uses: belalik/erga@v0.4.0
     with:
-      version: "0.3.0"
+      version: "0.4.0"
       config: _data/erga.yml
       api-key: ${{ secrets.OPENALEX_API_KEY }}
   - run: |
@@ -133,9 +146,9 @@ permissions:
 
 steps:
   - uses: actions/checkout@v5
-  - uses: belalik/erga@v0.3.0
+  - uses: belalik/erga@v0.4.0
     with:
-      version: "0.3.0"
+      version: "0.4.0"
       config: _data/erga.yml
       api-key: ${{ secrets.OPENALEX_API_KEY }}
   - uses: peter-evans/create-pull-request@v7

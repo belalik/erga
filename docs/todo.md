@@ -1,17 +1,22 @@
 # TODO
 
 ## High
+- Declared home for the contamination check, target v0.5.0. Decided
+  2026-09-02 together with dpsd-new's identity entry: optional `home:` at the
+  top level (a ROR id; OpenAlex authorship institutions carry `ror` under the
+  existing select) with a per-author override. Used only by the check: home
+  country and home institution come from the declaration instead of the
+  plurality, the majority gate is bypassed, and when most affiliated works
+  are not at home the check says the profile looks wrong (verify's question)
+  instead of listing them as strangers. Institution country from the corpus
+  labels, else one `/institutions/ror:` fetch. Never identity evidence; the
+  docs say it is trusted as given, like the ORCID. The Zissis trap (a wrong
+  same-name profile carrying the right institution) is a wrong-person
+  failure, which this field does not touch in either direction. Motivation
+  in numbers: at 20-80 works the gate silences 7 of 40 authors
+  (docs/requirements-v1.md section 7)
 
 ## Normal
-- Release the contamination check, once the declared-home decision below
-  settles the last open finding. The other two gates cleared 2026-09-02:
-  independent review (`/code-review medium`, one finding, fixed in 3b547e3)
-  and re-measurement (0.25 clusters per author on the original band, 0.23
-  at 20-80 works). State and caveats: docs/requirements-v1.md section 7
-- Decide whether `erga.yml` gains an optional institution per author before
-  v1: it closes the residual home-inversion and the null-country finding,
-  and demotes the plurality heuristic to a fallback. Counter-case to weigh:
-  a wrong same-name profile can carry the right institution
 - Build-delta summary: diff the `publications.json` already at the output path
   against the new build and report what changed, with schema knowledge of which
   fields are cosmetic (cited_by_count) versus audit-critical — consumers need it
@@ -32,7 +37,20 @@
   Jekyll specifics are already in docs/action.md; the Astro recipe is thin
   (config-relative `src/data/erga.yml` → `publications.json`, imported at
   build time, no schema or convention change), and the empty-unlinked-ORCID
-  case is the worked example to narrate
+  case is the worked example to narrate. Also carry the discovery recipe
+  dpsd-new measured, since finding an iD is the consumer's step: search
+  OpenAlex under several Latinizations, read `last_known_institutions`,
+  confirm the candidate's ORCID against orcid.org employment history, then
+  scan the profile for the same-name-stranger shape. Their two traps are
+  the cautionary examples (a person who signs "Xidias" where the staff
+  record says "Xydias"; two Dimitris Zissis where the wrong one carries the
+  right institution on OpenAlex)
+- `erga suggest` (name and institution in, ranked candidate profiles out),
+  proposed by dpsd-new and declined for v1 on 2026-09-02. The signal that
+  separated both of their traps was orcid.org employment history, a second
+  source the v1 non-goals exclude; a ranker without it puts the wrong Zissis
+  first with confidence. Reopen if a third consumer hits the discovery wall,
+  or when the sources non-goal is revisited after v1
 - Surface no consumer has exercised yet, so unproven in the field before
   v1.0: `keep_distinct` overrides, thesis/software types in templates,
   keyless runs
