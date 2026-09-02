@@ -141,6 +141,10 @@ def _view(appearance: _Appearance, tracked_id: str, labels: _Labels) -> _WorkVie
         for institution in own.get("institutions") or []
         if institution.get("id")
     }
+    # An entry can name the institution and still carry no country. Such works
+    # counted against home in the majority test without ever voting for it,
+    # and enough of them silenced the check on a genuine career; the label
+    # supplies what the entry dropped.
     countries = {c for c in (own.get("countries") or []) if c}
     countries.update(
         country
