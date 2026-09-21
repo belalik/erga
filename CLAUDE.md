@@ -19,7 +19,7 @@ a fallback, never solved inside erga.
 
 ## Status
 
-v0.4.0 released 2026-09-02 (PyPI via Trusted Publishing, GitHub
+v0.5.0 released 2026-09-21 (PyPI via Trusted Publishing, GitHub
 Releases; repo public since v0.1.0, 2026-08-05). The pipeline is
 implemented end-to-end (config, fetch, normalize, dedup, curation,
 Crossref backfill, deterministic output, `build`/`verify` CLI) with unit
@@ -35,16 +35,15 @@ and its rule is settled on the one career that could measure recall, so
 do not tune it on local data: `docs/requirements-v1.md` section 7 has
 the measurements and the three standing caveats. Identity is a line, not
 a feature: finding an iD is the consumer's step and the ORCID is trusted
-as given (README). The declared home (`home:`, a ROR id) is implemented on
-main and unreleased: it tells the check where an author works instead of
-inferring it, which lifts the majority gate's silence and lets a
-mostly-elsewhere profile be reported as wrong rather than accused.
+as given (README). The declared home (`home:`, a ROR id, v0.5.0) tells
+the check where an author works instead of inferring it, which lifts the
+majority gate's silence and lets a mostly-elsewhere profile be reported
+as wrong rather than accused.
 Measured 2026-09-21 on the pinned cohorts (section 7): a declaration
 changes no verdict a random career already had and adds no cluster, the
 wrong-profile verdict fires on nearly every wrong declaration, and the
 silence it was built to lift did not occur once in eighty careers, so
-that claim is unobserved, not refuted. Its test gaps are closed, so
-v0.5.0 is releasable (`docs/release.md`). The probe
+that claim is unobserved, not refuted. The probe
 cohort is pinned since 2026-09-21 (`local/contamination-probes/`, one
 cached file per band, read offline): a before/after claim is valid
 against those files and against no earlier figure, since `sample=40&seed=17`

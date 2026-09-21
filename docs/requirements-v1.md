@@ -579,7 +579,11 @@ scheduling, the `v1` tag policy, how CI exercises it) lives in
   from contaminated iDs, the same-name search, `output.exclude_types`) and
   the work-level contamination check, advisory, with its rule settled on
   the one career that could measure recall.
-- **v0.5**: declared home for the contamination check (`docs/todo.md`).
+- **v0.5** (released 2026-09-21 as v0.5.0): the declared home (`home:`,
+  a ROR id) for the contamination check, measured on pinned cohorts
+  before shipping (section 7): safe on every random career, the
+  wrong-profile verdict working, the lifted silence unobserved until a
+  department cohort with a real declaration runs it.
 - **CSL-JSON and BibTeX emitters** slot in after v0.1 as demand warrants,
   before the v1.0 promotion push.
 - **v1.0**: strong README (before/after dedup story, head-on "why not

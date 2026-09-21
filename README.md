@@ -84,10 +84,11 @@ the rest of the profile, which is what a same-name stranger's works look
 like. The warning is advisory; whether to exclude them is your call.
 
 That check works out where "one place" is by counting, which goes quiet on
-anyone whose record is thin or scattered. Setting `home:` to your
+anyone whose record is scattered across places. Setting `home:` to your
 institution's ROR id tells it instead, for everyone in the file or per
 author, and then it can also tell you that a profile is mostly somebody
-else's work rather than listing that majority as strangers. It is only ever
+else's work rather than listing that majority as strangers. A thin record
+stays quiet whoever declares it. It is only ever
 read by this check: like the ORCID, a declared home is trusted as given and
 is never treated as evidence that a profile is the right person.
 
@@ -108,9 +109,9 @@ use to commit or open pull requests.
 
 ```yaml
 - uses: actions/checkout@v5
-- uses: belalik/erga@v0.4.0
+- uses: belalik/erga@v0.5.0
   with:
-    version: "0.4.0"                 # pin explicitly; no default
+    version: "0.5.0"                 # pin explicitly; no default
     config: _data/erga.yml
     api-key: ${{ secrets.OPENALEX_API_KEY }}   # optional
 ```
@@ -129,9 +130,9 @@ permissions:
 
 steps:
   - uses: actions/checkout@v5
-  - uses: belalik/erga@v0.4.0
+  - uses: belalik/erga@v0.5.0
     with:
-      version: "0.4.0"
+      version: "0.5.0"
       config: _data/erga.yml
       api-key: ${{ secrets.OPENALEX_API_KEY }}
   - run: |
@@ -155,9 +156,9 @@ permissions:
 
 steps:
   - uses: actions/checkout@v5
-  - uses: belalik/erga@v0.4.0
+  - uses: belalik/erga@v0.5.0
     with:
-      version: "0.4.0"
+      version: "0.5.0"
       config: _data/erga.yml
       api-key: ${{ secrets.OPENALEX_API_KEY }}
   - uses: peter-evans/create-pull-request@v7
