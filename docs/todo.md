@@ -1,11 +1,6 @@
 # TODO
 
 ## High
-- `resolve_author` reads one 25-row ORCID page and records a larger total
-  without fetching the tail (`src/erga/openalex.py`), so "the declaration
-  follows the person to every profile" is bounded by what the resolver
-  materializes. Pre-existing and unrelated to `home:`, surfaced by the
-  same review; decide whether the promise or the resolver should move
 
 ## Normal
 - When dpsd-new routes back a declared build's warnings beside its

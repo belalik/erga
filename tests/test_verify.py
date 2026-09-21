@@ -107,8 +107,7 @@ def test_verify_report_contaminated_orcid_flags_different_people() -> None:
             [
                 profile("A1", "Josiah Carberry", 8, []),
                 profile("A2", "John Smith", 300, []),
-            ],
-            total=69,
+            ]
         ),
     )
     for author_id in ["A1", "A2"]:
@@ -125,7 +124,7 @@ def test_verify_report_contaminated_orcid_flags_different_people() -> None:
     _, warnings = verify_report(config, make_client(transport))
     contaminated = [w for w in warnings if "different people" in w]
     assert len(contaminated) == 1
-    assert "69 author profiles" in contaminated[0]
+    assert "2 author profiles" in contaminated[0]
     assert "'John Smith'" in contaminated[0]
     assert "remove the orcid and pin openalex_id" in contaminated[0]
     assert not any("split profile" in w for w in warnings)

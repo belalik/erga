@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import Any
 
@@ -51,10 +51,6 @@ class AuthorProfile:
 class ResolvedAuthor:
     config: AuthorConfig
     profiles: list[AuthorProfile]
-    # Total ORCID matches reported by the API; exceeds the fetched page when
-    # a heavily contaminated iD (copied into strangers' submissions) overflows
-    # it. The count is the interesting signal, not the tail entries.
-    orcid_profile_total: int = 0
     # How many head entries of `profiles` the ORCID query produced; a pinned
     # openalex_id contributes at most one entry after these. Warnings about
     # the ORCID must judge only its own profiles, not the pinned one.
@@ -113,23 +109,38 @@ class OpenAlexClient:
             raise FetchError(f"{url}: HTTP {response.status_code}")
         return response.data
 
+    def _pages(self, path: str, params: dict[str, str]) -> Iterator[list[dict[str, Any]]]:
+        """Every results page of a listing, walked by cursor.
+
+        Basic paging caps at 10,000 results; cursors do not.
+        """
+        params = {**params, "per-page": str(PER_PAGE), "cursor": "*"}
+        while True:
+            data = self._get(path, params)
+            results: list[dict[str, Any]] = data.get("results", [])
+            yield results
+            cursor = (data.get("meta") or {}).get("next_cursor")
+            if not cursor or not results:
+                return
+            params = {**params, "cursor": cursor}
+
     def resolve_author(self, author: AuthorConfig) -> ResolvedAuthor:
         """All OpenAlex author profiles for a configured author.
 
         An ORCID may resolve to several profiles (split identities); a pinned
         openalex_id that does not exist is a config error and aborts. An ORCID
         matching nothing yields an empty list for the caller to judge.
+
+        The ORCID listing is walked to its end: a heavily contaminated iD
+        (copied into strangers' submissions) is verify's to report, not the
+        resolver's to hide by stopping early.
         """
         profiles: list[AuthorProfile] = []
-        orcid_total = 0
         if author.orcid:
-            data = self._get(
-                "/authors",
-                {"filter": f"orcid:{author.orcid}", "select": AUTHOR_SELECT, "per-page": "25"},
-            )
-            results = data.get("results", [])
-            profiles.extend(_profile_from(row) for row in results)
-            orcid_total = _meta_total(data, results)
+            params = {"filter": f"orcid:{author.orcid}", "select": AUTHOR_SELECT}
+            for page in self._pages("/authors", params):
+                for row in page:
+                    profiles.append(_profile_from(row))
         orcid_count = len(profiles)
         if author.openalex_id and author.openalex_id not in {p.id for p in profiles}:
             data = self._get(
@@ -140,12 +151,7 @@ class OpenAlexClient:
                     f"configured openalex_id {author.openalex_id} for {author.name!r} not found"
                 )
             profiles.append(_profile_from(data))
-        return ResolvedAuthor(
-            config=author,
-            profiles=profiles,
-            orcid_profile_total=orcid_total,
-            orcid_profile_count=orcid_count,
-        )
+        return ResolvedAuthor(config=author, profiles=profiles, orcid_profile_count=orcid_count)
 
     def resolve_institution(self, ror: str) -> tuple[str, str | None] | None:
         """(OpenAlex id, country) for a bare ROR id, or None if it names nothing.
@@ -178,31 +184,19 @@ class OpenAlexClient:
     ) -> list[dict[str, Any]]:
         """All works by the given authors, deduplicated by work id.
 
-        Authors are batched with the OR-pipe filter; each batch is walked with
-        cursor pagination (basic paging caps at 10,000 results, cursors do not).
-        Co-authored works arrive once per matching batch; the id dedup here
-        collapses them.
+        Authors are batched with the OR-pipe filter; each batch is walked to
+        its end. Co-authored works arrive once per matching batch; the id
+        dedup here collapses them.
         """
         works: dict[str, dict[str, Any]] = {}
         for start in range(0, len(author_ids), AUTHOR_BATCH_SIZE):
             batch = author_ids[start : start + AUTHOR_BATCH_SIZE]
-            params = {
-                "filter": "author.id:" + "|".join(batch),
-                "select": WORKS_SELECT,
-                "per-page": str(PER_PAGE),
-                "cursor": "*",
-            }
+            params = {"filter": "author.id:" + "|".join(batch), "select": WORKS_SELECT}
             if include_xpac:
                 params["include_xpac"] = "true"
-            while True:
-                data = self._get("/works", params)
-                results = data.get("results", [])
-                for raw in results:
+            for page in self._pages("/works", params):
+                for raw in page:
                     works.setdefault(strip_openalex_host(raw["id"]), raw)
-                cursor = (data.get("meta") or {}).get("next_cursor")
-                if not cursor or not results:
-                    break
-                params = {**params, "cursor": cursor}
         return list(works.values())
 
     def recent_works(self, author_id: str, count: int = 3) -> list[dict[str, Any]]:

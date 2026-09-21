@@ -22,6 +22,20 @@ def client_with(transport: FakeTransport) -> OpenAlexClient:
     return OpenAlexClient(transport, mailto="m@example.org", delay=0.0, sleep=no_sleep)
 
 
+def add_pages(
+    transport: FakeTransport, path: str, subset: dict[str, str], pages: list[list[object]]
+) -> None:
+    """Route one cursor-walked listing: page one at `*`, then `page-2`, `page-3`..."""
+    cursors = ["*", *(f"page-{n}" for n in range(2, len(pages) + 1))]
+    following: list[str | None] = [*cursors[1:], None]
+    for rows, cursor, next_cursor in zip(pages, cursors, following, strict=True):
+        transport.add(
+            path,
+            {**subset, "cursor": cursor},
+            {"results": rows, "meta": {"next_cursor": next_cursor}},
+        )
+
+
 def test_strip_openalex_host() -> None:
     assert strip_openalex_host("https://openalex.org/W123") == "W123"
     assert strip_openalex_host("W123") == "W123"
@@ -38,6 +52,24 @@ def test_resolve_author_orcid_may_split() -> None:
         AuthorConfig(name="X", orcid="0000-0002-1825-0097")
     )
     assert resolved.ids == ["A1", "A2"]
+
+
+def test_resolve_author_walks_every_orcid_page() -> None:
+    # Tracking and the declared home cover every profile the iD carries, so
+    # a page-one head must not stand in for the listing.
+    transport = FakeTransport()
+    add_pages(
+        transport,
+        "/authors",
+        {"filter": "orcid:0000-0002-1825-0097"},
+        [[profile("A1"), profile("A2")], [profile("A3")]],
+    )
+    transport.add("/authors/A9", {}, profile("A9"))
+    resolved = client_with(transport).resolve_author(
+        AuthorConfig(name="X", orcid="0000-0002-1825-0097", openalex_id="A9")
+    )
+    assert resolved.ids == ["A1", "A2", "A3", "A9"]
+    assert [p.id for p in resolved.orcid_profiles] == ["A1", "A2", "A3"]
 
 
 def test_resolve_author_pinned_id_adds_profile() -> None:
@@ -59,21 +91,14 @@ def test_resolve_author_missing_pinned_id_aborts() -> None:
 
 def test_fetch_works_paginates_and_dedups() -> None:
     transport = FakeTransport()
-    transport.add(
+    add_pages(
+        transport,
         "/works",
-        {"cursor": "*"},
-        {
-            "results": [{"id": "https://openalex.org/W1"}, {"id": "https://openalex.org/W2"}],
-            "meta": {"next_cursor": "page-two"},
-        },
-    )
-    transport.add(
-        "/works",
-        {"cursor": "page-two"},
-        {
-            "results": [{"id": "https://openalex.org/W2"}, {"id": "https://openalex.org/W3"}],
-            "meta": {"next_cursor": None},
-        },
+        {},
+        [
+            [{"id": "https://openalex.org/W1"}, {"id": "https://openalex.org/W2"}],
+            [{"id": "https://openalex.org/W2"}, {"id": "https://openalex.org/W3"}],
+        ],
     )
     works = client_with(transport).fetch_works(["A1"])
     assert sorted(w["id"] for w in works) == [

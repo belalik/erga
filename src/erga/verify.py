@@ -91,7 +91,7 @@ def verify_report(config: Config, client: OpenAlexClient) -> tuple[str, list[str
         orcid_strangers = [p for p in orcid_profiles if not _looks_like(p, author)]
         reported: list[AuthorProfile] = []
         if len(orcid_profiles) > 1:
-            total = max(resolved.orcid_profile_total, len(orcid_profiles))
+            total = len(orcid_profiles)
             if orcid_strangers:
                 example = orcid_strangers[0].display_name or orcid_strangers[0].id
                 warnings.append(
