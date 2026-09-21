@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from erga.model import Work
-from erga.output import render, sort_works, write_atomic
+from erga.output import document, dump, sort_works, write_atomic
 
 
 def test_sort_year_desc_then_id_with_nulls_last() -> None:
@@ -19,10 +19,10 @@ def test_sort_year_desc_then_id_with_nulls_last() -> None:
 
 def test_render_is_deterministic_utf8_with_trailing_newline() -> None:
     works = [Work(id="W1", title="Ψυχοκεραμικά")]
-    text = render(works)
+    text = dump(document(works))
     assert text.endswith("}\n")
     assert "Ψυχοκεραμικά" in text  # ensure_ascii=False
-    assert render(list(works)) == text
+    assert dump(document(list(works))) == text
     data = json.loads(text)
     assert data["schema_version"] == 1
     assert data["works"][0]["id"] == "W1"

@@ -54,9 +54,14 @@ output:
 
 Then:
 
-- `erga build [--config PATH] [--dry-run]` runs the pipeline and writes
-  `publications.json`. With `--dry-run` it prints a summary (fetched, merged,
-  deduplicated, excluded, backfilled) without writing.
+- `erga build [--config PATH] [--dry-run] [--summary PATH]` runs the
+  pipeline and writes `publications.json`. With `--dry-run` it prints a
+  summary (fetched, merged, deduplicated, excluded, backfilled) without
+  writing the JSON. Every build says in one line what changed since the
+  output it found in place; `--summary` also writes that as a Markdown page
+  for a reviewer, with additions and removals listed and metadata drift
+  counted.
+- `erga diff OLD NEW` prints the same page for any two output files.
 - `erga verify [--config PATH]` prints the author-disambiguation report:
   what each configured author resolves to on OpenAlex, plus a name search
   for same-name profiles the config does not cover. Warnings tell a split
@@ -147,7 +152,9 @@ steps:
 **Recipe 2, open a pull request.** The right default when you want a review
 gate, and the only clean path on a protected branch. Repeated runs update one
 branch and one PR, so quiet weeks produce no noise, and merging is an ordinary
-push that fires your deploy workflow.
+push that fires your deploy workflow. The `summary` page becomes the PR body,
+so the review is a skim of what changed rather than a diff GitHub may refuse
+to render.
 
 ```yaml
 permissions:
@@ -161,11 +168,14 @@ steps:
       version: "0.5.0"
       config: _data/erga.yml
       api-key: ${{ secrets.OPENALEX_API_KEY }}
+      summary: ${{ runner.temp }}/publications-summary.md
   - uses: peter-evans/create-pull-request@v7
     with:
+      add-paths: _data/publications.json
       commit-message: Update publications
       branch: erga/publications
       title: Update publications
+      body-path: ${{ runner.temp }}/publications-summary.md
 ```
 
 Inputs, permissions, scheduling and version-pinning notes:

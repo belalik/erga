@@ -1,5 +1,6 @@
 """End-to-end golden test: fixture config plus recorded responses in,
-byte-exact publications.json out (requirements section 10)."""
+byte-exact publications.json and change summary out (requirements
+section 10)."""
 
 from __future__ import annotations
 
@@ -9,6 +10,7 @@ from pathlib import Path
 from conftest import FIXTURES, FakeTransport, load_fixture, no_sleep
 from erga.config import load_config
 from erga.crossref import CrossrefClient
+from erga.delta import render_markdown
 from erga.openalex import OpenAlexClient
 from erga.pipeline import BuildStats, build
 
@@ -74,6 +76,16 @@ def test_golden_build_byte_exact(tmp_path: Path) -> None:
     assert stats.written
 
 
+def test_golden_summary_byte_exact(tmp_path: Path) -> None:
+    stats = run_golden(tmp_path)
+    produced = render_markdown(stats.delta, stats.warnings)
+    expected = (GOLDEN / "expected-summary.md").read_text(encoding="utf-8")
+    assert produced == expected
+    assert stats.delta.headline() == (
+        "8 added, 0 removed, 1 with tracking changed, 6 field updates, 1 tag change (1 → 9 works)"
+    )
+
+
 def test_golden_build_is_idempotent(tmp_path: Path) -> None:
     run_golden(tmp_path)
     first = (tmp_path / "publications.json").read_bytes()
@@ -83,6 +95,7 @@ def test_golden_build_is_idempotent(tmp_path: Path) -> None:
     assert (tmp_path / "publications.json").read_bytes() == first
     assert stats.backfilled_previous == 2  # W1010 and W1003 both known now
     assert stats.backfilled_crossref == 0
+    assert stats.delta.unchanged
 
 
 def test_golden_dry_run_leaves_output_untouched(tmp_path: Path) -> None:

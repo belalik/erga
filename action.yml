@@ -28,6 +28,15 @@ inputs:
       openalex.api_key_env, set that variable as job-level env instead.
     required: false
     default: ""
+  summary:
+    description: >-
+      Path to write a Markdown summary of what changed since the
+      publications.json already in the checkout: additions and removals
+      listed with the audit tell (tracked person, co-authors, venue),
+      metadata drift as counts, the run's warnings. Optional; feed it to
+      the pull request your workflow opens, as its body.
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -44,8 +53,14 @@ runs:
     # script, so a path containing shell metacharacters cannot run as code.
     - name: Build publications
       shell: bash
-      run: uvx "erga==${ERGA_VERSION}" build --config "${ERGA_CONFIG}"
+      run: |
+        args=(build --config "${ERGA_CONFIG}")
+        if [ -n "${ERGA_SUMMARY}" ]; then
+          args+=(--summary "${ERGA_SUMMARY}")
+        fi
+        uvx "erga==${ERGA_VERSION}" "${args[@]}"
       env:
         ERGA_VERSION: ${{ inputs.version }}
         ERGA_CONFIG: ${{ inputs.config }}
+        ERGA_SUMMARY: ${{ inputs.summary }}
         OPENALEX_API_KEY: ${{ inputs.api-key }}

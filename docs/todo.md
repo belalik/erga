@@ -8,17 +8,13 @@
   `docs/requirements-v1.md` section 7 as the first department-scale
   observation of the declared home; it is the only place the lifted
   silence can be seen
-- Build-delta summary: diff the `publications.json` already at the output path
-  against the new build and report what changed, with schema knowledge of which
-  fields are cosmetic (cited_by_count) versus audit-critical — consumers need it
-  to review a weekly PR too large for GitHub to render. Additive, so not a v1.0
-  gate. Proposal received in f77de08; working spec
-  `~/projects/dpsd-new/scripts/publications_summary.py`
-  - Subsumes the parallel-run lesson: diff every schema field against an
-    explicit ignore-list, not identity fields only
-  - Name the partial-fetch hazard in the docs alongside it: a rate-limited
-    fetch yields valid-but-smaller JSON that reads as mass removals
-  - Undecided: stdout only or also an `action.yml` output; shrink guard in scope
+- Release the build delta (`--summary`, `erga diff`, the `summary` Action
+  input) as 0.6.0, then move CI's `action` job pin (`.github/workflows/ci.yml`,
+  "0.3.0", commented as needing no bump) to that release and pass `summary:`
+  with an assertion on the file, since the job installs from PyPI and cannot
+  prove the new input's wiring until the pin carries it. Then tell dpsd-new
+  their `scripts/publications_summary.py` and its `git show` step are
+  replaceable by the input, via their inbox
 
 ## Low
 - Two configured authors with different non-null `home:` values can resolve

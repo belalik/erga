@@ -25,6 +25,7 @@ the workflow fails on a missing config rather than doing something surprising.
 | `version` | yes | none | The erga release to install, e.g. `"0.2.0"`. |
 | `config` | no | `erga.yml` | Path to the config, relative to the workspace. |
 | `api-key` | no | empty | OpenAlex API key. Pass a secret, never a literal. |
+| `summary` | no | empty | Path to write a Markdown page of what changed since the checked-out `publications.json`. |
 
 `version` has no default on purpose. A default would mean an upgrade could
 arrive on a Tuesday morning in a repo nobody is watching, and the whole point
@@ -49,6 +50,27 @@ a second source of truth. A per-author filter should read `authors[].tracked_as`
 rather than `authors[].name`: `tracked_as` is the configured name, identical
 across every alias and spelling variant the registrars carry, so filtering on
 it needs no alias logic in the template.
+
+### The change summary
+
+`summary` names a file for the page a reviewer reads instead of the raw
+diff, which outgrows what GitHub renders long before a department-scale
+cohort. erga compares the build against the `publications.json` already in
+the checkout, so the page needs no `git show` on your side; write it
+somewhere outside the tree, `${{ runner.temp }}` for instance, and hand it
+to your PR action as the body (recipe 2 in the README shows this). It is
+written on every build, a first build included, so a later step can rely
+on the file existing. What goes on the page, and why, is stage 12 in
+[requirements-v1.md](requirements-v1.md); the build's warnings head it,
+which is how a contamination warning reaches the person merging.
+
+The page is also your fetch health check. A run that fails to fetch aborts
+and writes nothing, but a response that succeeds with fewer works than last
+time produces a smaller, valid JSON that reads as mass removals. erga warns
+on the page when removals exceed a tenth of the previous build and does not
+refuse to write, because it cannot tell that from an author dropped from
+the config or a new `exclude_types` entry. Large removals you did not cause
+mean stop and rerun, not merge.
 
 ### The API key
 

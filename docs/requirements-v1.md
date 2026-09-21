@@ -508,15 +508,50 @@ Ported from the production origin pipeline with generalization deltas noted.
    and are skipped silently.
 10. Apply tags.
 11. Sort deterministically and write.
+12. Build delta (after v0.5.0; decided 2026-09-21 on consumer #2's
+    proposal, whose weekly PR diff had outgrown what GitHub renders).
+    The records about to be written are compared, by work id, against
+    the output file found in place: the same single read that feeds the
+    venue ratchet, taken before the file is replaced, so the build knows
+    "before" without the consumer reconstructing it from git. Three
+    classes of change. *Listed one by one*: added and removed works, a
+    retraction flag turning on, and a change in the set of tracked
+    people on a work, since these alter who is credited or whether the
+    work belongs on the site at all; each entry carries the audit tell
+    (tracked person, co-authors, venue, DOI, a manual-entry mark),
+    because a same-name researcher's works arrive as additions and
+    `verify` cannot see them. *Counted per field*: every other change
+    OpenAlex makes (citations, abstract, open access, venue, dates,
+    title, DOI, type, byline names and iDs), one table labelled as drift
+    with nothing to action. *Curation, counted and labelled as the
+    maintainer's own*: tag changes, with manual entries marked in the
+    lists. Listed sections cap at 150 entries and state how many more
+    there are, sized against GitHub's 65,536-character PR body. The
+    run's warnings head the page, contamination included, so they reach
+    a reviewer rather than dying in a CI log. Shrink guard: a warning,
+    never a refusal, when removals exceed a tenth of the previous build.
+    erga cannot tell a degraded fetch from a dropped author or a new
+    `exclude_types` entry, so the consumer's review gate is the stop; the
+    hazard is a successful response carrying fewer works, since a failed
+    fetch aborts before writing. The page is prose for a reviewer, not
+    part of the schema contract: nothing should parse it. A byte-exact
+    golden test freezes it alongside the JSON.
 
 ## 8. CLI
 
-`erga` console entry point, two subcommands in v1:
+`erga` console entry point, three subcommands:
 
-- `erga build [--config PATH] [--dry-run]`: run the pipeline. `--dry-run`
-  prints a summary (fetched, merged, deduplicated, excluded, backfilled)
-  without writing. Exit 0 on success (changed or not; change detection is
-  git's job), nonzero on any failure.
+- `erga build [--config PATH] [--dry-run] [--summary PATH]`: run the
+  pipeline. `--dry-run` prints a summary (fetched, merged, deduplicated,
+  excluded, backfilled) without writing the JSON. Every build prints a
+  one-line headline of what changed since the output it found in place;
+  `--summary` also writes the full Markdown page (stage 12), under
+  `--dry-run` too, since the flag asks for that one file explicitly and
+  the delta is what a dry run exists to show. Exit 0 on success (changed
+  or not; change detection is git's job), nonzero on any failure.
+- `erga diff OLD NEW`: the same page for any two output files, on
+  stdout, with no config or network. A missing or unreadable OLD is a
+  first build; an unreadable NEW is an error.
 - `erga verify [--config PATH]`: the author-disambiguation report, a
   first-class feature because OpenAlex author IDs split and conflate
   people. Per configured author: resolved ID(s), works count, name
@@ -537,8 +572,10 @@ Python >= 3.10. Runtime dependencies: `requests` and `PyYAML` only.
 ## 9. GitHub Action
 
 A composite action in this repo (`action.yml`): pinned `setup-uv`, then
-`uvx erga==<version> build`. Inputs: `config` (path), `version`. No commit
-or PR logic inside the action (section 2.3). Full semver tags plus a moving
+`uvx erga==<version> build`. Inputs: `config` (path), `version`, and
+`summary` (a path; passes through as `--summary`, so the change page is a
+second produced file, not delivery). No commit or PR logic inside the
+action (section 2.3). Full semver tags plus a moving
 `v1` major tag, actions/checkout convention. The README pitch stays "one
 workflow file plus one config file", with the two delivery recipes.
 

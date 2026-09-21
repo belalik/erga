@@ -48,17 +48,22 @@ cohort is pinned since 2026-09-21 (`local/contamination-probes/`, one
 cached file per band, read offline): a before/after claim is valid
 against those files and against no earlier figure, since `sample=40&seed=17`
 re-drew eight of forty authors within ninety minutes and no earlier
-run's cohort was recorded. See `docs/requirements-v1.md` for the v1
-design, `docs/action.md` for the Action, and `docs/todo.md` for open
-work.
+run's cohort was recorded. Unreleased since v0.5.0: the build delta
+(`build --summary`, `erga diff`, the Action's `summary` input), which
+turns the consumer's weekly PR into a reviewable page; its three change
+classes and the shrink warning are stage 12 of section 7, settled
+2026-09-21 and frozen by a golden test. See `docs/requirements-v1.md`
+for the v1 design, `docs/action.md` for the Action, and `docs/todo.md`
+for open work.
 
 Module map (`src/erga/`): `config` (erga.yml), `http` (injectable transport
 + retry), `openalex`/`crossref` (clients), `normalize` (raw work → canonical
 record), `dedup` (DOI + title clustering), `contamination` (homonym works
 inside a correct profile), `curation` (manual/overrides/tags), `pipeline`
-(stage orchestration), `output` (deterministic JSON), `verify`
-(disambiguation report), `cli`. `action.yml` at the root wraps
-`uvx erga build`; it holds no logic of its own.
+(stage orchestration), `output` (deterministic JSON, and the tolerant
+reader of the previous file), `delta` (what changed since it, and the
+reviewer's page), `verify` (disambiguation report), `cli`. `action.yml`
+at the root wraps `uvx erga build`; it holds no logic of its own.
 
 ## Commands
 

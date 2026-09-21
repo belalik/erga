@@ -23,11 +23,12 @@ from erga.curation import (
     unmatched_overrides,
 )
 from erga.dedup import cluster_by_title, dedup_by_doi
+from erga.delta import Delta, compute_delta
 from erga.errors import ConfigError, FetchError
 from erga.model import Work
 from erga.normalize import normalize_work, unmapped_types
 from erga.openalex import OpenAlexClient
-from erga.output import previous_venues, render, write_atomic
+from erga.output import document, dump, previous_venues, read_output, write_atomic
 
 
 def _declared_homes(
@@ -80,6 +81,8 @@ class BuildStats:
     total: int = 0
     written: bool = False
     warnings: list[str] = field(default_factory=list)
+    # What changed against the output file the build found in place.
+    delta: Delta = field(default_factory=lambda: Delta(total=0))
 
     def summary(self) -> str:
         return (
@@ -209,12 +212,18 @@ def build(
 
     works, stats.excluded_types = exclude_by_type(works, config.exclude_types)
 
-    backfill_venues(works, previous_venues(config.output_path), crossref, stats)
+    # Read once: the previous output feeds the venue ratchet here and the
+    # delta below, and it must be the file as found, before it is replaced.
+    previous = read_output(config.output_path)
+    backfill_venues(works, previous_venues(previous), crossref, stats)
 
     stats.warnings.extend(f"tag matched nothing: {w}" for w in apply_tags(works, tags))
 
     stats.total = len(works)
+    doc = document(works)
+    stats.delta = compute_delta(previous, doc["works"])
+    stats.warnings.extend(stats.delta.warnings())
     if not dry_run:
-        write_atomic(config.output_path, render(works))
+        write_atomic(config.output_path, dump(doc))
         stats.written = True
     return stats

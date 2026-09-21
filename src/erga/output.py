@@ -10,6 +10,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
+from typing import Any
 
 from erga.model import Work, doi_key
 
@@ -23,32 +24,39 @@ def sort_works(works: list[Work]) -> list[Work]:
     return sorted(works, key=lambda w: (-(w.year if w.year is not None else _NO_YEAR), w.id))
 
 
-def render(works: list[Work]) -> str:
-    document = {
-        "schema_version": SCHEMA_VERSION,
-        "works": [w.to_json() for w in sort_works(works)],
-    }
-    return json.dumps(document, indent=2, ensure_ascii=False) + "\n"
+def document(works: list[Work]) -> dict[str, Any]:
+    return {"schema_version": SCHEMA_VERSION, "works": [w.to_json() for w in sort_works(works)]}
 
 
-def previous_venues(path: Path) -> dict[str, str]:
-    """Venue by DOI-key and by id from the previous output, for the
-    last-known-good backfill ratchet.
+def dump(doc: dict[str, Any]) -> str:
+    return json.dumps(doc, indent=2, ensure_ascii=False) + "\n"
 
-    The reader-side inverse of render/Work.to_json, kept next to them so a
-    schema change touches one module. Deliberately tolerant: the previous
-    file may be absent, malformed, or from an older schema, and the ratchet
-    must degrade to "no known venues" rather than abort.
+
+def read_output(path: Path) -> list[dict[str, Any]] | None:
+    """Records of an existing output file, or None when there is none to read.
+
+    The reader-side inverse of document/Work.to_json, kept next to them so a
+    schema change touches one module. Deliberately tolerant: the file may be
+    absent, malformed, or from an older schema, and its readers (the venue
+    ratchet, the build delta) must degrade to "nothing known" rather than
+    abort.
     """
     try:
         with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
     except (OSError, ValueError):
-        return {}
+        return None
+    if not isinstance(data, dict) or not isinstance(data.get("works"), list):
+        return None
+    return [record for record in data["works"] if isinstance(record, dict)]
+
+
+def previous_venues(records: list[dict[str, Any]] | None) -> dict[str, str]:
+    """Venue by DOI-key and by id from the previous output's records, for
+    the last-known-good backfill ratchet."""
     venues: dict[str, str] = {}
-    works = data.get("works", []) if isinstance(data, dict) else []
-    for record in works:
-        if not isinstance(record, dict) or not record.get("venue"):
+    for record in records or []:
+        if not record.get("venue"):
             continue
         if record.get("doi"):
             venues[doi_key(str(record["doi"]))] = record["venue"]
