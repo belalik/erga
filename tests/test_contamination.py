@@ -500,12 +500,80 @@ def test_a_mostly_away_profile_is_reported_as_wrong_not_accused() -> None:
     ]
 
 
-def test_a_declared_tie_still_picks_no_side() -> None:
-    # Five against five: the declaration says where home is, not that half a
-    # profile outvotes the other half.
+def test_four_all_away_works_stay_below_the_evidence_floor() -> None:
+    # Below the floor both paths are silent, so no fixture can make them
+    # disagree here; the test below, one work over the floor, is what proves
+    # the declared branch runs on this shape. This one pins the floor's edge.
+    raw = [work(f"W9{i:02d}", institutions=[PALACKY], team=[f"A50000090{i:02d}"]) for i in range(4)]
+    assert find_contamination(raw, TRACKED_IDS, DECLARED) == []
+
+
+def test_five_all_away_works_are_a_profile_mismatch() -> None:
+    raw = [work(f"W9{i:02d}", institutions=[PALACKY], team=[f"A50000090{i:02d}"]) for i in range(5)]
+    assert find_contamination(raw, TRACKED_IDS, DECLARED) == [
+        ProfileMismatch(author="Katerina Malisova", country="GR", home_works=0, away_works=5)
+    ]
+
+
+def test_four_home_and_five_away_works_are_a_profile_mismatch() -> None:
     raw = [
-        *home_corpus(5),
+        *home_corpus(4),
         *(work(f"W9{i:02d}", institutions=[PALACKY], team=[f"A50000090{i:02d}"]) for i in range(5)),
+    ]
+    assert find_contamination(raw, TRACKED_IDS, DECLARED) == [
+        ProfileMismatch(author="Katerina Malisova", country="GR", home_works=4, away_works=5)
+    ]
+
+
+def test_five_home_and_four_away_works_flag_the_stranger_cluster() -> None:
+    raw = [
+        *(
+            work(
+                f"W0{i:02d}",
+                institutions=[AEGEAN, PALACKY],
+                team=["A5000000900", f"A50000001{i:02d}"],
+            )
+            for i in range(5)
+        ),
+        *(work(f"W9{i:02d}", institutions=[PALACKY], team=[f"A50000090{i:02d}"]) for i in range(4)),
+    ]
+    assert find_contamination(raw, TRACKED_IDS, DECLARED) == [
+        Cluster(
+            author="Katerina Malisova",
+            institution="Palacký University",
+            country="CZ",
+            work_ids=["W900", "W901", "W902", "W903"],
+            titles=["A paper", "A paper", "A paper", "A paper"],
+        )
+    ]
+
+
+def test_a_home_and_away_work_counts_once_below_the_evidence_floor() -> None:
+    # Counting the dual-affiliated work in both buckets turns four comparable
+    # works into five and creates an away-majority verdict. Both paths are
+    # silent below the floor, so this pins the count, not the branch.
+    raw = [
+        work("W800", institutions=[AEGEAN, PALACKY], team=["A5000008001"]),
+        *(work(f"W9{i:02d}", institutions=[PALACKY], team=[f"A50000090{i:02d}"]) for i in range(3)),
+    ]
+    assert find_contamination(raw, TRACKED_IDS, DECLARED) == []
+
+
+def test_a_declared_tie_still_picks_no_side() -> None:
+    # Five against five under the declaration. Inference instead sees CZ on
+    # eight works and flags the two at MIT, so silence proves this branch ran.
+    raw = [
+        *(
+            work(
+                f"W0{i:02d}",
+                institutions=[AEGEAN, PALACKY],
+                team=["A5000000900", f"A50000001{i:02d}"],
+            )
+            for i in range(5)
+        ),
+        *(work(f"W8{i:02d}", institutions=[PALACKY], team=[f"A50000080{i:02d}"]) for i in range(3)),
+        work("W900", institutions=[MIT], team=["A5000009001"]),
+        work("W901", institutions=[MIT], team=["A5000009002"]),
     ]
     assert find_contamination(raw, TRACKED_IDS, DECLARED) == []
 
@@ -514,10 +582,20 @@ def test_a_declaration_does_not_stand_in_for_a_career() -> None:
     # Four works at home is a thin record whoever names it, so the check
     # stays quiet: the maintainer supplied where home is, not how much of a
     # career is on file.
+    # Inference sees five CZ works and flags the two at MIT; declaration sees
+    # only four home works, so silence also proves the declared branch ran.
     raw = [
-        *home_corpus(4),
-        work("W900", institutions=[PALACKY], team=["A5000009001"]),
-        work("W901", institutions=[PALACKY], team=["A5000009002"]),
+        *(
+            work(
+                f"W0{i:02d}",
+                institutions=[AEGEAN, PALACKY],
+                team=["A5000000900", f"A50000001{i:02d}"],
+            )
+            for i in range(4)
+        ),
+        work("W800", institutions=[PALACKY], team=["A5000008001"]),
+        work("W900", institutions=[MIT], team=["A5000009001"]),
+        work("W901", institutions=[MIT], team=["A5000009002"]),
     ]
     assert find_contamination(raw, TRACKED_IDS, DECLARED) == []
 
@@ -623,6 +701,143 @@ def test_build_resolves_a_declared_home_from_the_corpus(tmp_path: Path) -> None:
     assert not [url for url, _ in transport.calls if "institutions" in url]
 
 
+def test_build_resolves_a_declared_home_absent_from_the_corpus(tmp_path: Path) -> None:
+    # The inferred path is silent on this diluted career, so the cluster also
+    # proves the authority result became the declaration used by the checker.
+    absent = "0zzzzzz99"
+    raw = [
+        *home_corpus(5),
+        *(work(f"W8{i:02d}", institutions=[UNPLACED], team=["A5000000900"]) for i in range(5)),
+        work("W900", institutions=[PALACKY], team=["A5000009001"]),
+        work("W901", institutions=[PALACKY], team=["A5000009002"]),
+    ]
+    transport = _declared_build(tmp_path, absent, raw)
+    transport.add(
+        f"api.openalex.org/institutions/ror:{absent}",
+        {},
+        {"id": "https://openalex.org/I100000001", "country_code": "GR"},
+    )
+
+    stats = _run(tmp_path, transport)
+    assert len([warning for warning in stats.warnings if "Palacký University (CZ)" in warning]) == 1
+
+
+def test_one_declaration_reaches_every_resolved_profile(tmp_path: Path) -> None:
+    orcid = "9999-0000-0000-0001"
+    second = "A5000000002"
+    (tmp_path / "erga.yml").write_text(
+        "mailto: you@example.org\n"
+        f"home: {AEGEAN_ROR}\n"
+        "authors:\n"
+        f"  - name: Katerina Malisova\n    orcid: {orcid}\n"
+        "output:\n  path: publications.json\n",
+        encoding="utf-8",
+    )
+    first_works = [
+        work(f"W1{i:02d}", institutions=[PALACKY], team=[f"A50000081{i:02d}"]) for i in range(5)
+    ]
+    second_works = [
+        work(f"W2{i:02d}", institutions=[PALACKY], team=[f"A50000082{i:02d}"]) for i in range(5)
+    ]
+    for raw in second_works:
+        raw["authorships"][0]["author"]["id"] = f"https://openalex.org/{second}"
+
+    transport = FakeTransport()
+    transport.add(
+        "api.openalex.org/authors",
+        {"filter": f"orcid:{orcid}"},
+        {
+            "meta": {"count": 2},
+            "results": [
+                {
+                    "id": f"https://openalex.org/{TRACKED}",
+                    "display_name": "Katerina Malisova",
+                    "display_name_alternatives": [],
+                    "works_count": 5,
+                },
+                {
+                    "id": f"https://openalex.org/{second}",
+                    "display_name": "Katerina Malisova",
+                    "display_name_alternatives": [],
+                    "works_count": 5,
+                },
+            ],
+        },
+    )
+    transport.add(
+        "api.openalex.org/works",
+        {"cursor": "*"},
+        {"meta": {"next_cursor": None}, "results": [*first_works, *second_works]},
+    )
+    transport.add(
+        f"api.openalex.org/institutions/ror:{AEGEAN_ROR}",
+        {},
+        {"id": "https://openalex.org/I100000001", "country_code": "GR"},
+    )
+
+    stats = _run(tmp_path, transport)
+    assert len([warning for warning in stats.warnings if "5 of 5" in warning]) == 2
+
+
+def test_a_per_author_home_replaces_the_top_level_home_in_build(tmp_path: Path) -> None:
+    raw = [
+        *(
+            work(
+                f"W0{i:02d}",
+                institutions=[PALACKY],
+                team=["A5000000800", f"A50000008{i:02d}"],
+            )
+            for i in range(5)
+        ),
+        *(work(f"W8{i:02d}", institutions=[UNPLACED], team=["A5000000800"]) for i in range(5)),
+        work("W900", institutions=[AEGEAN], team=["A5000009001"]),
+        work("W901", institutions=[AEGEAN], team=["A5000009002"]),
+    ]
+    transport = _declared_build(tmp_path, AEGEAN_ROR, raw)
+    (tmp_path / "erga.yml").write_text(
+        "mailto: you@example.org\n"
+        f"home: {AEGEAN_ROR}\n"
+        "authors:\n"
+        f"  - name: Katerina Malisova\n    openalex_id: {TRACKED}\n    home: 0packy456\n"
+        "output:\n  path: publications.json\n",
+        encoding="utf-8",
+    )
+
+    stats = _run(tmp_path, transport)
+    assert (
+        len([warning for warning in stats.warnings if "University of the Aegean (GR)" in warning])
+        == 1
+    )
+
+
+def test_a_per_author_null_opts_out_of_the_top_level_home_in_build(tmp_path: Path) -> None:
+    raw = [
+        *(
+            work(
+                f"W0{i:02d}",
+                institutions=[AEGEAN, PALACKY],
+                team=["A5000000900", f"A50000001{i:02d}"],
+            )
+            for i in range(4)
+        ),
+        work("W800", institutions=[PALACKY], team=["A5000008001"]),
+        work("W900", institutions=[MIT], team=["A5000009001"]),
+        work("W901", institutions=[MIT], team=["A5000009002"]),
+    ]
+    transport = _declared_build(tmp_path, AEGEAN_ROR, raw)
+    (tmp_path / "erga.yml").write_text(
+        "mailto: you@example.org\n"
+        f"home: {AEGEAN_ROR}\n"
+        "authors:\n"
+        f"  - name: Katerina Malisova\n    openalex_id: {TRACKED}\n    home: null\n"
+        "output:\n  path: publications.json\n",
+        encoding="utf-8",
+    )
+
+    stats = _run(tmp_path, transport)
+    assert len([warning for warning in stats.warnings if "MIT (US)" in warning]) == 1
+
+
 def test_an_opt_out_clears_a_shared_profiles_inherited_home(tmp_path: Path) -> None:
     """Two configured entries can land on one OpenAlex profile.
 
@@ -677,4 +892,17 @@ def test_an_unresolvable_declared_home_aborts_the_build(tmp_path: Path) -> None:
     transport.add(f"api.openalex.org/institutions/ror:{absent}", {}, None, status=404)
 
     with pytest.raises(ConfigError, match="names no OpenAlex institution"):
+        _run(tmp_path, transport)
+
+
+def test_a_countryless_corpus_and_authority_home_aborts_the_build(tmp_path: Path) -> None:
+    raw = [work(f"W{i:03d}", institutions=[AEGEAN_UNPLACED], countries=[]) for i in range(5)]
+    transport = _declared_build(tmp_path, AEGEAN_ROR, raw)
+    transport.add(
+        f"api.openalex.org/institutions/ror:{AEGEAN_ROR}",
+        {},
+        {"id": "https://openalex.org/I100000001", "country_code": None},
+    )
+
+    with pytest.raises(ConfigError, match="has no country in OpenAlex"):
         _run(tmp_path, transport)

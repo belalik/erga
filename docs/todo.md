@@ -1,30 +1,17 @@
 # TODO
 
 ## High
-- Ship v0.5.0 once the test gaps below are closed. The declared home is
-  measured (`docs/requirements-v1.md` section 7, 2026-09-21): no verdict
-  moved that a random career already had, no cluster added, the
-  wrong-profile verdict fired on 53 of 56 wrong declarations. What the
-  field was built to lift — a majority-rule silence — occurred zero times
-  in eighty random careers, so that claim stays unobserved; the only place
-  it can be seen is a department cohort with a real declaration, which is
-  the dpsd-new entry below
-- Close the declared-home test gaps Codex named, listed with line cites in
-  `local/codex-home-review/review.md`. None is a known defect; each is a
-  rule the code states that no test reaches: the evidence floor just below
-  and exactly at five with all-away data, the one-away-from-equal
-  boundaries (4/5 and 5/4), a work affiliated both home and away, the
-  authority fallback for a ROR absent from the corpus, the abort when
-  something resolves but carries no country, one configured author across
-  several profiles, and a per-author override or opt-out reaching the
-  check end to end. It also notes the declared-tie and thin-record tests
-  pass even if the declaration never reaches the checker, since the
-  inferred path is silent on the same fixtures — they lean on the rescue
-  test to establish the branch ran. Same pass: the `affiliated`
-  comprehension is duplicated verbatim between `_clusters_for` and
-  `_declared_for`, so a change to what counts as affiliated can drift
-  between the two paths unnoticed; one helper (`/code-review high` on
-  `689b860`, 2026-09-21, its only finding not already listed here)
+- Ship v0.5.0 (`docs/release.md`). The declared home is measured
+  (`docs/requirements-v1.md` section 7, 2026-09-21): no verdict moved that
+  a random career already had, no cluster added, the wrong-profile verdict
+  fired on 53 of 56 wrong declarations. What the field was built to lift —
+  a majority-rule silence — occurred zero times in eighty random careers,
+  so that claim stays unobserved; the only place it can be seen is a
+  department cohort with a real declaration, which is the dpsd-new entry
+  below. Its test gaps are closed (same day, 156 tests), and two of the
+  new tests say in a comment why a below-floor fixture cannot prove the
+  declared branch ran: both paths are silent there, so the sibling one
+  work over the floor is the proof
 - `resolve_author` reads one 25-row ORCID page and records a larger total
   without fetching the tail (`src/erga/openalex.py`), so "the declaration
   follows the person to every profile" is bounded by what the resolver
@@ -51,6 +38,12 @@
   - Undecided: stdout only or also an `action.yml` output; shrink guard in scope
 
 ## Low
+- Two configured authors with different non-null `home:` values can resolve
+  to one OpenAlex profile, and the later entry's declaration wins, as its
+  name already does (`src/erga/pipeline.py`, the `declarations.update`).
+  Neither the code nor section 5 defines that as the rule, so no test
+  freezes it (Codex, `local/codex-test-gaps/notes.md`). Define it, or
+  reject the overlap at config time with a message naming both entries
 - Mint the moving `v1` tag with the 1.0 release; policy in docs/action.md
 - Consumer recipes doc, unblocked now that a second consumer exists. Open it
   with the consumer contract: what erga asks of a consumer site (ORCID iDs,

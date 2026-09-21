@@ -228,8 +228,13 @@ def _home_institutions(affiliated: list[_WorkView], home: str, labels: _Labels) 
     }
 
 
+def _affiliated(views: list[_WorkView]) -> list[_WorkView]:
+    """Views carrying at least one piece of affiliation evidence."""
+    return [view for view in views if view.countries or view.institutions]
+
+
 def _clusters_for(author: str, views: list[_WorkView], labels: _Labels) -> list[Cluster]:
-    affiliated = [v for v in views if v.countries or v.institutions]
+    affiliated = _affiliated(views)
     country_counts = Counter(c for v in affiliated for c in v.countries)
     if not country_counts:
         return []
@@ -329,7 +334,7 @@ def _declared_for(
     which is deliberate when home is a guess and pointless when it is
     declared.
     """
-    affiliated = [v for v in views if v.countries or v.institutions]
+    affiliated = _affiliated(views)
 
     def at_declared_home(view: _WorkView) -> bool:
         return declared.country in view.countries or declared.institution_id in view.institutions
