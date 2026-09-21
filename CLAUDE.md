@@ -38,9 +38,13 @@ a feature: finding an iD is the consumer's step and the ORCID is trusted
 as given (README). The declared home (`home:`, a ROR id) is implemented on
 main and unreleased: it tells the check where an author works instead of
 inferring it, which lifts the majority gate's silence and lets a
-mostly-elsewhere profile be reported as wrong rather than accused. It
-ships in v0.5.0 once measured — it is tested but carries no live numbers,
-and every figure in section 7 describes the undeclared path. The probe
+mostly-elsewhere profile be reported as wrong rather than accused.
+Measured 2026-09-21 on the pinned cohorts (section 7): a declaration
+changes no verdict a random career already had and adds no cluster, the
+wrong-profile verdict fires on nearly every wrong declaration, and the
+silence it was built to lift did not occur once in eighty careers, so
+that claim is unobserved, not refuted. It ships in v0.5.0 once the
+declared-home test gaps in `docs/todo.md` are closed. The probe
 cohort is pinned since 2026-09-21 (`local/contamination-probes/`, one
 cached file per band, read offline): a before/after claim is valid
 against those files and against no earlier figure, since `sample=40&seed=17`

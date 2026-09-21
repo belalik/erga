@@ -455,6 +455,34 @@ Ported from the production origin pipeline with generalization deltas noted.
    earlier figure; deleting a cohort file redraws it and resets the
    baseline.
 
+   **The declared path, measured 2026-09-21 on the pinned cohorts**
+   (`local/contamination-probes/validate_declared.py`, offline). Each
+   author was declared at their modal institution, the one on most of
+   their own authorships, and checked both ways. Band `80-400`: 35 of 40
+   authors declarable, 34 verdicts unchanged (26 silent, 8 carrying the
+   same 17 clusters), and one silent career reported as a wrong profile
+   because its modal institution (13 works) sits outside its modal
+   country (53 works) — the proxy declared a minority-country institution
+   and got the verdict a wrong declaration is meant to get. Band `20-80`:
+   38 of 40 declarable, 38 unchanged. No cluster was added in either band.
+
+   No silence lifted, because none was the majority rule's. Of the seven
+   silent authors per band, 80-400 has five with no institution carrying a
+   country on any of their authorships, one with a single placed work and
+   one exact 35/35 tie; 20-80 has two with no such institution and five
+   with one to three placed works. The evidence floor and the tie rule
+   hold under a declaration by design, and the dilution case the narrowed
+   denominator was written for — a majority hidden by works that name an
+   institution without a country — occurred zero times in eighty careers.
+   The field's measurable value on a random cohort is therefore the
+   wrong-profile verdict, and that one fires: declaring each author's most
+   frequent institution in a *second* country produced a mismatch on 53 of
+   56 eligible careers, and the three silences were the flipped career
+   above, whose "wrong" country is its real home, plus two records of one
+   and three placed works. The lifted silence is unobserved rather than
+   refuted; a department cohort with a real declaration and a known
+   homonym (dpsd-new's pilot) is where it can be seen, if it exists.
+
    All of the above argue for the output staying advisory, which it is.
 5. Merge manual entries; their DOIs seed the dedup set so manual always
    wins.

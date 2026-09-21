@@ -1,19 +1,14 @@
 # TODO
 
 ## High
-- Measure the declared home before v0.5.0 ships. It is implemented, tested
-  and unmeasured: every number in `docs/requirements-v1.md` section 7
-  describes the undeclared path, and the harness cannot exercise the new one
-  because its sampled authors carry no declaration. Two ways in: a
-  declared-home variant of `validate_module.py`, over the pinned cohort
-  files (both bands cached offline since 2026-09-21, baselines in section
-  7), that declares each sampled author's modal institution and checks the
-  verdict does not move for careers the counts already placed; or
-  dpsd-new's pilot config, which is the only place a real declaration and
-  a known homonym coexist. The claim that needs testing is the one the
-  field was built for — that the gate's silence lifts on careers it was
-  skipping (7 of 40 on each pinned band) without new false positives
-  arriving with it
+- Ship v0.5.0 once the test gaps below are closed. The declared home is
+  measured (`docs/requirements-v1.md` section 7, 2026-09-21): no verdict
+  moved that a random career already had, no cluster added, the
+  wrong-profile verdict fired on 53 of 56 wrong declarations. What the
+  field was built to lift — a majority-rule silence — occurred zero times
+  in eighty random careers, so that claim stays unobserved; the only place
+  it can be seen is a department cohort with a real declaration, which is
+  the dpsd-new entry below
 - Close the declared-home test gaps Codex named, listed with line cites in
   `local/codex-home-review/review.md`. None is a known defect; each is a
   rule the code states that no test reaches: the evidence floor just below
@@ -36,8 +31,11 @@
   materializes. Pre-existing and unrelated to `home:`, surfaced by the
   same review; decide whether the promise or the resolver should move
 - Tell dpsd-new the field is in and what its config line looks like. They
-  asked for it, their pilot is the only place a real declaration and a known
-  homonym coexist, and the measurement above may need their data
+  asked for it, and their pilot is the only place a real declaration and a
+  known homonym coexist. Ask for one thing back: a build with `home:` set
+  and the warnings it prints beside the undeclared run's, since a lifted
+  silence or a wrong-profile verdict on a real department is the
+  observation the random cohorts could not produce
 
 ## Normal
 - Build-delta summary: diff the `publications.json` already at the output path
