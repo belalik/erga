@@ -429,24 +429,31 @@ Ported from the production origin pipeline with generalization deltas noted.
    co-listing beside a home institution is the whitelist defect fixed
    above and a declaration must not reintroduce it pointed the other way.
 
-   **The numbers above are a snapshot, and the harness cannot currently
-   produce a controlled comparison at all.** They were taken on 2026-09-02
-   against that day's OpenAlex index. Three runs of the *unchanged* module
-   on 2026-09-21 gave 0.15 per author with 34 of 40 clearing the gate,
-   then the same again, then 0.17 with 35 of 40 — and the third differed
-   because `sample=40&seed=17` had returned a different cohort: 32 of the
-   40 author ids matched the set drawn ninety minutes earlier, eight were
-   new. Two calls minutes apart do return an identical list, so the seed
-   looks stable until the window widens.
+   **The numbers above are snapshots of cohorts no one recorded, and
+   nothing measured after them can be compared with them.** They were
+   taken on 2026-09-02 against that day's OpenAlex index. Three runs of
+   the *unchanged* module on 2026-09-21 gave 0.15 per author with 34 of 40
+   clearing the gate, then the same again, then 0.17 with 35 of 40 — and
+   the third differed because `sample=40&seed=17` had returned a different
+   cohort: 32 of the 40 author ids matched the set drawn ninety minutes
+   earlier, eight were new. Two calls minutes apart do return an identical
+   list, so the seed looks stable until the window widens. Sampling, not
+   the rule, was the dominant term in any difference between two runs.
 
-   That makes the sampling, not the rule, the dominant term in any
-   difference between two runs, and it cannot be reasoned around: the
-   cohort of a past run was never recorded, so a moved number can always
-   be re-drawn people rather than changed behaviour. Until the cohort is
-   pinned to a stored list of author ids (`docs/todo.md`), the harness
-   measures the current index and nothing else, and no live before/after
-   claim about a rule change should be made with it. Unit tests are the
-   regression signal in the meantime.
+   **The cohort is pinned since 2026-09-21.** The harness draws once per
+   band, stores the forty authors with their fetched works in
+   `local/contamination-probes/cohort-<band>.json`, and every later run
+   reads that file with no network call, so a moved number is now the rule
+   and nothing else. The pinned baselines, same unchanged module: band
+   `80-400`, 17 clusters across 8 of 40 authors, sizes two to nine, 0.42
+   per author, 33 of 40 clearing the gate; band `20-80`, 7 clusters across
+   5 of 40, sizes two to eight, 0.17 per author, 33 of 40. The 80-400 draw
+   is the highest the module has ever scored, on code that had scored 0.15
+   two hours earlier: that spread is the sampling term at full size, and
+   the upper-bound caveat above applies to it unchanged. A live
+   before/after claim is possible against these two files and against no
+   earlier figure; deleting a cohort file redraws it and resets the
+   baseline.
 
    All of the above argue for the output staying advisory, which it is.
 5. Merge manual entries; their DOIs seed the dedup set so manual always

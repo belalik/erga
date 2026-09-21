@@ -4,22 +4,16 @@
 - Measure the declared home before v0.5.0 ships. It is implemented, tested
   and unmeasured: every number in `docs/requirements-v1.md` section 7
   describes the undeclared path, and the harness cannot exercise the new one
-  because its 40 sampled authors carry no declaration. Two ways in: a
-  declared-home variant of `validate_module.py` that declares each sampled
-  author's modal institution and checks the verdict does not move for
-  careers the counts already placed, or dpsd-new's pilot config, which is
-  the only place a real declaration and a known homonym coexist. The claim
-  that needs testing is the one the field was built for — that the gate's
-  silence lifts on careers it was skipping (7 of 40 at 20-80 works) without
-  new false positives arriving with it
-- Freeze the probe cohort. This is now a prerequisite for the entry above,
-  not a convenience: `sample=40&seed=17` re-drew 8 of its 40 authors inside
-  ninety minutes on 2026-09-21 (identical ids on two calls minutes apart,
-  32 of 40 an hour and a half later), and across nineteen days the same
-  unchanged module read 0.25 → 0.15 per author. No run's cohort was ever
-  stored, so no past number can be compared to a new one. Store the 40 ids,
-  and ideally cache their fetched works beside them, which also makes a
-  re-run free and offline
+  because its sampled authors carry no declaration. Two ways in: a
+  declared-home variant of `validate_module.py`, over the pinned cohort
+  files (both bands cached offline since 2026-09-21, baselines in section
+  7), that declares each sampled author's modal institution and checks the
+  verdict does not move for careers the counts already placed; or
+  dpsd-new's pilot config, which is the only place a real declaration and
+  a known homonym coexist. The claim that needs testing is the one the
+  field was built for — that the gate's silence lifts on careers it was
+  skipping (7 of 40 on each pinned band) without new false positives
+  arriving with it
 - Close the declared-home test gaps Codex named, listed with line cites in
   `local/codex-home-review/review.md`. None is a known defect; each is a
   rule the code states that no test reaches: the evidence floor just below
@@ -31,7 +25,11 @@
   check end to end. It also notes the declared-tie and thin-record tests
   pass even if the declaration never reaches the checker, since the
   inferred path is silent on the same fixtures — they lean on the rescue
-  test to establish the branch ran
+  test to establish the branch ran. Same pass: the `affiliated`
+  comprehension is duplicated verbatim between `_clusters_for` and
+  `_declared_for`, so a change to what counts as affiliated can drift
+  between the two paths unnoticed; one helper (`/code-review high` on
+  `689b860`, 2026-09-21, its only finding not already listed here)
 - `resolve_author` reads one 25-row ORCID page and records a larger total
   without fetching the tail (`src/erga/openalex.py`), so "the declaration
   follows the person to every profile" is bounded by what the resolver
