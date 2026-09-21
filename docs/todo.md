@@ -1,30 +1,18 @@
 # TODO
 
 ## High
-- Ship v0.5.0 (`docs/release.md`). The declared home is measured
-  (`docs/requirements-v1.md` section 7, 2026-09-21): no verdict moved that
-  a random career already had, no cluster added, the wrong-profile verdict
-  fired on 53 of 56 wrong declarations. What the field was built to lift —
-  a majority-rule silence — occurred zero times in eighty random careers,
-  so that claim stays unobserved; the only place it can be seen is a
-  department cohort with a real declaration, which is the dpsd-new entry
-  below. Its test gaps are closed (same day, 156 tests), and two of the
-  new tests say in a comment why a below-floor fixture cannot prove the
-  declared branch ran: both paths are silent there, so the sibling one
-  work over the floor is the proof
 - `resolve_author` reads one 25-row ORCID page and records a larger total
   without fetching the tail (`src/erga/openalex.py`), so "the declaration
   follows the person to every profile" is bounded by what the resolver
   materializes. Pre-existing and unrelated to `home:`, surfaced by the
   same review; decide whether the promise or the resolver should move
-- Tell dpsd-new the field is in and what its config line looks like. They
-  asked for it, and their pilot is the only place a real declaration and a
-  known homonym coexist. Ask for one thing back: a build with `home:` set
-  and the warnings it prints beside the undeclared run's, since a lifted
-  silence or a wrong-profile verdict on a real department is the
-  observation the random cohorts could not produce
 
 ## Normal
+- When dpsd-new routes back a declared build's warnings beside its
+  undeclared run's (asked 2026-09-21 via their inbox), enter it in
+  `docs/requirements-v1.md` section 7 as the first department-scale
+  observation of the declared home; it is the only place the lifted
+  silence can be seen
 - Build-delta summary: diff the `publications.json` already at the output path
   against the new build and report what changed, with schema knowledge of which
   fields are cosmetic (cited_by_count) versus audit-critical — consumers need it
