@@ -35,8 +35,17 @@ and its rule is settled on the one career that could measure recall, so
 do not tune it on local data: `docs/requirements-v1.md` section 7 has
 the measurements and the three standing caveats. Identity is a line, not
 a feature: finding an iD is the consumer's step and the ORCID is trusted
-as given (README). Next is the declared home for the check (v0.5.0, work
-order in `docs/todo.md`). See `docs/requirements-v1.md` for the v1
+as given (README). The declared home (`home:`, a ROR id) is implemented on
+main and unreleased: it tells the check where an author works instead of
+inferring it, which lifts the majority gate's silence and lets a
+mostly-elsewhere profile be reported as wrong rather than accused. It
+ships in v0.5.0 once measured — it is tested but carries no live numbers,
+and every figure in section 7 describes the undeclared path. Those figures are
+snapshots, and the harness cannot currently produce a controlled
+comparison: `sample=40&seed=17` re-drew eight of its forty authors within
+ninety minutes on 2026-09-21, and no run's cohort was ever recorded, so a
+moved number is sampling before it is behaviour. Pin the cohort
+(`docs/todo.md`) before citing any live before/after. See `docs/requirements-v1.md` for the v1
 design, `docs/action.md` for the Action, and `docs/todo.md` for open
 work.
 

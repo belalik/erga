@@ -1,21 +1,45 @@
 # TODO
 
 ## High
-- Declared home for the contamination check, target v0.5.0. Decided
-  2026-09-02 together with dpsd-new's identity entry: optional `home:` at the
-  top level (a ROR id; OpenAlex authorship institutions carry `ror` as a
-  full `https://ror.org/...` URL under the existing select, verified live
-  2026-09-02) with a per-author override. Used only by the check: home
-  country and home institution come from the declaration instead of the
-  plurality, the majority gate is bypassed, and when most affiliated works
-  are not at home the check says the profile looks wrong (verify's question)
-  instead of listing them as strangers. Institution country from the corpus
-  labels, else one `/institutions/ror:` fetch. Never identity evidence; the
-  docs say it is trusted as given, like the ORCID. The Zissis trap (a wrong
-  same-name profile carrying the right institution) is a wrong-person
-  failure, which this field does not touch in either direction. Motivation
-  in numbers: at 20-80 works the gate silences 7 of 40 authors
-  (docs/requirements-v1.md section 7)
+- Measure the declared home before v0.5.0 ships. It is implemented, tested
+  and unmeasured: every number in `docs/requirements-v1.md` section 7
+  describes the undeclared path, and the harness cannot exercise the new one
+  because its 40 sampled authors carry no declaration. Two ways in: a
+  declared-home variant of `validate_module.py` that declares each sampled
+  author's modal institution and checks the verdict does not move for
+  careers the counts already placed, or dpsd-new's pilot config, which is
+  the only place a real declaration and a known homonym coexist. The claim
+  that needs testing is the one the field was built for — that the gate's
+  silence lifts on careers it was skipping (7 of 40 at 20-80 works) without
+  new false positives arriving with it
+- Freeze the probe cohort. This is now a prerequisite for the entry above,
+  not a convenience: `sample=40&seed=17` re-drew 8 of its 40 authors inside
+  ninety minutes on 2026-09-21 (identical ids on two calls minutes apart,
+  32 of 40 an hour and a half later), and across nineteen days the same
+  unchanged module read 0.25 → 0.15 per author. No run's cohort was ever
+  stored, so no past number can be compared to a new one. Store the 40 ids,
+  and ideally cache their fetched works beside them, which also makes a
+  re-run free and offline
+- Close the declared-home test gaps Codex named, listed with line cites in
+  `local/codex-home-review/review.md`. None is a known defect; each is a
+  rule the code states that no test reaches: the evidence floor just below
+  and exactly at five with all-away data, the one-away-from-equal
+  boundaries (4/5 and 5/4), a work affiliated both home and away, the
+  authority fallback for a ROR absent from the corpus, the abort when
+  something resolves but carries no country, one configured author across
+  several profiles, and a per-author override or opt-out reaching the
+  check end to end. It also notes the declared-tie and thin-record tests
+  pass even if the declaration never reaches the checker, since the
+  inferred path is silent on the same fixtures — they lean on the rescue
+  test to establish the branch ran
+- `resolve_author` reads one 25-row ORCID page and records a larger total
+  without fetching the tail (`src/erga/openalex.py`), so "the declaration
+  follows the person to every profile" is bounded by what the resolver
+  materializes. Pre-existing and unrelated to `home:`, surfaced by the
+  same review; decide whether the promise or the resolver should move
+- Tell dpsd-new the field is in and what its config line looks like. They
+  asked for it, their pilot is the only place a real declaration and a known
+  homonym coexist, and the measurement above may need their data
 
 ## Normal
 - Build-delta summary: diff the `publications.json` already at the output path

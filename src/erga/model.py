@@ -41,6 +41,16 @@ def normalize_orcid(value: str) -> str:
     return _ORCID_HOST.sub("", value.strip()).upper()
 
 
+def bare_ror(value: str) -> str:
+    """Bare ROR id from bare or URL form, lowercased.
+
+    Shape only, no validation: the config path checks the host and the
+    format, while the corpus path takes whatever OpenAlex carries. Both need
+    the same last-segment rule, and having it twice is how they would drift.
+    """
+    return value.strip().rstrip("/").rsplit("/", 1)[-1].lower()
+
+
 def doi_key(value: str) -> str:
     """Comparison key for a DOI: bare form, lowercase."""
     return _DOI_HOST.sub("", value.strip()).lower()

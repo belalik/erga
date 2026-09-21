@@ -37,6 +37,7 @@ with `uvx erga`). Write an `erga.yml`:
 
 ```yaml
 mailto: you@example.org          # identifies requests to Crossref/OpenAlex
+# home: https://ror.org/...      # optional: where these people work (ROR id)
 authors:
   - name: Josiah Carberry
     orcid: 9999-9999-9999-9999   # placeholder: no real iD starts 9999
@@ -81,6 +82,14 @@ career is mostly in one place, `build` also warns about clusters of works
 tied to an institution that share no collaborator and no institution with
 the rest of the profile, which is what a same-name stranger's works look
 like. The warning is advisory; whether to exclude them is your call.
+
+That check works out where "one place" is by counting, which goes quiet on
+anyone whose record is thin or scattered. Setting `home:` to your
+institution's ROR id tells it instead, for everyone in the file or per
+author, and then it can also tell you that a profile is mostly somebody
+else's work rather than listing that majority as strangers. It is only ever
+read by this check: like the ORCID, a declared home is trusted as given and
+is never treated as evidence that a profile is the right person.
 
 Finding the iD in the first place is your step, and erga does not guess at
 it. An ORCID in `erga.yml` is trusted as given. What worked for a department

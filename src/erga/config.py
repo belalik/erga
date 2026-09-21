@@ -10,10 +10,37 @@ from typing import Any
 import yaml
 
 from erga.errors import ConfigError
-from erga.model import normalize_orcid, validate_work_type
+from erga.model import bare_ror, normalize_orcid, validate_work_type
 
 _ORCID_RE = re.compile(r"^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$")
 _OPENALEX_AUTHOR_RE = re.compile(r"^A\d+$")
+# A ROR id is "0" then six characters of a base32 alphabet without i, l, o
+# and u, then two check digits. The checksum is not verified here: a
+# well-formed id that names no institution fails at resolution, with a
+# message that can say so.
+_ROR_RE = re.compile(r"^0[0-9a-hj-km-np-tv-z]{6}\d{2}$")
+# The whole value when a URL is given, so the host is checked rather than
+# merely found somewhere in the string: `https://evil.example/ror.org/<id>`
+# is not a ROR URL, and `https://ROR.ORG/<id>` is.
+_ROR_URL_RE = re.compile(r"^(?:https?://)?ror\.org/(?P<id>[^/]+)$", re.IGNORECASE)
+
+
+def normalize_ror(value: Any, where: str) -> str:
+    """Canonical bare ROR id, from a bare id or a ror.org URL.
+
+    OpenAlex carries an institution's `ror` as a full URL, so the bare form
+    is what the corpus is matched on, by suffix.
+    """
+    text = str(value).strip().rstrip("/")
+    if "/" in text:
+        url = _ROR_URL_RE.match(text)
+        if not url:
+            raise ConfigError(f"{where}: {value!r} is not a ror.org id")
+        text = url.group("id")
+    bare = bare_ror(text)
+    if not _ROR_RE.match(bare):
+        raise ConfigError(f"{where}: invalid ROR id {value!r} (expected e.g. 05a28rw58)")
+    return bare
 
 
 @dataclass
@@ -22,6 +49,9 @@ class AuthorConfig:
     orcid: str | None = None
     openalex_id: str | None = None
     aliases: list[str] = field(default_factory=list)
+    # The declaration that applies to this author, top-level default already
+    # resolved in. None means no declaration governs them.
+    home: str | None = None
 
     def match_names(self) -> set[str]:
         """Casefolded name and aliases, for matching manual entries."""
@@ -37,6 +67,9 @@ class AuthorConfig:
 class Config:
     mailto: str
     authors: list[AuthorConfig]
+    # The top-level declaration, kept as configured; every author already
+    # carries the one that governs them.
+    home: str | None = None
     api_key_env: str = "OPENALEX_API_KEY"
     include_xpac: bool = False
     output_path: Path = Path("publications.json")
@@ -76,11 +109,11 @@ def expect_str_list(value: Any, where: str) -> list[str]:
     return list(value)
 
 
-def _parse_author(entry: Any, path: Path, index: int) -> AuthorConfig:
+def _parse_author(entry: Any, path: Path, index: int, default_home: str | None) -> AuthorConfig:
     where = f"{path}: authors[{index}]"
     if not isinstance(entry, dict):
         raise ConfigError(f"{where}: expected a mapping")
-    reject_unknown_keys(entry, {"name", "orcid", "openalex_id", "aliases"}, where)
+    reject_unknown_keys(entry, {"name", "orcid", "openalex_id", "aliases", "home"}, where)
     name = entry.get("name")
     if not isinstance(name, str) or not name.strip():
         raise ConfigError(f"{where}: 'name' is required")
@@ -98,7 +131,18 @@ def _parse_author(entry: Any, path: Path, index: int) -> AuthorConfig:
     # flag but resolves and fetches nothing (authors without any registrar
     # identity, or whose works OpenAlex misassigns to a conflated profile).
     aliases = expect_str_list(entry.get("aliases", []), f"{where}: 'aliases'")
-    return AuthorConfig(name=name.strip(), orcid=orcid, openalex_id=openalex_id, aliases=aliases)
+    # Three states, because a department-wide default must be able to carry
+    # an exception: the key absent inherits it, a value replaces it, and an
+    # explicit null opts this author out without inventing a false ROR.
+    if "home" not in entry:
+        home = default_home
+    elif entry["home"] is None:
+        home = None
+    else:
+        home = normalize_ror(entry["home"], f"{where}: 'home'")
+    return AuthorConfig(
+        name=name.strip(), orcid=orcid, openalex_id=openalex_id, aliases=aliases, home=home
+    )
 
 
 def _section(data: dict[str, Any], key: str, path: Path, allowed: set[str]) -> dict[str, Any]:
@@ -113,16 +157,21 @@ def load_config(path: Path) -> Config:
     """Load and validate erga.yml; relative paths resolve against its directory."""
     data = load_yaml(path, dict)
     base = path.resolve().parent
-    reject_unknown_keys(data, {"mailto", "authors", "openalex", "output", "curation"}, str(path))
+    reject_unknown_keys(
+        data, {"mailto", "authors", "openalex", "output", "curation", "home"}, str(path)
+    )
 
     mailto = data.get("mailto")
     if not isinstance(mailto, str) or "@" not in mailto:
         raise ConfigError(f"{path}: 'mailto' is required (identifies requests to the APIs)")
 
+    raw_home = data.get("home")
+    home = normalize_ror(raw_home, f"{path}: 'home'") if raw_home is not None else None
+
     raw_authors = data.get("authors")
     if not isinstance(raw_authors, list) or not raw_authors:
         raise ConfigError(f"{path}: 'authors' must be a non-empty list")
-    authors = [_parse_author(entry, path, i) for i, entry in enumerate(raw_authors)]
+    authors = [_parse_author(entry, path, i, home) for i, entry in enumerate(raw_authors)]
 
     openalex = _section(data, "openalex", path, {"api_key_env", "include_xpac"})
     output = _section(data, "output", path, {"path", "exclude_types"})
@@ -137,6 +186,7 @@ def load_config(path: Path) -> Config:
     return Config(
         mailto=mailto.strip(),
         authors=authors,
+        home=home,
         api_key_env=str(openalex.get("api_key_env", "OPENALEX_API_KEY")),
         include_xpac=bool(openalex.get("include_xpac", False)),
         output_path=base / str(output.get("path", "publications.json")),

@@ -215,13 +215,16 @@ strangers' works instead of failing.
 
 ```yaml
 mailto: you@example.org          # identifies requests to Crossref/OpenAlex
+home: https://ror.org/0aegean12  # optional: where these people work (ROR id)
 authors:
   - name: Josiah Carberry
     orcid: 9999-9999-9999-9999   # placeholder: no real iD starts 9999
     aliases: ["J. S. Carberry"]  # optional, for matching manual entries
   - name: Another Person
     openalex_id: A5000000000     # alternative when ORCID is missing/wrong
+    home: https://ror.org/0packy456   # this person's own, overriding above
   - name: Third Person           # no ids at all: tracked by name only
+    home: null                   # opts out of the department-wide default
 
 openalex:
   api_key_env: OPENALEX_API_KEY  # optional; env var name, never the key itself
@@ -236,6 +239,25 @@ curation:                        # optional; defaults shown, relative to config
   overrides: overrides.yml
   tags: tags.yml
 ```
+
+`home` is a ROR id, bare or as a ror.org URL, and it is read by nothing but
+the contamination check. It says where these people work, so the check can
+stop inferring that from the counts. Three states: the key absent on an
+author inherits the top-level declaration, a value replaces it, and an
+explicit `null` opts that author out — a department default has to be able
+to carry a visitor without anyone inventing a false ROR. A declaration
+follows the configured person, so it covers every OpenAlex profile their
+entry resolves to, including split identities.
+
+It is never identity evidence. Like the ORCID, it is trusted as given: erga
+does not check that the declared institution is really where the author
+works, and a wrong declaration produces a wrong verdict rather than a
+correction. Resolution is from the corpus first, since every authorship
+carries both the ROR and the OpenAlex id, and costs one
+`/institutions/ror:` lookup only for a ROR the corpus never names. An
+unresolvable declaration aborts the build rather than falling back to the
+inferred rule: the same config and corpus would otherwise print different
+advice depending on whether the API answered.
 
 Author resolution: ORCID resolves via the OpenAlex authors endpoint
 (singleton lookups are free). An author entry may pin `openalex_id`
@@ -292,16 +314,19 @@ Ported from the production origin pipeline with generalization deltas noted.
    author `tracked` flags. The raw works are also read for contamination
    (a homonym's works sitting inside a correctly-named profile, which
    `verify` cannot see because the names match): a work is a candidate
-   only when it has affiliation data, falls outside the author's majority
+   only when it has affiliation data, falls outside the author's home
    country, shares no institution with it, is not solo-authored, and its
    co-author team appears nowhere in the rest of that career; candidates
    are then reported only in groups of two or more sharing an institution.
+   Home is the majority country of the author's affiliated works, or the
+   declared `home:` where the config carries one, which also lets the
+   check say a profile looks wrong instead of listing its majority.
    Output is warnings only: erga names the cluster, the maintainer decides
    and excludes.
 
    **The rule is settled (2026-08-17); the code was independently
    reviewed on 2026-09-02 and released in v0.4.0 the same day. The
-   declared home in `docs/todo.md` follows in v0.5.** Two variants were measured against 40 live careers,
+   declared home ships in v0.5.0 and is described below.** Two variants were measured against 40 live careers,
    but only for false positives. Counting collaborators across the whole
    fetched corpus keeps noise at ~0.1 clusters per author; counting them
    across the career only, holding outliers out of the network, raises
@@ -374,12 +399,54 @@ Ported from the production origin pipeline with generalization deltas noted.
    stranger's works both outnumber the genuine ones and clear
    `MIN_HOME_WORKS`, the two sides are structurally symmetric and the
    check will still pick the wrong one. That profile is mostly not its
-   author's, which is `verify`'s question; erga has no declared home
-   institution to break the tie yet. Decided 2026-09-02: an optional
-   ROR-keyed `home:` lands next (work order in `docs/todo.md`), used only
-   by this check and never as evidence that a profile is the right person.
-   It also ends the majority gate's silence, which at 20-80 works skips 7
-   of 40 authors.
+   author's, which is `verify`'s question.
+
+   **The declared home (v0.5.0) answers the third caveat where it is
+   declared.** With `home:` set (section 5), the check stops inferring
+   where home is and is told, which changes four things. The majority test
+   that chose home is gone: nothing a stranger cluster can do wins the
+   baseline now. `MIN_HOME_WORKS` stays, because a declaration supplies
+   where home is and not how much career is on file — the maintainer did
+   not assert that three works characterize anyone. The denominator
+   narrows to works whose affiliation positively places them somewhere, so
+   a work naming an institution the corpus never gave a country to no
+   longer dilutes the count; that dilution is deliberate when home is a
+   guess and pointless when it is declared, and it is the silence the
+   field was asked for. And a profile whose placed works are mostly *not*
+   at home is reported as a wrong profile, with no exclusion advice,
+   instead of having its majority listed as strangers — excluding those
+   works one at a time would dismantle the evidence that the iD or the
+   declaration is what is wrong.
+
+   Three thresholds, stated so they are arguable: the wrong-profile
+   verdict needs a strict majority of placed works away from home, cluster
+   detection needs a strict majority at home, and anything between —
+   a tie, or evidence split three ways — stays silent, as it does
+   undeclared. Away is counted positively and is never the complement of
+   home, so an unplaced work votes for neither side. The declared
+   institution is home even on a work the corpus never placed; every other
+   institution still has to earn it on its own country evidence, because
+   co-listing beside a home institution is the whitelist defect fixed
+   above and a declaration must not reintroduce it pointed the other way.
+
+   **The numbers above are a snapshot, and the harness cannot currently
+   produce a controlled comparison at all.** They were taken on 2026-09-02
+   against that day's OpenAlex index. Three runs of the *unchanged* module
+   on 2026-09-21 gave 0.15 per author with 34 of 40 clearing the gate,
+   then the same again, then 0.17 with 35 of 40 — and the third differed
+   because `sample=40&seed=17` had returned a different cohort: 32 of the
+   40 author ids matched the set drawn ninety minutes earlier, eight were
+   new. Two calls minutes apart do return an identical list, so the seed
+   looks stable until the window widens.
+
+   That makes the sampling, not the rule, the dominant term in any
+   difference between two runs, and it cannot be reasoned around: the
+   cohort of a past run was never recorded, so a moved number can always
+   be re-drawn people rather than changed behaviour. Until the cohort is
+   pinned to a stored list of author ids (`docs/todo.md`), the harness
+   measures the current index and nothing else, and no live before/after
+   claim about a rule change should be made with it. Unit tests are the
+   regression signal in the meantime.
 
    All of the above argue for the output staying advisory, which it is.
 5. Merge manual entries; their DOIs seed the dedup set so manual always

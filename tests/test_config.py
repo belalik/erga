@@ -108,3 +108,68 @@ def test_missing_config_file(tmp_path: Path) -> None:
 def test_normalize_orcid() -> None:
     assert normalize_orcid("https://orcid.org/0000-0002-1825-009x") == "0000-0002-1825-009X"
     assert normalize_orcid("0000-0002-1825-0097") == "0000-0002-1825-0097"
+
+
+DECLARED_HOME = """\
+mailto: maintainer@example.org
+home: https://ror.org/0AEGEAN12
+authors:
+  - name: Josiah Carberry
+    orcid: 9999-0000-0000-0001
+  - name: A Visitor
+    orcid: 9999-0000-0000-0002
+    home: 0packy456
+  - name: An Exception
+    orcid: 9999-0000-0000-0003
+    home: null
+"""
+
+
+def test_home_declaration_inherits_replaces_and_opts_out(tmp_path: Path) -> None:
+    config = load_config(write_config(tmp_path, DECLARED_HOME))
+    assert config.home == "0aegean12"
+    # Absent inherits the department default; a value replaces it; an
+    # explicit null opts one person out without inventing a false ROR.
+    assert [a.home for a in config.authors] == ["0aegean12", "0packy456", None]
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["0aegean12", "https://ror.org/0aegean12", "ror.org/0aegean12", "https://ROR.ORG/0AEGEAN12"],
+)
+def test_every_spelling_of_one_ror_canonicalizes_the_same(tmp_path: Path, value: str) -> None:
+    content = MINIMAL.replace("mailto:", f"home: {value}\nmailto:")
+    assert load_config(write_config(tmp_path, content)).home == "0aegean12"
+
+
+def test_no_declaration_leaves_every_author_undeclared(tmp_path: Path) -> None:
+    config = load_config(write_config(tmp_path, MINIMAL))
+    assert config.home is None
+    assert config.authors[0].home is None
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "not-a-ror",
+        # Right shape, wrong authority: a ROR is a ror.org id or nothing.
+        "https://example.org/0aegean12",
+        # The authority has to be the host, not a substring anywhere in it.
+        "https://evil.example/ror.org/0aegean12",
+        "prefix-ror.org/0aegean12",
+        # 'l' is not in the ROR alphabet.
+        "0aeglan12",
+        # The last two characters are check digits.
+        "0aegeanab",
+    ],
+)
+def test_a_malformed_home_is_a_config_error(tmp_path: Path, value: str) -> None:
+    content = MINIMAL.replace("mailto:", f"home: {value}\nmailto:")
+    with pytest.raises(ConfigError, match=r"ROR|ror\.org"):
+        load_config(write_config(tmp_path, content))
+
+
+def test_a_malformed_author_home_names_the_author(tmp_path: Path) -> None:
+    content = MINIMAL + "    home: nonsense\n"
+    with pytest.raises(ConfigError, match=r"authors\[0\]"):
+        load_config(write_config(tmp_path, content))

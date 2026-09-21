@@ -147,6 +147,19 @@ class OpenAlexClient:
             orcid_profile_count=orcid_count,
         )
 
+    def resolve_institution(self, ror: str) -> tuple[str, str | None] | None:
+        """(OpenAlex id, country) for a bare ROR id, or None if it names nothing.
+
+        A transport failure raises, like every other fetch: a declaration
+        that quietly stopped governing the contamination check because the
+        API blinked would change the advice erga prints, with nothing in the
+        output to tell the two runs apart.
+        """
+        data = self._get(f"/institutions/ror:{ror}", {"select": "id,country_code"}, ok_missing=True)
+        if data is None:
+            return None
+        return strip_openalex_host(data["id"]), data.get("country_code")
+
     def search_authors(self, name: str, count: int = 10) -> tuple[list[AuthorProfile], int]:
         """Author profiles matching a name search, plus the total match count.
 

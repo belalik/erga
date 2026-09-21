@@ -5,7 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from erga.config import Config
-from erga.contamination import contamination_warnings, find_contamination
+from erga.contamination import (
+    DeclaredHome,
+    contamination_warnings,
+    find_contamination,
+    institution_index,
+)
 from erga.crossref import CrossrefClient
 from erga.curation import (
     apply_overrides,
@@ -18,11 +23,49 @@ from erga.curation import (
     unmatched_overrides,
 )
 from erga.dedup import cluster_by_title, dedup_by_doi
-from erga.errors import FetchError
+from erga.errors import ConfigError, FetchError
 from erga.model import Work
 from erga.normalize import normalize_work, unmapped_types
 from erga.openalex import OpenAlexClient
 from erga.output import previous_venues, render, write_atomic
+
+
+def _declared_homes(
+    declarations: dict[str, str | None],
+    raw_works: list[dict[str, object]],
+    openalex: OpenAlexClient,
+) -> dict[str, DeclaredHome]:
+    """Resolve each declared ROR once, then attach it to every profile it covers.
+
+    The corpus answers most declarations for free, since every authorship
+    carries both identifiers; only a ROR it never names, or names without a
+    country, costs a lookup. Resolution runs after the works fetch for that
+    reason, which is safe because nothing is written until the build ends.
+
+    An unresolvable declaration aborts. Falling back to the inferred rule
+    would leave two runs with the same config and the same corpus printing
+    different advice — cluster warnings that say to exclude works by DOI,
+    instead of the verdict that the profile itself is wrong — with nothing
+    in the output to say which rule ran.
+    """
+    declared = {openalex_id: ror for openalex_id, ror in declarations.items() if ror}
+    if not declared:
+        return {}
+
+    corpus = institution_index(raw_works)
+    resolved: dict[str, DeclaredHome] = {}
+    for ror in sorted(set(declared.values())):
+        found = corpus.get(ror)
+        if found is None or found[1] is None:
+            found = openalex.resolve_institution(ror)
+        if found is None:
+            raise ConfigError(f"home: ROR {ror} names no OpenAlex institution")
+        institution_id, country = found
+        if country is None:
+            raise ConfigError(f"home: ROR {ror} has no country in OpenAlex; it cannot be a home")
+        resolved[ror] = DeclaredHome(institution_id=institution_id, country=country)
+
+    return {openalex_id: resolved[ror] for openalex_id, ror in declared.items()}
 
 
 @dataclass
@@ -112,6 +155,10 @@ def build(
     # Each mapping resolves a match key to the configured author's canonical
     # name, which the output carries as authors[].tracked_as.
     tracked_ids: dict[str, str] = {}
+    # A declaration is made about a person, and one person can resolve to
+    # several profiles; spreading it over all of them is what stops a split
+    # identity from being half-declared.
+    declarations: dict[str, str | None] = {}
     for author in config.authors:
         # Tracking-only entries resolve to nothing by construction, no
         # network involved; that is not the failure this error guards.
@@ -122,6 +169,12 @@ def build(
                 f"OpenAlex author; check it or pin openalex_id (see `erga verify`)"
             )
         tracked_ids.update((openalex_id, author.name) for openalex_id in resolved.ids)
+        # Recorded for every id including the opt-outs, not only the declared
+        # ones. Two configured entries can resolve to one profile, and the
+        # name above already lets the later win; a `home: null` that could
+        # not clear an earlier entry's declaration would leave the person who
+        # opted out being checked against someone else's institution.
+        declarations.update((openalex_id, author.home) for openalex_id in resolved.ids)
     tracked_orcids = {a.orcid: a.name for a in config.authors if a.orcid}
     tracked_names = {name: a.name for a in config.authors for name in a.match_names()}
 
@@ -139,7 +192,8 @@ def build(
     )
     # Reads the raw works, not the canonical ones: affiliation is what the
     # check reasons about and the canonical record deliberately drops it.
-    stats.warnings.extend(contamination_warnings(find_contamination(raw_works, tracked_ids)))
+    homes = _declared_homes(declarations, raw_works, openalex)
+    stats.warnings.extend(contamination_warnings(find_contamination(raw_works, tracked_ids, homes)))
 
     mark_keep_distinct(works, overrides)
     before = len(works)

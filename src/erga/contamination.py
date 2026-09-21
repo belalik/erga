@@ -30,6 +30,15 @@ a stranger's cluster in it — so the check stays silent rather than guess which
 side is the career. A profile that is mostly someone else's work is a wrong
 profile, which is `verify`'s question, not this one's.
 
+A declared home changes that one thing. Where the config names the
+institution an author works at (`home:`, requirements section 5), home
+stops being inferred and the symmetry breaks: an arbiter exists, so which
+side is away becomes a fact rather than a guess, and this module says so —
+a `ProfileMismatch`, carrying no exclusion advice and pointing at `verify`
+for the identity question it still does not answer. It is decided here
+because the affiliation data that decides it lives only here; `verify`
+compares names and never sees a work.
+
 Two silences are as important as the signal. A work with no affiliation
 data is never anomalous: roughly a third carry none, so absence means the
 check has nothing to say. A solo-authored work has no team to be a stranger
@@ -47,6 +56,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
+from erga.model import bare_ror
 from erga.openalex import strip_openalex_host
 
 # Under this many works at the home country, a "majority" describes a thin
@@ -55,6 +65,17 @@ MIN_HOME_WORKS = 5
 # Contamination arrives as a run from one place; a single paper abroad is
 # ordinary academic life, and singletons were most of the residual noise.
 MIN_CLUSTER = 2
+
+
+def _is_majority(count: int, total: int) -> bool:
+    """More than half, never exactly half.
+
+    One predicate for both paths: a tie is not a majority, which is what
+    kept the inferred rule from breaking four-against-four alphabetically,
+    and what keeps a declared home from calling an even split a wrong
+    profile. A threshold change has one place to land.
+    """
+    return count * 2 > total
 
 
 @dataclass(frozen=True)
@@ -66,6 +87,34 @@ class Cluster:
     country: str | None
     work_ids: list[str]
     titles: list[str]
+
+
+@dataclass(frozen=True)
+class DeclaredHome:
+    """Where the maintainer says an author works, resolved to the corpus."""
+
+    institution_id: str
+    country: str
+
+
+@dataclass(frozen=True)
+class ProfileMismatch:
+    """A declared home that most of the profile's established works contradict.
+
+    Only reachable under a declaration. Without one the same shape is
+    silence, because nothing says which side is the career; with one, saying
+    so is the whole point of the field.
+    """
+
+    author: str
+    country: str
+    home_works: int
+    away_works: int
+
+
+# What the check can report. A mismatch is about the profile, a cluster about
+# works inside it, and the two are mutually exclusive per author.
+Finding = Cluster | ProfileMismatch
 
 
 @dataclass(frozen=True)
@@ -161,6 +210,24 @@ def _view(appearance: _Appearance, tracked_id: str, labels: _Labels) -> _WorkVie
     )
 
 
+def _home_institutions(affiliated: list[_WorkView], home: str, labels: _Labels) -> set[str]:
+    """Institutions that are themselves at home.
+
+    Taking every institution co-listed on a home work instead let one
+    dual-affiliation paper whitelist a foreign institution for the whole
+    career, and every later cluster there went unreported. Independent
+    country evidence is the qualification; sitting beside a home institution
+    is not, and a declaration does not change that for anything but itself.
+    """
+    return {
+        i
+        for v in affiliated
+        if home in v.countries
+        for i in v.institutions
+        if labels.get(i, ("", None))[1] == home
+    }
+
+
 def _clusters_for(author: str, views: list[_WorkView], labels: _Labels) -> list[Cluster]:
     affiliated = [v for v in views if v.countries or v.institutions]
     country_counts = Counter(c for v in affiliated for c in v.countries)
@@ -175,21 +242,27 @@ def _clusters_for(author: str, views: list[_WorkView], labels: _Labels) -> list[
     # the genuine career as the anomaly — the exact inversion of its purpose.
     # A plain majority is not enough either: at four against four the tie broke
     # alphabetically, by country code.
-    if home_works < MIN_HOME_WORKS or home_works * 2 <= len(affiliated):
+    if home_works < MIN_HOME_WORKS or not _is_majority(home_works, len(affiliated)):
         return []
 
-    # Only institutions that are themselves at home. Taking every institution
-    # co-listed on a home work instead let one dual-affiliation paper whitelist
-    # a foreign institution for the whole career, and every later cluster there
-    # went unreported.
-    home_institutions = {
-        i
-        for v in affiliated
-        if home in v.countries
-        for i in v.institutions
-        if labels.get(i, ("", None))[1] == home
-    }
+    return _cluster_works(
+        author, views, affiliated, home, _home_institutions(affiliated, home, labels), labels
+    )
 
+
+def _cluster_works(
+    author: str,
+    views: list[_WorkView],
+    affiliated: list[_WorkView],
+    home: str,
+    home_institutions: set[str],
+    labels: _Labels,
+) -> list[Cluster]:
+    """Group the works that look like a different career, given home.
+
+    Everything above this decides *where* home is; this decides which works
+    depart from it, and is identical whether home was counted or declared.
+    """
     outliers = [
         v
         for v in affiliated
@@ -239,39 +312,150 @@ def _clusters_for(author: str, views: list[_WorkView], labels: _Labels) -> list[
     return sorted(clusters, key=lambda c: (c.institution, c.work_ids[0]))
 
 
+def _declared_for(
+    author: str, views: list[_WorkView], labels: _Labels, declared: DeclaredHome
+) -> list[Finding]:
+    """The same check, oriented by a declaration instead of by the counts.
+
+    A declaration answers only *where* home is, so the majority test that
+    chose it is gone; nothing a stranger cluster can do wins the baseline
+    now. What it does not answer is whether there is enough of a career here
+    to reason about, so the thin-record floor stays: the maintainer supplied
+    where home is, not that three works characterize a career.
+
+    The denominator narrows to works whose affiliation positively places
+    them somewhere. Under the inferred rule a work naming an institution
+    with no country anywhere dilutes the count and can silence the check,
+    which is deliberate when home is a guess and pointless when it is
+    declared.
+    """
+    affiliated = [v for v in views if v.countries or v.institutions]
+
+    def at_declared_home(view: _WorkView) -> bool:
+        return declared.country in view.countries or declared.institution_id in view.institutions
+
+    at_home = [v for v in affiliated if at_declared_home(v)]
+    # Away is a positive finding, never the complement of home: a work that
+    # names an institution the corpus never gave a country to is evidence of
+    # nothing and must not vote against the declaration.
+    away = [v for v in affiliated if v.countries and not at_declared_home(v)]
+
+    comparable = len(at_home) + len(away)
+    if comparable < MIN_HOME_WORKS:
+        return []
+
+    # A profile whose established works are mostly elsewhere is a wrong
+    # profile, which is `verify`'s question — so say that, instead of
+    # reporting the majority of the career as strangers to it.
+    if _is_majority(len(away), comparable):
+        return [
+            ProfileMismatch(
+                author=author,
+                country=declared.country,
+                home_works=len(at_home),
+                away_works=len(away),
+            )
+        ]
+
+    # Having failed the away majority, an equal split is the only way home
+    # can also fail its own: neither side is most, so the check says nothing,
+    # as it does undeclared.
+    if len(at_home) == len(away) or len(at_home) < MIN_HOME_WORKS:
+        return []
+
+    # The declared institution is home even on a work the corpus never gave a
+    # country to; every other institution still has to earn it on its own.
+    home_institutions = _home_institutions(affiliated, declared.country, labels)
+    home_institutions.add(declared.institution_id)
+    return list(
+        _cluster_works(author, views, affiliated, declared.country, home_institutions, labels)
+    )
+
+
+def institution_index(raw_works: list[dict[str, Any]]) -> dict[str, tuple[str, str | None]]:
+    """Bare ROR id to the (OpenAlex id, country) the corpus carries for it.
+
+    A declaration names a ROR; everything the check compares is keyed by
+    OpenAlex institution id. The corpus already carries both on every
+    authorship, so it bridges them for free, and only a ROR absent from it
+    costs a lookup. A ROR the corpus maps two ways is left out rather than
+    guessed — the authority settles that one.
+    """
+    ids: dict[str, set[str]] = defaultdict(set)
+    countries: dict[str, str] = {}
+    for raw in raw_works:
+        for entry in raw.get("authorships") or []:
+            for institution in entry.get("institutions") or []:
+                ror, openalex_id = institution.get("ror"), institution.get("id")
+                if not ror or not openalex_id:
+                    continue
+                bare_id = strip_openalex_host(openalex_id)
+                ids[bare_ror(str(ror))].add(bare_id)
+                if institution.get("country_code"):
+                    countries[bare_id] = institution["country_code"]
+    resolved = {}
+    for ror, candidates in ids.items():
+        if len(candidates) == 1:
+            (openalex_id,) = candidates
+            resolved[ror] = (openalex_id, countries.get(openalex_id))
+    return resolved
+
+
 def find_contamination(
-    raw_works: list[dict[str, Any]], tracked_ids: dict[str, str]
-) -> list[Cluster]:
-    """Clusters of works that look like they belong to someone else.
+    raw_works: list[dict[str, Any]],
+    tracked_ids: dict[str, str],
+    homes: dict[str, DeclaredHome] | None = None,
+) -> list[Finding]:
+    """Works that look like they belong to someone else, and profiles that do.
 
     `tracked_ids` maps resolved OpenAlex author ids to the configured
     author's canonical name, exactly as the normalize stage receives it. Each
     tracked author is judged against their own corpus, so a work shared by
     two configured colleagues is read once per person.
+
+    `homes` carries a declaration for the authors that have one, keyed the
+    same way. An author without one is checked exactly as before.
     """
     appearances, labels = _index(raw_works, tracked_ids)
-    clusters: list[Cluster] = []
+    homes = homes or {}
+    findings: list[Finding] = []
     for tracked_id in sorted(tracked_ids):
         views = [_view(a, tracked_id, labels) for a in appearances.get(tracked_id, [])]
-        clusters.extend(_clusters_for(tracked_ids[tracked_id], views, labels))
-    return clusters
+        author = tracked_ids[tracked_id]
+        declared = homes.get(tracked_id)
+        if declared is None:
+            findings.extend(_clusters_for(author, views, labels))
+        else:
+            findings.extend(_declared_for(author, views, labels, declared))
+    return findings
 
 
-def contamination_warnings(clusters: Iterable[Cluster]) -> list[str]:
-    """One warning per cluster, phrased as a question for the maintainer."""
+def contamination_warnings(findings: Iterable[Finding]) -> list[str]:
+    """One warning per finding, phrased as a question for the maintainer."""
     warnings = []
-    for cluster in clusters:
+    for finding in findings:
+        if isinstance(finding, ProfileMismatch):
+            # Deliberately no exclusion advice: the works are not the
+            # problem if the profile is. Excluding them one by one would
+            # dismantle the evidence that the iD or the declaration is wrong.
+            warnings.append(
+                f"{finding.author}: {finding.away_works} of "
+                f"{finding.home_works + finding.away_works} placed work(s) sit outside "
+                f"{finding.country}, the declared home — either the declaration is wrong "
+                f"or this profile is not only theirs; `erga verify` is where that is settled"
+            )
+            continue
         where = (
-            f"{cluster.institution} ({cluster.country})"
-            if cluster.country
-            else (cluster.institution)
+            f"{finding.institution} ({finding.country})"
+            if finding.country
+            else (finding.institution)
         )
         # First work with a title, since titles are positional and some are
         # empty; an untitled first work should not cost the reader the example.
-        sample = next((title for title in cluster.titles if title), None)
+        sample = next((title for title in finding.titles if title), None)
         example = f" (e.g. {sample!r})" if sample else ""
         warnings.append(
-            f"{cluster.author}: {len(cluster.work_ids)} work(s) tie to {where}, sharing no "
+            f"{finding.author}: {len(finding.work_ids)} work(s) tie to {where}, sharing no "
             f"institution and no collaborator with the rest of the profile{example} — a "
             f"same-name stranger's works look like this; exclude them by DOI if so"
         )
