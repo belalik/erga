@@ -322,7 +322,14 @@ Ported from the production origin pipeline with generalization deltas noted.
    declared `home:` where the config carries one, which also lets the
    check say a profile looks wrong instead of listing its majority.
    Output is warnings only: erga names the cluster, the maintainer decides
-   and excludes.
+   and excludes. The check reads the raw fetch, ahead of dedup and
+   overrides (`build` in `pipeline.py` runs it first), so a cluster's
+   count can exceed the override lines that already exclude it while
+   nothing is live: on consumer #2 a cluster reads five against four
+   excluded DOIs because the fifth is a preprint that folds into its
+   excluded published version at dedup. The unmapped-type warning counts
+   the same way. Reconcile a count against the built JSON, never against
+   the override file.
 
    **The rule is settled (2026-08-17); the code was independently
    reviewed on 2026-09-02 and released in v0.4.0 the same day. The
@@ -480,8 +487,36 @@ Ported from the production origin pipeline with generalization deltas noted.
    56 eligible careers, and the three silences were the flipped career
    above, whose "wrong" country is its real home, plus two records of one
    and three placed works. The lifted silence is unobserved rather than
-   refuted; a department cohort with a real declaration and a known
-   homonym (dpsd-new's pilot) is where it can be seen, if it exists.
+   refuted on a random cohort.
+
+   **The first department cohort with a real declaration, 2026-09-22**
+   (consumer #2, nine authors, `home:` set once at the department's ROR,
+   `erga==0.5.0` built with and without it minutes apart plus an
+   `erga==0.3.0` control the same hour; their record is dpsd-new
+   `docs/publications.md`). All three builds wrote byte-identical JSON
+   (626 works), so v0.4 and v0.5 changed the log and nothing else for
+   this consumer. The known homonym is reported whole in both runs: the
+   career recall was settled on above shows its five Palacký works as one
+   cluster, declared or not, so the declaration costs no recall on the
+   one case that can measure it. Two clusters of own early career
+   (Essex 1999-2003, two works; Toronto 1994-99, seven, a doctorate) are
+   identical in both runs, the accepted price. No silence lifted here
+   either. Exactly one line changed, and it changed for the worse: an
+   author with SUTD on 16 of 27 placed works (2016-22), the Aegean on 6
+   (since) and Lisbon before that. Undeclared, the majority rule put
+   home in Singapore and listed his two Aegean works, his employer's, as
+   a stranger cluster. Declared, 21 of 27 placed works sit outside Greece
+   and the verdict is a wrong profile. One person, one profile, a correct
+   declaration, and the rule produces this by construction for anyone
+   whose recorded career sits mostly at a previous employer; a department
+   always has some. `home: null` is the only remedy and it removes the
+   check for that person. So the declared home's measured value on real
+   data is the reverse of the random cohorts' finding: there it changed
+   nothing and the wrong-profile verdict was the field's demonstrable
+   use; here it changed one verdict and that verdict was wrong. What a
+   declaration should mean for a mover, a start year, several homes, or
+   verdict text that names the third reading, is an open design decision
+   (`docs/todo.md`), and this cohort is its only fixture.
 
    All of the above argue for the output staying advisory, which it is.
 5. Merge manual entries; their DOIs seed the dedup set so manual always
@@ -523,7 +558,10 @@ Ported from the production origin pipeline with generalization deltas noted.
     `verify` cannot see them. *Counted per field*: every other change
     OpenAlex makes (citations, abstract, open access, venue, dates,
     title, DOI, type, byline names and iDs), one table labelled as drift
-    with nothing to action. *Curation, counted and labelled as the
+    with nothing to action; drift is large, since consumer #2 saw
+    OpenAlex expand author initials on 303 of 626 works between two
+    days' builds (2026-09-21 to 22, reproduced by a v0.3.0 control), so
+    the byline row can name half the corpus in one week. *Curation, counted and labelled as the
     maintainer's own*: tag changes, with manual entries marked in the
     lists. Listed sections cap at 150 entries and state how many more
     there are, sized against GitHub's 65,536-character PR body. The
@@ -619,8 +657,10 @@ scheduling, the `v1` tag policy, how CI exercises it) lives in
 - **v0.5** (released 2026-09-21 as v0.5.0): the declared home (`home:`,
   a ROR id) for the contamination check, measured on pinned cohorts
   before shipping (section 7): safe on every random career, the
-  wrong-profile verdict working, the lifted silence unobserved until a
-  department cohort with a real declaration runs it.
+  wrong-profile verdict working, the lifted silence unobserved there and
+  again on the first department cohort with a real declaration
+  (2026-09-22), where the declaration's one changed verdict was a recent
+  mover reported as a wrong profile.
 - **CSL-JSON and BibTeX emitters** slot in after v0.1 as demand warrants,
   before the v1.0 promotion push.
 - **v1.0**: strong README (before/after dedup story, head-on "why not

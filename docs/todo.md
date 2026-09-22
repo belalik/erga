@@ -3,11 +3,18 @@
 ## High
 
 ## Normal
-- When dpsd-new routes back a declared build's warnings beside its
-  undeclared run's (asked 2026-09-21 via their inbox), enter it in
-  `docs/requirements-v1.md` section 7 as the first department-scale
-  observation of the declared home; it is the only place the lifted
-  silence can be seen
+- Decide what the declared home does for a recent mover. dpsd-new's
+  declared build (2026-09-22, nine authors, section 7 has the record)
+  changed one verdict, and that one was wrong: an author with 21 of 27
+  placed works at SUTD 2016-22 and the Aegean since got the wrong-profile
+  verdict under a correct declaration, which the rule produces by
+  construction for anyone whose recorded career sits mostly at a previous
+  employer. `home: null` is the only remedy and it removes the check. Two
+  shapes to weigh, neither settled: a declaration that carries a start
+  year or several homes, so earlier employers count as home; or verdict
+  text that names the third reading, "or they moved recently". Design
+  decision before code; the pinned cohorts cannot measure it (no mover
+  among them), so dpsd-new's cohort is the only fixture
 - Release the build delta (`--summary`, `erga diff`, the `summary` Action
   input) as 0.6.0, then move CI's `action` job pin (`.github/workflows/ci.yml`,
   "0.3.0", commented as needing no bump) to that release and pass `summary:`
@@ -17,6 +24,12 @@
   replaceable by the input, via their inbox
 
 ## Low
+- Three OpenAlex types warn on every dpsd-new build and fall back to
+  `other`: `reference-entry` (10 works: encyclopedia entries in two
+  editions, a handbook chapter under two DOIs), `peer-review` (2, author
+  responses), `conference-abstract` (1). Map them or declare them
+  unmapped on purpose; the warning fires on raw works before curation,
+  so an override cannot silence it
 - Two configured authors with different non-null `home:` values can resolve
   to one OpenAlex profile, and the later entry's declaration wins, as its
   name already does (`src/erga/pipeline.py`, the `declarations.update`).

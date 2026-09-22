@@ -43,7 +43,13 @@ Measured 2026-09-21 on the pinned cohorts (section 7): a declaration
 changes no verdict a random career already had and adds no cluster, the
 wrong-profile verdict fires on nearly every wrong declaration, and the
 silence it was built to lift did not occur once in eighty careers, so
-that claim is unobserved, not refuted. The probe
+that claim is unobserved, not refuted. The first department cohort with
+a real declaration (dpsd-new, nine authors, 2026-09-22) lifted no
+silence either and changed one verdict, wrongly: a recent mover, mostly
+at a previous employer, is reported as a wrong profile under a correct
+declaration, and `home: null` is the only remedy. What the declaration
+should do for a mover is the open design question in `docs/todo.md`;
+the record is section 7. The probe
 cohort is pinned since 2026-09-21 (`local/contamination-probes/`, one
 cached file per band, read offline): a before/after claim is valid
 against those files and against no earlier figure, since `sample=40&seed=17`
