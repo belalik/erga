@@ -35,19 +35,23 @@ jobs:
   #
   # Note this installs the *published* erga — uvx pulls from PyPI — so it
   # says nothing about the working tree, which the job above covers. The pin
-  # needs no bump per release: any known-good version proves the wiring.
+  # moves only when action.yml gains an input, since the published erga has
+  # to know it: 0.6.0 for `summary`. Any later version proves the wiring.
   action:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./
         with:
-          version: "0.3.0"
+          version: "0.6.0"
           config: tests/fixtures/action/erga.yml
-      - name: Check the action produced the expected JSON
+          summary: ${{ runner.temp }}/publications-summary.md
+      - name: Check the action produced the expected JSON and summary
+        env:
+          SUMMARY: ${{ runner.temp }}/publications-summary.md
         run: |
           python3 - <<'PY'
-          import json, pathlib, sys
+          import json, os, pathlib, sys
 
           out = pathlib.Path("tests/fixtures/action/publications.json")
           if not out.exists():
@@ -65,6 +69,17 @@ jobs:
           if first["name"] != "J. S. Carberry" or first["tracked_as"] != "Josiah Carberry":
               sys.exit(f"alias tracking did not resolve: {first}")
           print(f"action built {len(titles)} work(s) as expected")
+
+          # No publications.json is checked in beside the fixture, so the
+          # page must open with the first-build headline.
+          page = pathlib.Path(os.environ["SUMMARY"])
+          if not page.exists():
+              sys.exit(f"action wrote no summary at {page}")
+          head = "### Publications refresh\n\n**First build, 2 works, nothing to compare against.**"
+          text = page.read_text(encoding="utf-8")
+          if not text.startswith(head):
+              sys.exit(f"unexpected summary head: {text[:160]!r}")
+          print("summary page carries the first-build headline")
           PY
 
   # The only thing the deterministic job cannot see: OpenAlex still answering
@@ -77,7 +92,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./
         with:
-          version: "0.3.0"
+          version: "0.6.0"
           config: tests/fixtures/action-live/erga.yml
           # No such secret exists yet, and fork PRs never receive one. Empty
           # falls back to OpenAlex's keyless quota, so this passes either way

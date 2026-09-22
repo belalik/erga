@@ -15,14 +15,6 @@
   text that names the third reading, "or they moved recently". Design
   decision before code; the pinned cohorts cannot measure it (no mover
   among them), so dpsd-new's cohort is the only fixture
-- Release the build delta (`--summary`, `erga diff`, the `summary` Action
-  input) as 0.6.0, then move CI's `action` job pin (`.github/workflows/ci.yml`,
-  "0.3.0", commented as needing no bump) to that release and pass `summary:`
-  with an assertion on the file, since the job installs from PyPI and cannot
-  prove the new input's wiring until the pin carries it. Then tell dpsd-new
-  their `scripts/publications_summary.py` and its `git show` step are
-  replaceable by the input, via their inbox
-
 ## Low
 - Three OpenAlex types warn on every dpsd-new build and fall back to
   `other`: `reference-entry` (10 works: encyclopedia entries in two
