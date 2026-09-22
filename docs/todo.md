@@ -3,24 +3,16 @@
 ## High
 
 ## Normal
-- Decide what the declared home does for a recent mover. dpsd-new's
-  declared build (2026-09-22, nine authors, section 7 has the record)
-  changed one verdict, and that one was wrong: an author with 21 of 27
-  placed works at SUTD 2016-22 and the Aegean since got the wrong-profile
-  verdict under a correct declaration, which the rule produces by
-  construction for anyone whose recorded career sits mostly at a previous
-  employer. `home: null` is the only remedy and it removes the check. Two
-  shapes to weigh, neither settled: a declaration that carries a start
-  year or several homes, so earlier employers count as home; or verdict
-  text that names the third reading, "or they moved recently". Design
-  decision before code; the pinned cohorts cannot measure it (no mover
-  among them), so dpsd-new's cohort is the only fixture
+- Decide what the declared home means for a recent mover, whom the rule
+  reports as a wrong profile under a correct declaration (the record and
+  the two candidate shapes, a start year or several homes versus verdict
+  text naming the third reading: `docs/requirements-v1.md` section 7,
+  the 2026-09-22 cohort). Design decision before code; dpsd-new's cohort
+  is the only fixture, the pinned ones hold no mover
 ## Low
-- Add the ORCID iD to `CITATION.cff` (`orcid:` under the author) once
-  confirmed. One public record carries the name, 0009-0001-3431-2825,
-  created 2023-03-05 and empty; unconfirmed on 2026-09-22. orcid.org's
-  "Forgot your password or ORCID iD?" form, given an email address,
-  replies with the iD registered to it, which settles it either way
+- Add `orcid:` under the author in `CITATION.cff` once Thomas confirms
+  his iD: the one public record under his name (0009-0001-3431-2825,
+  empty, 2023) is unconfirmed; orcid.org's forgot-iD form settles it
 - Three OpenAlex types warn on every dpsd-new build and fall back to
   `other`: `reference-entry` (10 works: encyclopedia entries in two
   editions, a handbook chapter under two DOIs), `peer-review` (2, author
