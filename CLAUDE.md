@@ -19,7 +19,7 @@ a fallback, never solved inside erga.
 
 ## Status
 
-v0.5.0 released 2026-09-21 (PyPI via Trusted Publishing, GitHub
+v0.6.0 released 2026-09-22 (PyPI via Trusted Publishing, GitHub
 Releases; repo public since v0.1.0, 2026-08-05). The pipeline is
 implemented end-to-end (config, fetch, normalize, dedup, curation,
 Crossref backfill, deterministic output, `build`/`verify` CLI) with unit
@@ -54,11 +54,11 @@ cohort is pinned since 2026-09-21 (`local/contamination-probes/`, one
 cached file per band, read offline): a before/after claim is valid
 against those files and against no earlier figure, since `sample=40&seed=17`
 re-drew eight of forty authors within ninety minutes and no earlier
-run's cohort was recorded. Unreleased since v0.5.0: the build delta
-(`build --summary`, `erga diff`, the Action's `summary` input), which
-turns the consumer's weekly PR into a reviewable page; its three change
-classes and the shrink warning are stage 12 of section 7, settled
-2026-09-21 and frozen by a golden test. See `docs/requirements-v1.md`
+run's cohort was recorded. v0.6.0 ships the build delta (`build
+--summary`, `erga diff`, the Action's `summary` input), which turns the
+consumer's weekly PR into a reviewable page; its three change classes
+and the shrink warning are stage 12 of section 7, settled 2026-09-21
+and frozen by a golden test. See `docs/requirements-v1.md`
 for the v1 design, `docs/action.md` for the Action, and `docs/todo.md`
 for open work.
 

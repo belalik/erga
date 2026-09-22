@@ -671,6 +671,11 @@ scheduling, the `v1` tag policy, how CI exercises it) lives in
   again on the first department cohort with a real declaration
   (2026-09-22), where the declaration's one changed verdict was a recent
   mover reported as a wrong profile.
+- **v0.6** (released 2026-09-22 as v0.6.0): the build delta (stage 12): a
+  headline on every build, `--summary`, `erga diff`, the Action's
+  `summary` input and the shrink warning; and the previous output's
+  reader reporting a file in place it cannot read instead of calling it
+  a first build.
 - **CSL-JSON and BibTeX emitters** slot in after v0.1 as demand warrants,
   before the v1.0 promotion push.
 - **v1.0**: strong README (before/after dedup story, head-on "why not
