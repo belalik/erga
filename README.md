@@ -3,23 +3,30 @@
 Keep a website's academic publications list current, automatically, without
 giving up control of the data.
 
-**Status: alpha (v0.3).** The CLI pipeline works end-to-end and its
-output has converged with a production lab site's existing pipeline in a
-parallel run against live OpenAlex (187/187 records, zero field diffs).
-That site now builds its publications with erga in CI. The JSON schema may
-still change before v1.0.
+A lab or department site's publications page is either maintained by hand,
+and rots, or handed to an embed or a scraper, and then the data is not
+yours. erga is the third option. You list your people's ORCID iDs in one
+config file; it fetches their works from OpenAlex, deduplicates them across
+registrars, applies your corrections, and writes one `publications.json`
+into your repository, where CI refreshes it on a schedule and your site
+(Jekyll, Astro, Hugo, anything) renders it however it likes. Your manual
+additions, exclusions and highlights live in their own files and survive
+every refresh. It renders nothing, scrapes nothing and hosts nothing. It
+grew out of one lab site's embedded script and now builds two sites in CI,
+a lab and a department. The JSON schema may still change before 1.0.
+
+Why not the usual routes: a hosted embed puts the list in someone else's
+JavaScript, outside your HTML, your git history and your review; Google
+Scholar has no API and its terms forbid scraping it.
 
 ## What it does
-
-You list your authors (ORCID iDs) in one config file. erga fetches their works
-from OpenAlex, normalizes and deduplicates them across registrars (arXiv,
-Zenodo, publisher records), applies your curation files, and writes a
-canonical `publications.json` into your site repository. Your site (Jekyll,
-Astro, Hugo, anything) renders it however it likes.
 
 - **Curation that survives refresh**: manual additions, per-record overrides,
   and highlights live in their own files and are re-applied on every
   automated run.
+- **Identity checks**: `verify` reports what each iD resolves to before you
+  fetch, and the build warns about clusters of works that look like a
+  same-name stranger's.
 - **Proper APIs, no scraping**: OpenAlex (CC0 data) plus Crossref venue
   backfill, with API etiquette built in (keys, delays, retries).
 - **Git-owned data**: the output is a diffable, PR-reviewable file in your
@@ -69,6 +76,8 @@ Then:
   and flag resolved profiles whose name does not match the configured
   author, zero-work authors, and implausible works counts. Run it once
   when setting up, and whenever a build looks off.
+
+## Getting the identities right
 
 Run `erga verify` before your first build, because an ORCID does not
 reliably identify one person on OpenAlex. The same iD can appear on several
@@ -188,6 +197,12 @@ Three optional curation files next to the config survive every refresh:
 exclusions, dedup exemptions), and `tags.yml` (tag name to DOI/id lists;
 tag semantics are entirely yours). The full schema and pipeline design live
 in [docs/requirements-v1.md](docs/requirements-v1.md).
+
+## Author
+
+Thomas Kogias ([kogias.org](https://kogias.org)). Built for the SmartMove
+lab site at the University of the Aegean, which has run it since August
+2026.
 
 ## License
 

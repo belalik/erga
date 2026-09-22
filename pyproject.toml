@@ -9,7 +9,7 @@ license-files = ["LICENSE"]
 authors = [{ name = "Thomas Kogias" }]
 keywords = ["publications", "bibliography", "openalex", "orcid", "academic", "static-site"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -26,7 +26,9 @@ dependencies = [
 erga = "erga.cli:main"
 
 [project.urls]
+Homepage = "https://kogias.org"
 Repository = "https://github.com/belalik/erga"
+Changelog = "https://github.com/belalik/erga/releases"
 
 [build-system]
 requires = ["hatchling>=1.26"]
