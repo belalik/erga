@@ -46,13 +46,19 @@ def golden_transport() -> FakeTransport:
     return transport
 
 
-def run_golden(tmp_path: Path, *, dry_run: bool = False, seed: bool = True) -> BuildStats:
+def run_golden(
+    tmp_path: Path,
+    *,
+    dry_run: bool = False,
+    seed: bool = True,
+    transport: FakeTransport | None = None,
+) -> BuildStats:
     if seed:
         for name in ("erga.yml", "manual.yml", "overrides.yml", "tags.yml"):
             shutil.copy(GOLDEN / name, tmp_path / name)
         shutil.copy(GOLDEN / "previous-publications.json", tmp_path / "publications.json")
 
-    transport = golden_transport()
+    transport = transport or golden_transport()
     config = load_config(tmp_path / "erga.yml")
     openalex = OpenAlexClient(transport, mailto=config.mailto, delay=0.0, sleep=no_sleep)
     crossref = CrossrefClient(transport, mailto=config.mailto, delay=0.0, sleep=no_sleep)
@@ -96,6 +102,31 @@ def test_golden_build_is_idempotent(tmp_path: Path) -> None:
     assert stats.backfilled_previous == 2  # W1010 and W1003 both known now
     assert stats.backfilled_crossref == 0
     assert stats.delta.unchanged
+
+
+def test_golden_build_warns_about_an_unreadable_previous_output(tmp_path: Path) -> None:
+    for name in ("erga.yml", "manual.yml", "overrides.yml", "tags.yml"):
+        shutil.copy(GOLDEN / name, tmp_path / name)
+    (tmp_path / "publications.json").write_bytes(b"[]")
+    # With no ratchet, W1010's venue comes from Crossref instead.
+    transport = golden_transport()
+    transport.add(
+        "api.crossref.org/works/10.5555%2Fteacup",
+        {},
+        {"message": {"container-title": ["Teacup Quarterly"]}},
+    )
+    stats = run_golden(tmp_path, seed=False, transport=transport)
+    # Never an abort: the file is replaced by a correct one, but the reviewer
+    # is told the comparison and the ratchet had nothing to work from.
+    assert (tmp_path / "publications.json").read_bytes() == (
+        GOLDEN / "expected-publications.json"
+    ).read_bytes()
+    assert stats.delta.first_build
+    assert stats.backfilled_previous == 0
+    assert stats.warnings == [
+        f"{tmp_path / 'publications.json'}: not a publications.json erga can read; "
+        "treated as a first build, so nothing was compared or ratcheted"
+    ]
 
 
 def test_golden_dry_run_leaves_output_untouched(tmp_path: Path) -> None:

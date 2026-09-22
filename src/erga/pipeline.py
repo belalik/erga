@@ -215,6 +215,13 @@ def build(
     # Read once: the previous output feeds the venue ratchet here and the
     # delta below, and it must be the file as found, before it is replaced.
     previous = read_output(config.output_path)
+    if previous is None and config.output_path.exists():
+        # Never abort a build over the previous file, but a file that is in
+        # place and unreadable is a mistake to report, not a first build.
+        stats.warnings.append(
+            f"{config.output_path}: not a publications.json erga can read; "
+            "treated as a first build, so nothing was compared or ratcheted"
+        )
     backfill_venues(works, previous_venues(previous), crossref, stats)
 
     stats.warnings.extend(f"tag matched nothing: {w}" for w in apply_tags(works, tags))

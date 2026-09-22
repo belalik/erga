@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from erga.model import Work
-from erga.output import document, dump, sort_works, write_atomic
+from erga.output import document, dump, read_output, sort_works, write_atomic
 
 
 def test_sort_year_desc_then_id_with_nulls_last() -> None:
@@ -33,3 +35,32 @@ def test_write_atomic(tmp_path: Path) -> None:
     write_atomic(target, "content\n")
     assert target.read_text(encoding="utf-8") == "content\n"
     assert [p.name for p in target.parent.iterdir()] == ["publications.json"]
+
+
+def test_read_output_returns_the_records_of_a_file_erga_wrote(tmp_path: Path) -> None:
+    target = tmp_path / "publications.json"
+    target.write_text(dump(document([Work(id="W1", title="t")])), encoding="utf-8")
+    records = read_output(target)
+    assert records is not None
+    assert [r["id"] for r in records] == ["W1"]
+    assert read_output(tmp_path / "missing.json") is None
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        b"",
+        b"[]",
+        b'{"works": {}}',
+        # A work that is not a mapping: dropping it would pass a truncated or
+        # hand-edited file off as a real, smaller output.
+        b'{"works": [null]}',
+        # A byline that is not a list of mappings would crash the delta.
+        b'{"works": [{"id": "W1", "authors": [1]}]}',
+        b'{"works": [{"id": "W1", "authors": {"name": "x"}}]}',
+    ],
+)
+def test_read_output_rejects_files_erga_did_not_write(tmp_path: Path, content: bytes) -> None:
+    target = tmp_path / "publications.json"
+    target.write_bytes(content)
+    assert read_output(target) is None

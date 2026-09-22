@@ -48,7 +48,20 @@ def read_output(path: Path) -> list[dict[str, Any]] | None:
         return None
     if not isinstance(data, dict) or not isinstance(data.get("works"), list):
         return None
-    return [record for record in data["works"] if isinstance(record, dict)]
+    records: list[Any] = data["works"]
+    # Only the shapes the readers touch are checked: a work that is not a
+    # mapping, or a byline that is not a list of mappings, is not a file erga
+    # wrote, and dropping the odd entry would let a hand-edited or truncated
+    # file pass as a real, smaller output.
+    if not all(isinstance(record, dict) for record in records):
+        return None
+    for record in records:
+        authors = record.get("authors")
+        if authors is not None and not (
+            isinstance(authors, list) and all(isinstance(a, dict) for a in authors)
+        ):
+            return None
+    return records
 
 
 def previous_venues(records: list[dict[str, Any]] | None) -> dict[str, str]:

@@ -548,7 +548,14 @@ Ported from the production origin pipeline with generalization deltas noted.
     The records about to be written are compared, by work id, against
     the output file found in place: the same single read that feeds the
     venue ratchet, taken before the file is replaced, so the build knows
-    "before" without the consumer reconstructing it from git. Three
+    "before" without the consumer reconstructing it from git. Identity
+    is the work id: a manual entry retitled, or a title cluster whose
+    winner switched because a DOI arrived, lists as removed and added
+    rather than as a field change, which is also what the site sees. A
+    first build lists nothing, since there is nothing to compare
+    against; its review is `verify` and the file itself, and the run's
+    warnings still head the page. A file in place that erga cannot read
+    counts as a first build, with a warning saying so. Three
     classes of change. *Listed one by one*: added and removed works, a
     retraction flag turning on, and a change in the set of tracked
     people on a work, since these alter who is credited or whether the
@@ -588,8 +595,11 @@ Ported from the production origin pipeline with generalization deltas noted.
   the delta is what a dry run exists to show. Exit 0 on success (changed
   or not; change detection is git's job), nonzero on any failure.
 - `erga diff OLD NEW`: the same page for any two output files, on
-  stdout, with no config or network. A missing or unreadable OLD is a
-  first build; an unreadable NEW is an error.
+  stdout, with no config or network. A missing OLD is a first build; an
+  OLD that exists but cannot be read is an error, as an unreadable NEW
+  is, because the user named it. `build` meets the same file in place
+  with a warning and goes on as a first build, since a build never
+  aborts over its previous output.
 - `erga verify [--config PATH]`: the author-disambiguation report, a
   first-class feature because OpenAlex author IDs split and conflate
   people. Per configured author: resolved ID(s), works count, name
