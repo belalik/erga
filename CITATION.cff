@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use erga, please cite it as below."
+type: software
+title: erga
+abstract: "Keep a website's academic publications list current: fetch from OpenAlex, deduplicate across registrars, apply curation that survives every refresh."
+authors:
+  - family-names: Kogias
+    given-names: Thomas
+    website: "https://kogias.org"
+repository-code: "https://github.com/belalik/erga"
+url: "https://github.com/belalik/erga"
+license: MIT
+version: 0.6.0
+date-released: "2026-09-22"
+keywords:
+  - publications
+  - bibliography
+  - openalex
+  - orcid
+  - academic
+  - static-site

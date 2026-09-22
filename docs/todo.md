@@ -16,6 +16,11 @@
   decision before code; the pinned cohorts cannot measure it (no mover
   among them), so dpsd-new's cohort is the only fixture
 ## Low
+- Add the ORCID iD to `CITATION.cff` (`orcid:` under the author) once
+  confirmed. One public record carries the name, 0009-0001-3431-2825,
+  created 2023-03-05 and empty; unconfirmed on 2026-09-22. orcid.org's
+  "Forgot your password or ORCID iD?" form, given an email address,
+  replies with the iD registered to it, which settles it either way
 - Three OpenAlex types warn on every dpsd-new build and fall back to
   `other`: `reference-entry` (10 works: encyclopedia entries in two
   editions, a handbook chapter under two DOIs), `peer-review` (2, author

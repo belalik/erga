@@ -6,8 +6,9 @@ carries `X.Y.Z.dev0` between releases.
 1. CI green on main; `uv run pytest`, `ruff check`, `ruff format --check`
    and `mypy` clean locally. Docs current.
 2. Update whatever pins the previous version: the Action examples in
-   `README.md` and `docs/action.md`, and the milestones in
-   `docs/requirements-v1.md`.
+   `README.md` and `docs/action.md`, the milestones in
+   `docs/requirements-v1.md`, and `version` plus `date-released` in
+   `CITATION.cff`.
 3. Set `__version__` to the release. Commit as "Bump version to X.Y.Z",
    push.
 4. Tag and push the tag:
