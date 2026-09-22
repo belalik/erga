@@ -3,21 +3,27 @@
 Keep a website's academic publications list current, automatically, without
 giving up control of the data.
 
-A lab or department site's publications page is either maintained by hand,
-and rots, or handed to an embed or a scraper, and then the data is not
-yours. erga is the third option. You list your people's ORCID iDs in one
-config file; it fetches their works from OpenAlex, deduplicates them across
-registrars, applies your corrections, and writes one `publications.json`
-into your repository, where CI refreshes it on a schedule and your site
-(Jekyll, Astro, Hugo, anything) renders it however it likes. Your manual
-additions, exclusions and highlights live in their own files and survive
-every refresh. It renders nothing, scrapes nothing and hosts nothing. It
-grew out of one lab site's embedded script and now builds two sites in CI,
-a lab and a department. The JSON schema may still change before 1.0.
+## In short
 
-Why not the usual routes: a hosted embed puts the list in someone else's
-JavaScript, outside your HTML, your git history and your review; Google
-Scholar has no API and its terms forbid scraping it.
+**The problem.** A lab or department site's publications page is either
+maintained by hand, and rots, or handed to an embed or a scraper, and then
+the data is not yours.
+
+**What erga does.** You list your people's ORCID iDs in one config file.
+It fetches their works from OpenAlex, deduplicates them across registrars,
+applies your corrections, and writes one `publications.json` into your
+repository. CI refreshes it on a schedule; your site (Jekyll, Astro, Hugo,
+anything) renders it however it likes. Your manual additions, exclusions
+and highlights live in their own files and survive every refresh.
+
+**What it is not.** It renders nothing, scrapes nothing and hosts nothing.
+A hosted embed puts the list in someone else's JavaScript, outside your
+HTML, your git history and your review; Google Scholar has no API and its
+terms forbid scraping it.
+
+**Where it stands.** It grew out of one lab site's embedded script and now
+builds two sites in CI, a lab and a department. The JSON schema may still
+change before 1.0.
 
 ## What it does
 
@@ -37,7 +43,7 @@ Scholar has no API and its terms forbid scraping it.
 
 The name: έργα, "works" — the same term OpenAlex uses for publications.
 
-## Usage
+## Quick start
 
 Install with `uv tool install erga` or `pip install erga` (or run one-off
 with `uvx erga`). Write an `erga.yml`:
