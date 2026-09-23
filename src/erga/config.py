@@ -43,6 +43,22 @@ def normalize_ror(value: Any, where: str) -> str:
     return bare
 
 
+def parse_home(value: Any, where: str) -> tuple[str, ...]:
+    """A declaration: one ROR, or a list of them for a career that moved.
+
+    An empty list is refused rather than read as an opt-out, because `null`
+    already says that and a list someone forgot to fill in should not
+    silently mean it.
+    """
+    if not isinstance(value, list):
+        return (normalize_ror(value, where),)
+    if not value:
+        raise ConfigError(f"{where}: an empty list declares nothing; use null to opt out")
+    rors = [normalize_ror(item, f"{where}[{i}]") for i, item in enumerate(value)]
+    # Duplicates, bare and URL forms of one id included, count once.
+    return tuple(dict.fromkeys(rors))
+
+
 @dataclass
 class AuthorConfig:
     name: str
@@ -50,8 +66,9 @@ class AuthorConfig:
     openalex_id: str | None = None
     aliases: list[str] = field(default_factory=list)
     # The declaration that applies to this author, top-level default already
-    # resolved in. None means no declaration governs them.
-    home: str | None = None
+    # resolved in: bare ROR ids, one per declared place. None means no
+    # declaration governs them.
+    home: tuple[str, ...] | None = None
 
     def match_names(self) -> set[str]:
         """Casefolded name and aliases, for matching manual entries."""
@@ -69,7 +86,7 @@ class Config:
     authors: list[AuthorConfig]
     # The top-level declaration, kept as configured; every author already
     # carries the one that governs them.
-    home: str | None = None
+    home: tuple[str, ...] | None = None
     api_key_env: str = "OPENALEX_API_KEY"
     include_xpac: bool = False
     output_path: Path = Path("publications.json")
@@ -109,7 +126,9 @@ def expect_str_list(value: Any, where: str) -> list[str]:
     return list(value)
 
 
-def _parse_author(entry: Any, path: Path, index: int, default_home: str | None) -> AuthorConfig:
+def _parse_author(
+    entry: Any, path: Path, index: int, default_home: tuple[str, ...] | None
+) -> AuthorConfig:
     where = f"{path}: authors[{index}]"
     if not isinstance(entry, dict):
         raise ConfigError(f"{where}: expected a mapping")
@@ -139,7 +158,7 @@ def _parse_author(entry: Any, path: Path, index: int, default_home: str | None) 
     elif entry["home"] is None:
         home = None
     else:
-        home = normalize_ror(entry["home"], f"{where}: 'home'")
+        home = parse_home(entry["home"], f"{where}: 'home'")
     return AuthorConfig(
         name=name.strip(), orcid=orcid, openalex_id=openalex_id, aliases=aliases, home=home
     )
@@ -166,7 +185,7 @@ def load_config(path: Path) -> Config:
         raise ConfigError(f"{path}: 'mailto' is required (identifies requests to the APIs)")
 
     raw_home = data.get("home")
-    home = normalize_ror(raw_home, f"{path}: 'home'") if raw_home is not None else None
+    home = parse_home(raw_home, f"{path}: 'home'") if raw_home is not None else None
 
     raw_authors = data.get("authors")
     if not isinstance(raw_authors, list) or not raw_authors:

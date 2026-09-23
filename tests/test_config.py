@@ -127,10 +127,10 @@ authors:
 
 def test_home_declaration_inherits_replaces_and_opts_out(tmp_path: Path) -> None:
     config = load_config(write_config(tmp_path, DECLARED_HOME))
-    assert config.home == "0aegean12"
+    assert config.home == ("0aegean12",)
     # Absent inherits the department default; a value replaces it; an
     # explicit null opts one person out without inventing a false ROR.
-    assert [a.home for a in config.authors] == ["0aegean12", "0packy456", None]
+    assert [a.home for a in config.authors] == [("0aegean12",), ("0packy456",), None]
 
 
 @pytest.mark.parametrize(
@@ -139,7 +139,39 @@ def test_home_declaration_inherits_replaces_and_opts_out(tmp_path: Path) -> None
 )
 def test_every_spelling_of_one_ror_canonicalizes_the_same(tmp_path: Path, value: str) -> None:
     content = MINIMAL.replace("mailto:", f"home: {value}\nmailto:")
-    assert load_config(write_config(tmp_path, content)).home == "0aegean12"
+    assert load_config(write_config(tmp_path, content)).home == ("0aegean12",)
+
+
+def test_a_mover_declares_every_post_and_the_list_replaces_the_default(tmp_path: Path) -> None:
+    content = DECLARED_HOME.replace(
+        "    home: 0packy456\n",
+        "    home: [0aegean12, https://ror.org/0packy456, ror.org/0AEGEAN12]\n",
+    )
+    config = load_config(write_config(tmp_path, content))
+    # Order kept, spellings canonicalized, and one id named twice counts once.
+    assert config.authors[1].home == ("0aegean12", "0packy456")
+
+
+def test_a_top_level_list_is_every_authors_default(tmp_path: Path) -> None:
+    content = DECLARED_HOME.replace(
+        "home: https://ror.org/0AEGEAN12\n", "home: [0aegean12, 0packy456]\n"
+    ).replace("    home: 0packy456\n", "")
+    config = load_config(write_config(tmp_path, content))
+    both = ("0aegean12", "0packy456")
+    assert config.home == both
+    assert [a.home for a in config.authors] == [both, both, None]
+
+
+def test_an_empty_home_list_is_refused_not_read_as_an_opt_out(tmp_path: Path) -> None:
+    content = MINIMAL + "    home: []\n"
+    with pytest.raises(ConfigError, match="use null to opt out"):
+        load_config(write_config(tmp_path, content))
+
+
+def test_a_malformed_ror_in_a_home_list_names_its_position(tmp_path: Path) -> None:
+    content = MINIMAL + "    home: [0aegean12, nonsense]\n"
+    with pytest.raises(ConfigError, match=r"authors\[0\]: 'home'\[1\]"):
+        load_config(write_config(tmp_path, content))
 
 
 def test_no_declaration_leaves_every_author_undeclared(tmp_path: Path) -> None:

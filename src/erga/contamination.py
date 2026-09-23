@@ -31,13 +31,22 @@ side is the career. A profile that is mostly someone else's work is a wrong
 profile, which is `verify`'s question, not this one's.
 
 A declared home changes that one thing. Where the config names the
-institution an author works at (`home:`, requirements section 5), home
-stops being inferred and the symmetry breaks: an arbiter exists, so which
-side is away becomes a fact rather than a guess, and this module says so —
-a `ProfileMismatch`, carrying no exclusion advice and pointing at `verify`
-for the identity question it still does not answer. It is decided here
-because the affiliation data that decides it lives only here; `verify`
+institutions an author's record belongs to (`home:`, requirements section
+5), home stops being inferred and the symmetry breaks: an arbiter exists, so
+which side is away becomes a fact rather than a guess, and this module says
+so — a `ProfileMismatch`, carrying no exclusion advice and pointing at
+`verify` for the identity question it still does not answer. It is decided
+here because the affiliation data that decides it lives only here; `verify`
 compares names and never sees a work.
+
+A declaration can name several places, because careers move. Someone who
+joined the declared institution recently has most of their record at a
+previous employer, and against one declared place that reads as a wrong
+profile by construction (consumer #2, 2026-09-22). The declaration orients
+one career; it is not a check on where the author works now. Inferring the
+move from the data instead, by collaborators shared across it, was measured
+and rejected on 2026-09-23: a shared co-author proves one career, not a
+right declaration, and one consortium author can bridge two people.
 
 Two silences are as important as the signal. A work with no affiliation
 data is never anomalous: roughly a third carry none, so absence means the
@@ -52,7 +61,7 @@ file.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -91,7 +100,7 @@ class Cluster:
 
 @dataclass(frozen=True)
 class DeclaredHome:
-    """Where the maintainer says an author works, resolved to the corpus."""
+    """One place the maintainer says an author's record belongs, resolved to the corpus."""
 
     institution_id: str
     country: str
@@ -99,7 +108,7 @@ class DeclaredHome:
 
 @dataclass(frozen=True)
 class ProfileMismatch:
-    """A declared home that most of the profile's established works contradict.
+    """A declaration that most of the profile's established works contradict.
 
     Only reachable under a declaration. Without one the same shape is
     silence, because nothing says which side is the career; with one, saying
@@ -107,7 +116,8 @@ class ProfileMismatch:
     """
 
     author: str
-    country: str
+    # Every declared place's country, sorted: what "outside" is measured against.
+    countries: tuple[str, ...]
     home_works: int
     away_works: int
 
@@ -210,7 +220,9 @@ def _view(appearance: _Appearance, tracked_id: str, labels: _Labels) -> _WorkVie
     )
 
 
-def _home_institutions(affiliated: list[_WorkView], home: str, labels: _Labels) -> set[str]:
+def _home_institutions(
+    affiliated: list[_WorkView], homes: frozenset[str], labels: _Labels
+) -> set[str]:
     """Institutions that are themselves at home.
 
     Taking every institution co-listed on a home work instead let one
@@ -222,9 +234,9 @@ def _home_institutions(affiliated: list[_WorkView], home: str, labels: _Labels) 
     return {
         i
         for v in affiliated
-        if home in v.countries
+        if v.countries & homes
         for i in v.institutions
-        if labels.get(i, ("", None))[1] == home
+        if labels.get(i, ("", None))[1] in homes
     }
 
 
@@ -250,8 +262,9 @@ def _clusters_for(author: str, views: list[_WorkView], labels: _Labels) -> list[
     if home_works < MIN_HOME_WORKS or not _is_majority(home_works, len(affiliated)):
         return []
 
+    homes = frozenset({home})
     return _cluster_works(
-        author, views, affiliated, home, _home_institutions(affiliated, home, labels), labels
+        author, views, affiliated, homes, _home_institutions(affiliated, homes, labels), labels
     )
 
 
@@ -259,7 +272,7 @@ def _cluster_works(
     author: str,
     views: list[_WorkView],
     affiliated: list[_WorkView],
-    home: str,
+    homes: frozenset[str],
     home_institutions: set[str],
     labels: _Labels,
 ) -> list[Cluster]:
@@ -267,11 +280,12 @@ def _cluster_works(
 
     Everything above this decides *where* home is; this decides which works
     depart from it, and is identical whether home was counted or declared.
+    Counted, home is one country; declared, it is every declared place's.
     """
     outliers = [
         v
         for v in affiliated
-        if v.team and home not in v.countries and not (v.institutions & home_institutions)
+        if v.team and not (v.countries & homes) and not (v.institutions & home_institutions)
     ]
     outlying = {v.work_id for v in outliers}
 
@@ -318,7 +332,7 @@ def _cluster_works(
 
 
 def _declared_for(
-    author: str, views: list[_WorkView], labels: _Labels, declared: DeclaredHome
+    author: str, views: list[_WorkView], labels: _Labels, declared: tuple[DeclaredHome, ...]
 ) -> list[Finding]:
     """The same check, oriented by a declaration instead of by the counts.
 
@@ -333,11 +347,16 @@ def _declared_for(
     with no country anywhere dilutes the count and can silence the check,
     which is deliberate when home is a guess and pointless when it is
     declared.
+
+    Several declared places are one home: a work at any of them is at home,
+    and each makes its own country home, as a single declaration always has.
     """
     affiliated = _affiliated(views)
+    homes = frozenset(place.country for place in declared)
+    declared_institutions = frozenset(place.institution_id for place in declared)
 
     def at_declared_home(view: _WorkView) -> bool:
-        return declared.country in view.countries or declared.institution_id in view.institutions
+        return bool(view.countries & homes or view.institutions & declared_institutions)
 
     at_home = [v for v in affiliated if at_declared_home(v)]
     # Away is a positive finding, never the complement of home: a work that
@@ -356,7 +375,7 @@ def _declared_for(
         return [
             ProfileMismatch(
                 author=author,
-                country=declared.country,
+                countries=tuple(sorted(homes)),
                 home_works=len(at_home),
                 away_works=len(away),
             )
@@ -368,13 +387,10 @@ def _declared_for(
     if len(at_home) == len(away) or len(at_home) < MIN_HOME_WORKS:
         return []
 
-    # The declared institution is home even on a work the corpus never gave a
+    # A declared institution is home even on a work the corpus never gave a
     # country to; every other institution still has to earn it on its own.
-    home_institutions = _home_institutions(affiliated, declared.country, labels)
-    home_institutions.add(declared.institution_id)
-    return list(
-        _cluster_works(author, views, affiliated, declared.country, home_institutions, labels)
-    )
+    home_institutions = _home_institutions(affiliated, homes, labels) | declared_institutions
+    return list(_cluster_works(author, views, affiliated, homes, home_institutions, labels))
 
 
 def institution_index(raw_works: list[dict[str, Any]]) -> dict[str, tuple[str, str | None]]:
@@ -409,7 +425,7 @@ def institution_index(raw_works: list[dict[str, Any]]) -> dict[str, tuple[str, s
 def find_contamination(
     raw_works: list[dict[str, Any]],
     tracked_ids: dict[str, str],
-    homes: dict[str, DeclaredHome] | None = None,
+    homes: Mapping[str, tuple[DeclaredHome, ...]] | None = None,
 ) -> list[Finding]:
     """Works that look like they belong to someone else, and profiles that do.
 
@@ -418,8 +434,9 @@ def find_contamination(
     tracked author is judged against their own corpus, so a work shared by
     two configured colleagues is read once per person.
 
-    `homes` carries a declaration for the authors that have one, keyed the
-    same way. An author without one is checked exactly as before.
+    `homes` carries a declaration, one or more places, for the authors that
+    have one, keyed the same way. An author without one is checked exactly
+    as before.
     """
     appearances, labels = _index(raw_works, tracked_ids)
     homes = homes or {}
@@ -428,7 +445,7 @@ def find_contamination(
         views = [_view(a, tracked_id, labels) for a in appearances.get(tracked_id, [])]
         author = tracked_ids[tracked_id]
         declared = homes.get(tracked_id)
-        if declared is None:
+        if not declared:
             findings.extend(_clusters_for(author, views, labels))
         else:
             findings.extend(_declared_for(author, views, labels, declared))
@@ -443,11 +460,19 @@ def contamination_warnings(findings: Iterable[Finding]) -> list[str]:
             # Deliberately no exclusion advice: the works are not the
             # problem if the profile is. Excluding them one by one would
             # dismantle the evidence that the iD or the declaration is wrong.
+            # The incomplete reading comes first because it is the common
+            # one: a department always has someone who recently moved in.
+            # Countries, not places: two declared places in one country are
+            # one home country, and a country is what "outside" measures.
+            declared = ", ".join(finding.countries)
+            noun = "country" if len(finding.countries) == 1 else "countries"
             warnings.append(
                 f"{finding.author}: {finding.away_works} of "
                 f"{finding.home_works + finding.away_works} placed work(s) sit outside "
-                f"{finding.country}, the declared home — either the declaration is wrong "
-                f"or this profile is not only theirs; `erga verify` is where that is settled"
+                f"{declared}, the declared home {noun} — the declaration is incomplete (someone "
+                f"who moved here needs their previous institutions listed under `home:`) "
+                f"or wrong, or this profile is not only theirs; `erga verify` is where "
+                f"that is settled"
             )
             continue
         where = (

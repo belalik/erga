@@ -35,8 +35,9 @@ and its rule is settled on the one career that could measure recall, so
 do not tune it on local data: `docs/requirements-v1.md` section 7 has
 the measurements and the three standing caveats. Identity is a line, not
 a feature: finding an iD is the consumer's step and the ORCID is trusted
-as given (README). The declared home (`home:`, a ROR id, v0.5.0) tells
-the check where an author works instead of inferring it, which lifts the
+as given (README). The declared home (`home:`, a ROR id, v0.5.0; a list
+of them on main since 2026-09-23, unreleased) tells
+the check where an author's career belongs instead of inferring it, which lifts the
 majority gate's silence and lets a mostly-elsewhere profile be reported
 as wrong rather than accused.
 Measured 2026-09-21 on the pinned cohorts (section 7): a declaration
@@ -47,9 +48,11 @@ that claim is unobserved, not refuted. The first department cohort with
 a real declaration (dpsd-new, nine authors, 2026-09-22) lifted no
 silence either and changed one verdict, wrongly: a recent mover, mostly
 at a previous employer, is reported as a wrong profile under a correct
-declaration, and `home: null` is the only remedy. What the declaration
-should do for a mover is the open design question in `docs/todo.md`;
-the record is section 7. The probe
+declaration. Settled 2026-09-23: a declaration orients one career and
+does not check current employment, so a mover's entry lists every post
+(`home: [...]`); inferring the move from shared collaborators was
+measured and rejected after an independent review found four shapes
+where it is wrong. The record is section 7. The probe
 cohort is pinned since 2026-09-21 (`local/contamination-probes/`, one
 cached file per band, read offline): a before/after claim is valid
 against those files and against no earlier figure, since `sample=40&seed=17`

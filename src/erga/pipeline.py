@@ -32,10 +32,10 @@ from erga.output import document, dump, previous_venues, read_output, write_atom
 
 
 def _declared_homes(
-    declarations: dict[str, str | None],
+    declarations: dict[str, tuple[str, ...] | None],
     raw_works: list[dict[str, object]],
     openalex: OpenAlexClient,
-) -> dict[str, DeclaredHome]:
+) -> dict[str, tuple[DeclaredHome, ...]]:
     """Resolve each declared ROR once, then attach it to every profile it covers.
 
     The corpus answers most declarations for free, since every authorship
@@ -49,13 +49,13 @@ def _declared_homes(
     instead of the verdict that the profile itself is wrong — with nothing
     in the output to say which rule ran.
     """
-    declared = {openalex_id: ror for openalex_id, ror in declarations.items() if ror}
+    declared = {openalex_id: rors for openalex_id, rors in declarations.items() if rors}
     if not declared:
         return {}
 
     corpus = institution_index(raw_works)
     resolved: dict[str, DeclaredHome] = {}
-    for ror in sorted(set(declared.values())):
+    for ror in sorted({ror for rors in declared.values() for ror in rors}):
         found = corpus.get(ror)
         if found is None or found[1] is None:
             found = openalex.resolve_institution(ror)
@@ -66,7 +66,9 @@ def _declared_homes(
             raise ConfigError(f"home: ROR {ror} has no country in OpenAlex; it cannot be a home")
         resolved[ror] = DeclaredHome(institution_id=institution_id, country=country)
 
-    return {openalex_id: resolved[ror] for openalex_id, ror in declared.items()}
+    return {
+        openalex_id: tuple(resolved[ror] for ror in rors) for openalex_id, rors in declared.items()
+    }
 
 
 @dataclass
@@ -161,7 +163,7 @@ def build(
     # A declaration is made about a person, and one person can resolve to
     # several profiles; spreading it over all of them is what stops a split
     # identity from being half-declared.
-    declarations: dict[str, str | None] = {}
+    declarations: dict[str, tuple[str, ...] | None] = {}
     for author in config.authors:
         # Tracking-only entries resolve to nothing by construction, no
         # network involved; that is not the failure this error guards.

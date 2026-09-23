@@ -50,7 +50,7 @@ with `uvx erga`). Write an `erga.yml`:
 
 ```yaml
 mailto: you@example.org          # identifies requests to Crossref/OpenAlex
-# home: https://ror.org/...      # optional: where these people work (ROR id)
+# home: https://ror.org/...      # optional: where these careers belong (ROR id or list)
 authors:
   - name: Josiah Carberry
     orcid: 9999-9999-9999-9999   # placeholder: no real iD starts 9999
@@ -107,7 +107,10 @@ That check works out where "one place" is by counting, which goes quiet on
 anyone whose record is scattered across places. Setting `home:` to your
 institution's ROR id tells it instead, for everyone in the file or per
 author, and then it can also tell you that a profile is mostly somebody
-else's work rather than listing that majority as strangers. A thin record
+else's work rather than listing that majority as strangers. Someone who
+joined recently has most of their record at a previous employer, so give
+them a list, `home: [<your ROR>, <their previous ROR>]`, or the check will
+read their career as someone else's. A thin record
 stays quiet whoever declares it. It is only ever
 read by this check: like the ORCID, a declared home is trusted as given and
 is never treated as evidence that a profile is the right person.

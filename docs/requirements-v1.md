@@ -215,7 +215,7 @@ strangers' works instead of failing.
 
 ```yaml
 mailto: you@example.org          # identifies requests to Crossref/OpenAlex
-home: https://ror.org/0aegean12  # optional: where these people work (ROR id)
+home: https://ror.org/0aegean12  # optional: where these careers belong (ROR id or list)
 authors:
   - name: Josiah Carberry
     orcid: 9999-9999-9999-9999   # placeholder: no real iD starts 9999
@@ -223,6 +223,9 @@ authors:
   - name: Another Person
     openalex_id: A5000000000     # alternative when ORCID is missing/wrong
     home: https://ror.org/0packy456   # this person's own, overriding above
+  - name: A Recent Arrival
+    orcid: 9999-9999-9999-9998
+    home: [0aegean12, 0sztdsg34]     # here, and the post they came from
   - name: Third Person           # no ids at all: tracked by name only
     home: null                   # opts out of the department-wide default
 
@@ -240,14 +243,21 @@ curation:                        # optional; defaults shown, relative to config
   tags: tags.yml
 ```
 
-`home` is a ROR id, bare or as a ror.org URL, and it is read by nothing but
-the contamination check. It says where these people work, so the check can
-stop inferring that from the counts. Three states: the key absent on an
-author inherits the top-level declaration, a value replaces it, and an
-explicit `null` opts that author out — a department default has to be able
-to carry a visitor without anyone inventing a false ROR. A declaration
-follows the configured person, so it covers every OpenAlex profile their
-entry resolves to, including split identities.
+`home` is a ROR id, bare or as a ror.org URL, or a list of them, and it is
+read by nothing but the contamination check. It says where these people's
+records belong, so the check can stop inferring that from the counts. A
+list is for a career that moved: a recent arrival has most of their record
+at a previous employer, and against the new institution alone that reads
+as a wrong profile, so their entry names both. Every listed place is home,
+each with its whole country, as a single declaration always was; an empty
+list is refused, since `null` already says "no declaration". Three states:
+the key absent on an author inherits the top-level declaration, a value
+replaces it (a list included, so an arrival's list repeats the department),
+and an explicit `null` opts that author out: a department default has to
+be able to carry a visitor without anyone inventing a false ROR. Opting out
+returns that author to the inferred rule, not to no check at all. A
+declaration follows the configured person, so it covers every OpenAlex
+profile their entry resolves to, including split identities.
 
 It is never identity evidence. Like the ORCID, it is trusted as given: erga
 does not check that the declared institution is really where the author
@@ -509,14 +519,33 @@ Ported from the production origin pipeline with generalization deltas noted.
    and the verdict is a wrong profile. One person, one profile, a correct
    declaration, and the rule produces this by construction for anyone
    whose recorded career sits mostly at a previous employer; a department
-   always has some. `home: null` is the only remedy and it removes the
-   check for that person. So the declared home's measured value on real
-   data is the reverse of the random cohorts' finding: there it changed
-   nothing and the wrong-profile verdict was the field's demonstrable
-   use; here it changed one verdict and that verdict was wrong. What a
-   declaration should mean for a mover, a start year, several homes, or
-   verdict text that names the third reading, is an open design decision
-   (`docs/todo.md`), and this cohort is its only fixture.
+   always has some. The one opt-out, `home: null`, did not remove the
+   check, as both this record and the consumer's first said: it returns
+   the author to the inferred rule, and so to the undeclared verdict
+   above, his employer's two works listed as strangers to exclude. So the
+   declared home's measured value on real data is the reverse of the
+   random cohorts' finding: there it changed nothing and the wrong-profile
+   verdict was the field's demonstrable use; here it changed one verdict
+   and that verdict was wrong.
+
+   **Resolved 2026-09-23 by the list form (section 5).** A declaration
+   orients one career; it is not a check on where the author works now,
+   so a mover's entry names every post. On his record re-fetched that day
+   (27 placed works), the department alone still gives the wrong-profile
+   verdict, the department plus SUTD gives silence, and all three posts
+   give silence. Inferring the move from the data was measured first and
+   rejected: a gate withholding the verdict when the away works share
+   co-authors with the at-home ones cleared him, and an independent
+   review (Codex) then built profiles where that gate is wrong and the
+   shipped rule right: a stale declaration, a mostly-stranger profile
+   bridged by one consortium co-author, one linked paper outvoting five
+   solo ones. A variant vouching by shared institution instead also hid a
+   stranger cluster inside a mover. Shared collaborators prove one career,
+   not a right declaration. With one place declared the check reaches the
+   same verdicts as v0.5.0 on both pinned cohorts (the probe output is
+   byte-identical); only the wrong-profile warning's wording changed, to
+   name the incomplete reading first, since a department always has an
+   arrival.
 
    All of the above argue for the output staying advisory, which it is.
 5. Merge manual entries; their DOIs seed the dedup set so manual always

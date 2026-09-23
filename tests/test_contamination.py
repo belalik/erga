@@ -71,7 +71,7 @@ AEGEAN_UNPLACED = {
     "ror": f"https://ror.org/{AEGEAN_ROR}",
 }
 AT_HOME = DeclaredHome(institution_id="I100000001", country="GR")
-DECLARED = {TRACKED: AT_HOME}
+DECLARED = {TRACKED: (AT_HOME,)}
 
 
 def work(
@@ -202,8 +202,8 @@ def test_a_missing_country_does_not_erase_a_known_one() -> None:
     )
     forward = find_contamination([*home_corpus(), with_country, without_country], TRACKED_IDS)
     reverse = find_contamination([*home_corpus(), without_country, with_country], TRACKED_IDS)
-    assert [c.country for c in forward] == ["CZ"]
-    assert [c.country for c in reverse] == ["CZ"]
+    assert [c.country for c in clusters_only(forward)] == ["CZ"]
+    assert [c.country for c in clusters_only(reverse)] == ["CZ"]
 
 
 def test_an_institution_country_fills_a_missing_authorship_country() -> None:
@@ -496,7 +496,7 @@ def test_a_mostly_away_profile_is_reported_as_wrong_not_accused() -> None:
     ]
     findings = find_contamination(raw, TRACKED_IDS, DECLARED)
     assert findings == [
-        ProfileMismatch(author="Katerina Malisova", country="GR", home_works=2, away_works=6)
+        ProfileMismatch(author="Katerina Malisova", countries=("GR",), home_works=2, away_works=6)
     ]
 
 
@@ -511,7 +511,7 @@ def test_four_all_away_works_stay_below_the_evidence_floor() -> None:
 def test_five_all_away_works_are_a_profile_mismatch() -> None:
     raw = [work(f"W9{i:02d}", institutions=[PALACKY], team=[f"A50000090{i:02d}"]) for i in range(5)]
     assert find_contamination(raw, TRACKED_IDS, DECLARED) == [
-        ProfileMismatch(author="Katerina Malisova", country="GR", home_works=0, away_works=5)
+        ProfileMismatch(author="Katerina Malisova", countries=("GR",), home_works=0, away_works=5)
     ]
 
 
@@ -521,7 +521,7 @@ def test_four_home_and_five_away_works_are_a_profile_mismatch() -> None:
         *(work(f"W9{i:02d}", institutions=[PALACKY], team=[f"A50000090{i:02d}"]) for i in range(5)),
     ]
     assert find_contamination(raw, TRACKED_IDS, DECLARED) == [
-        ProfileMismatch(author="Katerina Malisova", country="GR", home_works=4, away_works=5)
+        ProfileMismatch(author="Katerina Malisova", countries=("GR",), home_works=4, away_works=5)
     ]
 
 
@@ -636,15 +636,86 @@ def test_co_listing_with_the_declared_institution_does_not_make_a_place_home() -
 
 
 def test_the_mismatch_warning_sends_the_reader_to_verify_and_advises_no_exclusion() -> None:
-    mismatch = ProfileMismatch(author="Katerina Malisova", country="GR", home_works=2, away_works=6)
+    mismatch = ProfileMismatch(
+        author="Katerina Malisova", countries=("GR",), home_works=2, away_works=6
+    )
     (warning,) = contamination_warnings([mismatch])
     assert "Katerina Malisova" in warning
     assert "6 of 8" in warning
-    assert "GR" in warning
+    assert "outside GR, the declared home country " in warning
     assert "verify" in warning
+    # A recent mover is the common reading, so the remedy is named.
+    assert "previous institutions listed under `home:`" in warning
     # Excluding the works one by one would remove the evidence that the
     # profile, or the declaration, is what is wrong.
     assert "exclude" not in warning
+
+
+# A previous employer, for the mover: another country, another lab.
+SUTD = {
+    "id": "https://openalex.org/I500000005",
+    "display_name": "Singapore University of Technology and Design",
+    "country_code": "SG",
+    # No 'u' in the ROR alphabet, hence the spelling.
+    "ror": "https://ror.org/0sztdsg34",
+}
+AT_SUTD = DeclaredHome(institution_id="I500000005", country="SG")
+
+
+def mover_corpus() -> list[dict[str, Any]]:
+    """Five works at the declared department, seven from the previous post.
+
+    The earlier lab shares no one with the new one, so nothing but the
+    declaration can say both halves are one career.
+    """
+    return [
+        *home_corpus(5),
+        *(
+            work(f"W7{i:02d}", institutions=[SUTD], team=["A5000000700", f"A50000007{i:02d}"])
+            for i in range(7)
+        ),
+    ]
+
+
+def test_a_mover_declared_at_the_new_post_alone_reads_as_a_wrong_profile() -> None:
+    assert find_contamination(mover_corpus(), TRACKED_IDS, DECLARED) == [
+        ProfileMismatch(author="Katerina Malisova", countries=("GR",), home_works=5, away_works=7)
+    ]
+
+
+def test_a_mover_declared_at_every_post_is_one_career() -> None:
+    assert find_contamination(mover_corpus(), TRACKED_IDS, {TRACKED: (AT_HOME, AT_SUTD)}) == []
+
+
+def test_a_mismatch_under_several_homes_names_every_country_in_order() -> None:
+    raw = [
+        *mover_corpus(),
+        *(
+            work(f"W9{i:02d}", institutions=[PALACKY], team=[f"A50000091{i:02d}"])
+            for i in range(13)
+        ),
+    ]
+    # Declared in reverse, so the sorted countries come from the check.
+    findings = find_contamination(raw, TRACKED_IDS, {TRACKED: (AT_SUTD, AT_HOME)})
+    assert findings == [
+        ProfileMismatch(
+            author="Katerina Malisova", countries=("GR", "SG"), home_works=12, away_works=13
+        )
+    ]
+    (warning,) = contamination_warnings(findings)
+    assert "outside GR, SG, the declared home countries " in warning
+
+
+def test_every_declared_post_still_catches_a_stranger_cluster() -> None:
+    # Declaring the whole career must not whitelist the rest of the world.
+    raw = [
+        *mover_corpus(),
+        work("W900", institutions=[PALACKY], team=["A5000009001"], title="Sports science I"),
+        work("W901", institutions=[PALACKY], team=["A5000009002"], title="Sports science II"),
+    ]
+    (cluster,) = clusters_only(find_contamination(raw, TRACKED_IDS, {TRACKED: (AT_HOME, AT_SUTD)}))
+    assert cluster.institution == "Palacký University"
+    assert cluster.work_ids == ["W900", "W901"]
 
 
 def _declared_build(tmp_path: Path, ror: str, raw: list[dict[str, Any]]) -> FakeTransport:
@@ -808,6 +879,28 @@ def test_a_per_author_home_replaces_the_top_level_home_in_build(tmp_path: Path) 
         len([warning for warning in stats.warnings if "University of the Aegean (GR)" in warning])
         == 1
     )
+
+
+def test_build_resolves_every_place_in_a_home_list(tmp_path: Path) -> None:
+    # Either place alone gets a warning (the department a wrong profile, the
+    # previous post a cluster of the department's works), so silence proves
+    # both places reached the check.
+    single = _run(tmp_path, _declared_build(tmp_path, AEGEAN_ROR, mover_corpus()))
+    assert [w for w in single.warnings if "7 of 12" in w]
+
+    transport = _declared_build(tmp_path, f"[{AEGEAN_ROR}, 0sztdsg34]", mover_corpus())
+    listed = _run(tmp_path, transport)
+    assert not [w for w in listed.warnings if w.startswith("Katerina Malisova:")]
+    assert not [url for url, _ in transport.calls if "institutions" in url]
+
+
+def test_one_unresolvable_place_in_a_home_list_aborts_the_build(tmp_path: Path) -> None:
+    absent = "0zzzzzz99"
+    transport = _declared_build(tmp_path, f"[{AEGEAN_ROR}, {absent}]", home_corpus(6))
+    transport.add(f"api.openalex.org/institutions/ror:{absent}", {}, None, status=404)
+
+    with pytest.raises(ConfigError, match="names no OpenAlex institution"):
+        _run(tmp_path, transport)
 
 
 def test_a_per_author_null_opts_out_of_the_top_level_home_in_build(tmp_path: Path) -> None:

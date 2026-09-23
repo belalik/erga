@@ -3,12 +3,13 @@
 ## High
 
 ## Normal
-- Decide what the declared home means for a recent mover, whom the rule
-  reports as a wrong profile under a correct declaration (the record and
-  the two candidate shapes, a start year or several homes versus verdict
-  text naming the third reading: `docs/requirements-v1.md` section 7,
-  the 2026-09-22 cohort). Design decision before code; dpsd-new's cohort
-  is the only fixture, the pinned ones hold no mover
+- Release the `home:` list form (on main since 2026-09-23, a new config
+  shape, so a minor bump), then route dpsd-new its two actions: Koronis's
+  entry becomes `home: [https://ror.org/03zsp3p94,
+  https://ror.org/05j6fvn87, https://ror.org/01c27hj86]` (the Aegean,
+  SUTD, Lisbon; silent on his record re-fetched 2026-09-23), and its
+  `docs/publications.md` says `home: null` removes the check, which is
+  false: it returns the author to the inferred rule
 ## Low
 - Add `orcid:` under the author in `CITATION.cff` once Thomas confirms
   his iD: the one public record under his name (0009-0001-3431-2825,
