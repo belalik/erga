@@ -705,6 +705,10 @@ scheduling, the `v1` tag policy, how CI exercises it) lives in
   `summary` input and the shrink warning; and the previous output's
   reader reporting a file in place it cannot read instead of calling it
   a first build.
+- **v0.7** (released 2026-09-23 as v0.7.0): `home:` as a list, so a
+  recent mover's entry names every post and the check stops reading
+  their career as someone else's (sections 5 and 7); the wrong-profile
+  warning names the incomplete declaration first.
 - **CSL-JSON and BibTeX emitters** slot in after v0.1 as demand warrants,
   before the v1.0 promotion push.
 - **v1.0**: strong README (before/after dedup story, head-on "why not

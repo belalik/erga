@@ -19,7 +19,7 @@ a fallback, never solved inside erga.
 
 ## Status
 
-v0.6.0 released 2026-09-22 (PyPI via Trusted Publishing, GitHub
+v0.7.0 released 2026-09-23 (PyPI via Trusted Publishing, GitHub
 Releases; repo public since v0.1.0, 2026-08-05). The pipeline is
 implemented end-to-end (config, fetch, normalize, dedup, curation,
 Crossref backfill, deterministic output, `build`/`verify` CLI) with unit
@@ -36,7 +36,7 @@ do not tune it on local data: `docs/requirements-v1.md` section 7 has
 the measurements and the three standing caveats. Identity is a line, not
 a feature: finding an iD is the consumer's step and the ORCID is trusted
 as given (README). The declared home (`home:`, a ROR id, v0.5.0; a list
-of them on main since 2026-09-23, unreleased) tells
+of them, v0.7.0) tells
 the check where an author's career belongs instead of inferring it, which lifts the
 majority gate's silence and lets a mostly-elsewhere profile be reported
 as wrong rather than accused.
