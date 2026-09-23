@@ -3,13 +3,6 @@
 ## High
 
 ## Normal
-- Release the `home:` list form (on main since 2026-09-23, a new config
-  shape, so a minor bump), then route dpsd-new its two actions: Koronis's
-  entry becomes `home: [https://ror.org/03zsp3p94,
-  https://ror.org/05j6fvn87, https://ror.org/01c27hj86]` (the Aegean,
-  SUTD, Lisbon; silent on his record re-fetched 2026-09-23), and its
-  `docs/publications.md` says `home: null` removes the check, which is
-  false: it returns the author to the inferred rule
 ## Low
 - Add `orcid:` under the author in `CITATION.cff` once Thomas confirms
   his iD: the one public record under his name (0009-0001-3431-2825,
