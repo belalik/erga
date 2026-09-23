@@ -4,6 +4,10 @@
 
 ## Normal
 ## Low
+- Replace ORCID's fictitious-researcher iD (`0000-0002-1825-0097`) in the
+  tests with a `9999` placeholder, per the CLAUDE.md fixture rule: six
+  test modules plus the OpenAlex and golden fixtures, so the golden
+  expected output changes with it (`grep -rl 1825-0097 tests`)
 - Add `orcid:` under the author in `CITATION.cff` once Thomas confirms
   his iD: the one public record under his name (0009-0001-3431-2825,
   empty, 2023) is unconfirmed; orcid.org's forgot-iD form settles it

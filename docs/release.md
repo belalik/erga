@@ -26,6 +26,12 @@ carries `X.Y.Z.dev0` between releases.
    the version.
 6. Set `__version__` to `X.Y.(Z+1).dev0`. Commit as "Back to dev version
    after vX.Y.Z", push.
+7. Route each consumer the release: an append to its `docs/inbox.md` (no
+   git there) naming the pin to move, every place it sits, and what
+   changed for that site. Consumers: smartmove-site (`uvx erga==X.Y.Z` in
+   its deploy workflow, docs and CLAUDE.md) and dpsd-new (the Action's
+   `uses:` and `version:`). If an earlier entry is still untriaged, send
+   an amending entry that says so.
 
 Release notes: one sentence on what the release is for, one bullet per
 user-visible change, the install line last. The Releases page is the

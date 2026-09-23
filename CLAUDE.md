@@ -24,7 +24,7 @@ Releases; repo public since v0.1.0, 2026-08-05). The pipeline is
 implemented end-to-end (config, fetch, normalize, dedup, curation,
 Crossref backfill, deterministic output, `build`/`verify` CLI) with unit
 suites plus a byte-exact golden test. Two consumers build with it in CI:
-the origin Jekyll lab site (v0.2) and dpsd-new, an Astro department site
+the origin Jekyll lab site (smartmove-site) and dpsd-new, an Astro department site
 whose pilot (5 authors, 228 works, 2026-08-11) shaped the department-scale
 intake that v0.4.0 ships: verify separates split profiles from
 contaminated ORCIDs by name matching and name-searches for unconfigured
