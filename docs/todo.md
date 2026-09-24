@@ -18,19 +18,6 @@
   = 3 missing papers, 3 versions of one Zenodo dataset, 2 repository copies
   of linked works. A Greek-script byline (his thesis) is caught only if an
   alias carries that script; common names will pull in namesakes' works
-- Clean HTML-wrapped DOIs on ingest. OpenAlex carries values like
-  `https://doi.org/10.13140/rg.2.2.34719.94883">https://dx.doi.org/10.13140/rg.2.2.34719.94883</a`
-  (UNH repository records, smartmove-site 2026-09-23), and `normalize.py`
-  passes them through: `doi_key` strips only the host, so DOI dedup,
-  overrides, tags and Crossref backfill miss, and the output links nowhere.
-  Extract the DOI-shaped part in `normalize`, warn when trimming was
-  needed, and add that record as a regression fixture
-- `write_atomic` (`output.py`) leaves `publications.json` and the summary
-  page at mode 0600: `mkstemp` creates the temp file that way and
-  `os.replace` keeps it (smartmove-site, 2026-09-23, umask 0002). Harmless
-  where CI commits the file, a 403 where a site serves it from a web root
-  as another user. Keep an existing target's mode, else `0o666 & ~umask`;
-  test both
 - Four OpenAlex types warn and fall back to `other`, seen by both
   consumers. dpsd-new builds: `reference-entry` (10 works: encyclopedia
   entries in two editions, a handbook chapter under two DOIs),
@@ -131,17 +118,8 @@
   as out of scope: citation counts per work (site side, `cited_by_count`
   is in the JSON) and Scopus as a source (v1 non-goal). Ground truth from
   members is recorded here, never as fixtures: it is curated personal data
-  under the fixture rule; only signals traced to public OpenAlex records are
-- Two silent traps in manual entries (smartmove-site, 2026-09-23, their
-  manual-file header documented the first). `authors: "A, B, C"` as one
-  string becomes one author named "A, B, C" (`curation._parse_authors`
-  wraps a string whole), so nobody is tracked, at exit 0: warn when an
-  author string holds two or more commas, or contains a configured name or
-  alias without matching it ("Surname, Given" stays valid); this needs
-  warnings threaded out of `load_manual`, which only raises today. And
-  `year` is never derived from `date`, so a date-only entry writes
-  `year: null`: derive it from a `YYYY[-MM[-DD]]` date, and raise a
-  `ConfigError` when both are set and disagree
+  under the fixture rule; only signals traced to public OpenAlex records
+  are fixture material
 ## Low
 - Advisory warning when an IEEE conference DOI's year segment disagrees
   with `publication_year` (dpsd-new, 2026-09-25: `10.1109/icc.1999.765564`,

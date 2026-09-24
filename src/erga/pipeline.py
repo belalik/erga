@@ -158,8 +158,8 @@ def build(
     overrides = load_overrides(config.overrides_path)
     tags = load_tags(config.tags_path)
     stats.warnings.extend(
-        f"manual entry {w} looks like several authors in one string; list them separately"
-        for w in joined_author_names(manual, config.authors)
+        f"{w} looks like several authors in one string; list them separately"
+        for w in joined_author_names(manual, overrides, config.authors)
     )
 
     # Each mapping resolves a match key to the configured author's canonical

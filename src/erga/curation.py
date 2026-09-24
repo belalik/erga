@@ -8,7 +8,6 @@ skipped patch is worse than an aborted run.
 from __future__ import annotations
 
 import copy
-import datetime
 import re
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -64,22 +63,37 @@ def _opt_str(entry: dict[str, Any], key: str) -> str | None:
     return str(value) if value is not None else None
 
 
-_MANUAL_DATE = re.compile(r"\d{4}(-(0[1-9]|1[0-2])(-(0[1-9]|[12]\d|3[01]))?)?")
+_ISO_DATE = re.compile(r"\d{4}(-(0[1-9]|1[0-2])(-(0[1-9]|[12]\d|3[01]))?)?")
 
 
-def _manual_date(value: Any, where: str) -> str | None:
+def _iso_date(value: Any, where: str) -> str | None:
     """An ISO date of any precision. YAML reads an unquoted full date as a
     date object and a bare year as an int; both stringify to ISO."""
     if value is None:
         return None
     text = str(value)
-    if not _MANUAL_DATE.fullmatch(text):
+    if not _ISO_DATE.fullmatch(text):
         raise ConfigError(f"{where}: 'date' must be YYYY, YYYY-MM or YYYY-MM-DD")
     return text
 
 
-def joined_author_names(manual: list[Work], authors_cfg: list[AuthorConfig]) -> list[str]:
-    """Manual author strings that look like a list written as one string.
+def _year_for(date: str | None, year: Any, where: str) -> Any:
+    """The year a curated date implies when none is given, so a date-only
+    entry does not publish without one; a year it contradicts is an error."""
+    if date is None:
+        return year
+    date_year = int(date[:4])
+    if year is None:
+        return date_year
+    if year != date_year:
+        raise ConfigError(f"{where}: 'year' {year} disagrees with 'date' {date}")
+    return year
+
+
+def joined_author_names(
+    manual: list[Work], overrides: list[Override], authors_cfg: list[AuthorConfig]
+) -> list[str]:
+    """Curated author strings that look like a list written as one string.
 
     `authors: "A, B, C"` becomes one author named "A, B, C" who tracks
     nobody, at exit 0. A comma alone proves nothing, since "Surname, Given"
@@ -87,10 +101,15 @@ def joined_author_names(manual: list[Work], authors_cfg: list[AuthorConfig]) -> 
     configured name or alias, is the list.
     """
     known = {name for author in authors_cfg for name in author.match_names()}
+    bylines = [(f"manual entry {work.title!r}", work.authors) for work in manual] + [
+        (o.where, _parse_authors(o.patch["authors"], authors_cfg, o.where))
+        for o in overrides
+        if "authors" in o.patch
+    ]
     return [
-        f"{work.title!r}: {author.name!r}"
-        for work in manual
-        for author in work.authors
+        f"{label}: {author.name!r}"
+        for label, authors in bylines
+        for author in authors
         if not author.tracked
         and (
             author.name.count(",") >= 2
@@ -125,14 +144,8 @@ def load_manual(path: Path, authors_cfg: list[AuthorConfig]) -> list[Work]:
         year = entry.get("year")
         if year is not None and not isinstance(year, int):
             raise ConfigError(f"{where}: 'year' must be an integer")
-        date = _manual_date(entry.get("date"), where)
-        # A date-only entry would otherwise publish with no year.
-        if date is not None:
-            date_year = int(date[:4])
-            if year is None:
-                year = date_year
-            elif year != date_year:
-                raise ConfigError(f"{where}: 'year' {year} disagrees with 'date' {date}")
+        date = _iso_date(entry.get("date"), where)
+        year = _year_for(date, year, where)
 
         works.append(
             Work(
@@ -284,15 +297,16 @@ def _patch_work(
         elif key == "tags":
             work.tags = expect_str_list(value, f"{where}: 'tags'")
         elif key == "date":
-            # YAML parses unquoted ISO dates as date objects; accept both.
-            if value is not None and not isinstance(value, (str, datetime.date)):
-                raise ConfigError(f"{where}: 'date' must be an ISO date string or null")
-            work.date = str(value) if value is not None else None
+            work.date = _iso_date(value, where)
         else:
             description, types = _SCALAR_PATCH_TYPES[key]
             if not isinstance(value, types) or (isinstance(value, bool) and bool not in types):
                 raise ConfigError(f"{where}: '{key}' must be {description}")
             setattr(work, key, value)
+    # A patched date carries the year with it, or the fetched year would
+    # stand beside a date that contradicts it.
+    if patch.get("date") is not None:
+        work.year = _year_for(work.date, patch.get("year"), where)
 
 
 def apply_overrides(

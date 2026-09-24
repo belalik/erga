@@ -127,10 +127,17 @@ def test_joined_author_names_flags_a_list_written_as_one_string(tmp_path: Path) 
   authors: ["Outsider, An", "J. S. Carberry"]
 """,
     )
+    overrides_path = write(
+        tmp_path,
+        "overrides.yml",
+        '- id: W1\n  authors: "J. S. Carberry, An Outsider"\n- id: W2\n  authors: [Solo Author]\n',
+    )
     manual = load_manual(path, [CARBERRY])
-    assert joined_author_names(manual, [CARBERRY]) == [
-        "'Joined': 'Josiah Carberry, An Outsider'",
-        "'Three Strangers': 'One Person, Two Person, Three Person'",
+    overrides = load_overrides(overrides_path)
+    assert joined_author_names(manual, overrides, [CARBERRY]) == [
+        "manual entry 'Joined': 'Josiah Carberry, An Outsider'",
+        "manual entry 'Three Strangers': 'One Person, Two Person, Three Person'",
+        f"{overrides_path}: entry 1: 'J. S. Carberry, An Outsider'",
     ]
 
 
@@ -253,6 +260,7 @@ def test_apply_overrides_open_access_and_authors(tmp_path: Path) -> None:
         ("is_retracted: 1", "'is_retracted' must be a boolean"),
         ("year: true", "'year' must be an integer"),
         ("cited_by_count: '5'", "'cited_by_count' must be an integer"),
+        ("date: 'Nov 2025'", "YYYY-MM-DD"),
     ],
 )
 def test_apply_overrides_rejects_mistyped_values(
@@ -267,6 +275,25 @@ def test_apply_overrides_coerces_yaml_date(tmp_path: Path) -> None:
     overrides = load_overrides(write(tmp_path, "overrides.yml", "- id: W1\n  date: 2024-03-01\n"))
     kept, _ = apply_overrides([Work(id="W1", title="A")], overrides, [])
     assert kept[0].date == "2024-03-01"
+
+
+def test_apply_overrides_patched_date_carries_its_year(tmp_path: Path) -> None:
+    overrides = load_overrides(
+        write(
+            tmp_path,
+            "overrides.yml",
+            "- id: W1\n  date: 2024-03-01\n- id: W2\n  date: null\n"
+            "- id: W3\n  date: 2024-03-01\n  year: 2023\n",
+        )
+    )
+    works = [
+        Work(id="W1", title="A", year=2020, date="2020-01-01"),
+        Work(id="W2", title="B", year=2020, date="2020-01-01"),
+    ]
+    kept, _ = apply_overrides(works, overrides[:2], [])
+    assert [(w.year, w.date) for w in kept] == [(2024, "2024-03-01"), (2020, None)]
+    with pytest.raises(ConfigError, match="disagrees"):
+        apply_overrides([Work(id="W3", title="C")], overrides[2:], [])
 
 
 def test_mark_keep_distinct(tmp_path: Path) -> None:

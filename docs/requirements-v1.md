@@ -288,13 +288,19 @@ All three survive every refresh; a missing file means "none".
 
 - **`manual.yml`**: list of records the APIs miss. Fields mirror the output
   schema loosely: `title`, `authors` (string or list), `venue`, `year`,
-  `doi`, `type`, `tags`. Authors are matched to configured authors by
-  name/alias for the `tracked` flag.
+  `date`, `doi`, `type`, `abstract`, `tags`. Authors are matched to
+  configured authors by name/alias for the `tracked` flag. A string is one
+  author, so a list written as one comma-joined string warns (two or more
+  commas, or a piece that is a configured name). `date` is `YYYY`,
+  `YYYY-MM` or `YYYY-MM-DD`; it supplies `year` when that is absent, and a
+  `year` it contradicts is an error.
 - **`overrides.yml`**: list of patches keyed by `doi` (case-insensitive) or
   `id`. Any other key overwrites that field on the merged record. Special
   keys: `exclude: true` drops the record; an explicit `exclude: false`
   exempts it from the `output.exclude_types` filter; `keep_distinct: true`
-  exempts it from title clustering. A field patch that no longer changes anything
+  exempts it from title clustering. `date` and `authors` patches follow
+  the manual rules above, and a patched date carries its year onto the
+  record. A field patch that no longer changes anything
   (upstream caught up) raises a build warning, measured against the
   pre-patch record — measuring against the output would be circular. The
   warning is information, not an instruction to delete: a redundant
