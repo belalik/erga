@@ -7,7 +7,7 @@ import re
 from collections import Counter
 from typing import Any
 
-from erga.model import Work, WorkAuthor, normalize_orcid
+from erga.model import Work, WorkAuthor, clean_doi, normalize_orcid
 from erga.openalex import strip_openalex_host
 
 # OpenAlex type -> canonical type. The vocabulary drifts (a 2026
@@ -49,6 +49,20 @@ def unmapped_types(raw_works: list[dict[str, Any]]) -> dict[str, int]:
         and raw_type not in KNOWN_OTHER_TYPES
     )
     return dict(sorted(counts.items()))
+
+
+def malformed_dois(raw_works: list[dict[str, Any]]) -> list[str]:
+    """Ids of works whose DOI field holds more than a DOI.
+
+    normalize_work keeps only the DOI; without that, DOI dedup, overrides,
+    tags and the Crossref backfill would all miss the record, and the
+    output would link nowhere. Listed so the upstream fault stays visible.
+    """
+    return [
+        strip_openalex_host(raw["id"])
+        for raw in raw_works
+        if (doi := raw.get("doi")) and clean_doi(doi) != doi
+    ]
 
 
 _HTML_TAG = re.compile(r"<[^>]+>")
@@ -148,7 +162,7 @@ def normalize_work(
         date=raw.get("publication_date"),
         venue=venue,
         type=map_type(raw),
-        doi=raw.get("doi") or None,
+        doi=clean_doi(raw["doi"]) if raw.get("doi") else None,
         cited_by_count=raw.get("cited_by_count") or 0,
         abstract=reconstruct_abstract(raw.get("abstract_inverted_index")),
         open_access_url=open_access_url(raw),

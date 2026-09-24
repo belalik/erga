@@ -26,7 +26,7 @@ from erga.dedup import cluster_by_title, dedup_by_doi
 from erga.delta import Delta, compute_delta
 from erga.errors import ConfigError, FetchError
 from erga.model import Work
-from erga.normalize import normalize_work, unmapped_types
+from erga.normalize import malformed_dois, normalize_work, unmapped_types
 from erga.openalex import OpenAlexClient
 from erga.output import document, dump, previous_venues, read_output, write_atomic
 
@@ -195,6 +195,11 @@ def build(
         f"(upstream vocabulary drift?)"
         for raw_type, count in unmapped_types(raw_works).items()
     )
+    if malformed := malformed_dois(raw_works):
+        stats.warnings.append(
+            f"OpenAlex's DOI field held more than a DOI on {len(malformed)} work(s) "
+            f"(e.g. {', '.join(malformed[:3])}); only the DOI is kept"
+        )
     # Reads the raw works, not the canonical ones: affiliation is what the
     # check reasons about and the canonical record deliberately drops it.
     homes = _declared_homes(declarations, raw_works, openalex)

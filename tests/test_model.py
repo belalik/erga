@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from erga.model import Work, WorkAuthor, doi_key, doi_url, slugify
+from erga.model import Work, WorkAuthor, clean_doi, doi_key, doi_url, slugify
 
 
 def test_doi_key_strips_host_and_case() -> None:
@@ -12,6 +12,18 @@ def test_doi_key_strips_host_and_case() -> None:
 def test_doi_url_from_bare_and_url_forms() -> None:
     assert doi_url("10.5555/abc") == "https://doi.org/10.5555/abc"
     assert doi_url("https://doi.org/10.5555/ABC") == "https://doi.org/10.5555/abc"
+
+
+def test_clean_doi_keeps_the_doi_and_drops_what_surrounds_it() -> None:
+    # The upstream shape: an HTML anchor's tail glued onto the value.
+    wrapped = 'https://doi.org/10.5555/rg.2.2.1">https://dx.doi.org/10.5555/rg.2.2.1</a'
+    assert clean_doi(wrapped) == "https://doi.org/10.5555/rg.2.2.1"
+    # A clean value passes through unchanged, case included.
+    assert clean_doi("https://doi.org/10.5555/AbC") == "https://doi.org/10.5555/AbC"
+    # Old SICI DOIs carry < and > legitimately; they must survive whole.
+    sici = "https://doi.org/10.5555/(sici)1234-5678(199706)35:4<463::aid-x6>3.0.co;2-g"
+    assert clean_doi(sici) == sici
+    assert clean_doi("not a doi") is None
 
 
 def test_slugify() -> None:

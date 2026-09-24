@@ -33,6 +33,10 @@ def validate_work_type(value: Any, where: str) -> str:
 
 
 _DOI_HOST = re.compile(r"^https?://(dx\.)?doi\.org/", re.IGNORECASE)
+# A DOI inside whatever surrounds it: OpenAlex has served one with an HTML
+# anchor's tail glued on (`…94883">https://dx.doi.org/…</a`). The suffix
+# stops only at a quote or whitespace, since old SICI DOIs contain < and >.
+_DOI_BODY = re.compile(r'10\.[0-9.]+/[^\s"]+')
 _ORCID_HOST = re.compile(r"^https?://orcid\.org/", re.IGNORECASE)
 
 
@@ -54,6 +58,12 @@ def bare_ror(value: str) -> str:
 def doi_key(value: str) -> str:
     """Comparison key for a DOI: bare form, lowercase."""
     return _DOI_HOST.sub("", value.strip()).lower()
+
+
+def clean_doi(value: str) -> str | None:
+    """The first DOI in a raw value, as a doi.org URL; None if there is none."""
+    match = _DOI_BODY.search(value)
+    return "https://doi.org/" + match.group() if match else None
 
 
 def doi_url(value: str) -> str:

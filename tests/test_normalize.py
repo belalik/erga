@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from erga.dedup import dedup_by_doi
 from erga.normalize import (
+    malformed_dois,
     map_type,
     normalize_work,
     open_access_url,
@@ -71,6 +73,32 @@ def test_unmapped_types_flags_only_undecided_vocabulary() -> None:
         {},
     ]
     assert unmapped_types(raw_works) == {"expression-of-concern": 2}
+
+
+WRAPPED_DOI = 'https://doi.org/10.5555/xyz123">https://dx.doi.org/10.5555/xyz123</a'
+
+
+def test_malformed_dois_lists_only_fields_holding_more_than_a_doi() -> None:
+    raw_works: list[dict[str, Any]] = [
+        raw_work(),
+        raw_work(id="https://openalex.org/W1002", doi=WRAPPED_DOI),
+        raw_work(id="https://openalex.org/W1003", doi=None),
+    ]
+    assert malformed_dois(raw_works) == ["W1002"]
+
+
+def test_repository_copy_with_a_wrapped_doi_merges_with_its_version_of_record() -> None:
+    # The harm the cleaning prevents: a copy whose DOI never matches stays a
+    # separate record, and every DOI-keyed override or tag misses it.
+    record = normalize_work(raw_work(), {}, {}, {})
+    copy = normalize_work(
+        raw_work(id="https://openalex.org/W1002", doi=WRAPPED_DOI, title="A Repository Copy"),
+        {},
+        {},
+        {},
+    )
+    assert copy.doi == "https://doi.org/10.5555/xyz123"
+    assert len(dedup_by_doi([record, copy])) == 1
 
 
 def test_open_access_url_preference_order() -> None:
