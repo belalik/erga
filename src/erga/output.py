@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import stat
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -78,6 +79,17 @@ def previous_venues(records: list[dict[str, Any]] | None) -> dict[str, str]:
     return venues
 
 
+def _mode_for(path: Path) -> int:
+    """The mode a plain write would leave: the existing file's, else what
+    the umask allows. Reading the umask means setting it, and the CLI is
+    single-threaded, so the moment it reads 0 harms nothing."""
+    if path.exists():
+        return stat.S_IMODE(path.stat().st_mode)
+    umask = os.umask(0)
+    os.umask(umask)
+    return 0o666 & ~umask
+
+
 def write_atomic(path: Path, content: str) -> None:
     """Write via a sibling temp file + rename so a failed run never leaves a
     truncated publications.json behind."""
@@ -86,6 +98,9 @@ def write_atomic(path: Path, content: str) -> None:
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             fh.write(content)
+        # mkstemp creates 0600 and the rename keeps it, which a web server
+        # running as another user cannot read.
+        os.chmod(temp_name, _mode_for(path))
         os.replace(temp_name, path)
     except BaseException:
         os.unlink(temp_name)

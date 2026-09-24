@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import stat
 from pathlib import Path
 
 import pytest
@@ -35,6 +37,19 @@ def test_write_atomic(tmp_path: Path) -> None:
     write_atomic(target, "content\n")
     assert target.read_text(encoding="utf-8") == "content\n"
     assert [p.name for p in target.parent.iterdir()] == ["publications.json"]
+
+
+def test_write_atomic_mode_follows_umask_then_the_existing_file(tmp_path: Path) -> None:
+    target = tmp_path / "publications.json"
+    previous = os.umask(0o027)
+    try:
+        write_atomic(target, "first\n")
+        assert stat.S_IMODE(target.stat().st_mode) == 0o640  # not mkstemp's 0600
+        target.chmod(0o604)
+        write_atomic(target, "second\n")
+        assert stat.S_IMODE(target.stat().st_mode) == 0o604
+    finally:
+        os.umask(previous)
 
 
 def test_read_output_returns_the_records_of_a_file_erga_wrote(tmp_path: Path) -> None:
