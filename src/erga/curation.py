@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import copy
 import datetime
+import re
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -63,6 +64,41 @@ def _opt_str(entry: dict[str, Any], key: str) -> str | None:
     return str(value) if value is not None else None
 
 
+_MANUAL_DATE = re.compile(r"\d{4}(-(0[1-9]|1[0-2])(-(0[1-9]|[12]\d|3[01]))?)?")
+
+
+def _manual_date(value: Any, where: str) -> str | None:
+    """An ISO date of any precision. YAML reads an unquoted full date as a
+    date object and a bare year as an int; both stringify to ISO."""
+    if value is None:
+        return None
+    text = str(value)
+    if not _MANUAL_DATE.fullmatch(text):
+        raise ConfigError(f"{where}: 'date' must be YYYY, YYYY-MM or YYYY-MM-DD")
+    return text
+
+
+def joined_author_names(manual: list[Work], authors_cfg: list[AuthorConfig]) -> list[str]:
+    """Manual author strings that look like a list written as one string.
+
+    `authors: "A, B, C"` becomes one author named "A, B, C" who tracks
+    nobody, at exit 0. A comma alone proves nothing, since "Surname, Given"
+    is one name; two commas, or a comma-separated piece that is itself a
+    configured name or alias, is the list.
+    """
+    known = {name for author in authors_cfg for name in author.match_names()}
+    return [
+        f"{work.title!r}: {author.name!r}"
+        for work in manual
+        for author in work.authors
+        if not author.tracked
+        and (
+            author.name.count(",") >= 2
+            or not known.isdisjoint(p.strip().casefold() for p in author.name.split(","))
+        )
+    ]
+
+
 def load_manual(path: Path, authors_cfg: list[AuthorConfig]) -> list[Work]:
     """Manual records the APIs miss; absent file means none."""
     if not path.exists():
@@ -89,6 +125,14 @@ def load_manual(path: Path, authors_cfg: list[AuthorConfig]) -> list[Work]:
         year = entry.get("year")
         if year is not None and not isinstance(year, int):
             raise ConfigError(f"{where}: 'year' must be an integer")
+        date = _manual_date(entry.get("date"), where)
+        # A date-only entry would otherwise publish with no year.
+        if date is not None:
+            date_year = int(date[:4])
+            if year is None:
+                year = date_year
+            elif year != date_year:
+                raise ConfigError(f"{where}: 'year' {year} disagrees with 'date' {date}")
 
         works.append(
             Work(
@@ -96,7 +140,7 @@ def load_manual(path: Path, authors_cfg: list[AuthorConfig]) -> list[Work]:
                 title=title,
                 authors=_parse_authors(entry.get("authors", []), authors_cfg, where),
                 year=year,
-                date=_opt_str(entry, "date"),
+                date=date,
                 venue=_opt_str(entry, "venue"),
                 type=validate_work_type(entry.get("type", "other"), where),
                 doi=doi_url(str(entry["doi"])) if entry.get("doi") else None,

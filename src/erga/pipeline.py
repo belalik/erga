@@ -15,6 +15,7 @@ from erga.crossref import CrossrefClient
 from erga.curation import (
     apply_overrides,
     apply_tags,
+    joined_author_names,
     load_manual,
     load_overrides,
     load_tags,
@@ -156,6 +157,10 @@ def build(
     manual = load_manual(config.manual_path, config.authors)
     overrides = load_overrides(config.overrides_path)
     tags = load_tags(config.tags_path)
+    stats.warnings.extend(
+        f"manual entry {w} looks like several authors in one string; list them separately"
+        for w in joined_author_names(manual, config.authors)
+    )
 
     # Each mapping resolves a match key to the configured author's canonical
     # name, which the output carries as authors[].tracked_as.

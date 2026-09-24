@@ -8,6 +8,7 @@ from erga.config import AuthorConfig
 from erga.curation import (
     apply_overrides,
     apply_tags,
+    joined_author_names,
     load_manual,
     load_overrides,
     load_tags,
@@ -84,11 +85,53 @@ def test_load_manual_single_author_string_and_id_collisions(tmp_path: Path) -> N
         ("- title: T\n  citations: 5\n", "unknown keys"),
         ("- title: T\n  type: sonnet\n", "not one of"),
         ("- title: T\n  year: 'twenty'\n", "integer"),
+        ("- title: T\n  date: 'Nov 2025'\n", "YYYY-MM-DD"),
+        ("- title: T\n  date: 2025-13\n", "YYYY-MM-DD"),
+        ("- title: T\n  year: 2024\n  date: 2025-11-03\n", "disagrees"),
     ],
 )
 def test_load_manual_rejects(tmp_path: Path, content: str, message: str) -> None:
     with pytest.raises(ConfigError, match=message):
         load_manual(write(tmp_path, "manual.yml", content), [])
+
+
+def test_load_manual_year_comes_from_date_when_absent(tmp_path: Path) -> None:
+    # Unquoted, YAML hands over a date object and an int; quoted, strings.
+    path = write(
+        tmp_path,
+        "manual.yml",
+        "- title: A\n  date: 2025-11-03\n"
+        "- title: B\n  date: '2024-07'\n"
+        "- title: C\n  date: 2023\n"
+        "- title: D\n  year: 2022\n  date: '2022-05-01'\n",
+    )
+    works = load_manual(path, [])
+    assert [(w.year, w.date) for w in works] == [
+        (2025, "2025-11-03"),
+        (2024, "2024-07"),
+        (2023, "2023"),
+        (2022, "2022-05-01"),
+    ]
+
+
+def test_joined_author_names_flags_a_list_written_as_one_string(tmp_path: Path) -> None:
+    path = write(
+        tmp_path,
+        "manual.yml",
+        """\
+- title: Joined
+  authors: "Josiah Carberry, An Outsider"
+- title: Three Strangers
+  authors: "One Person, Two Person, Three Person"
+- title: One Name, Surname First
+  authors: ["Outsider, An", "J. S. Carberry"]
+""",
+    )
+    manual = load_manual(path, [CARBERRY])
+    assert joined_author_names(manual, [CARBERRY]) == [
+        "'Joined': 'Josiah Carberry, An Outsider'",
+        "'Three Strangers': 'One Person, Two Person, Three Person'",
+    ]
 
 
 def test_load_overrides_validation(tmp_path: Path) -> None:
