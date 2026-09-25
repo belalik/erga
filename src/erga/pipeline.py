@@ -15,7 +15,7 @@ from erga.crossref import CrossrefClient
 from erga.curation import (
     apply_overrides,
     apply_tags,
-    joined_author_names,
+    byline_warnings,
     load_manual,
     load_overrides,
     load_tags,
@@ -155,12 +155,9 @@ def build(
     # Curation loads first: a typo in a curation file must abort before any
     # network traffic.
     manual = load_manual(config.manual_path, config.authors)
-    overrides = load_overrides(config.overrides_path)
+    overrides = load_overrides(config.overrides_path, config.authors)
     tags = load_tags(config.tags_path)
-    stats.warnings.extend(
-        f"{w} looks like several authors in one string; list them separately"
-        for w in joined_author_names(manual, overrides, config.authors)
-    )
+    stats.warnings.extend(byline_warnings(manual, overrides, config.authors))
 
     # Each mapping resolves a match key to the configured author's canonical
     # name, which the output carries as authors[].tracked_as.
@@ -215,7 +212,7 @@ def build(
     works = cluster_by_title(dedup_by_doi(works))
     stats.deduplicated = before - len(works)
 
-    works, stats.excluded = apply_overrides(works, overrides, config.authors)
+    works, stats.excluded = apply_overrides(works, overrides)
     stats.warnings.extend(f"override matched nothing: {w}" for w in unmatched_overrides(overrides))
     stats.warnings.extend(
         f"override redundant (upstream now agrees; kept as-is): {w}"

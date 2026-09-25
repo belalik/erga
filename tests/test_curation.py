@@ -6,9 +6,10 @@ import pytest
 
 from erga.config import AuthorConfig
 from erga.curation import (
+    Override,
     apply_overrides,
     apply_tags,
-    joined_author_names,
+    byline_warnings,
     load_manual,
     load_overrides,
     load_tags,
@@ -31,9 +32,15 @@ def write(tmp_path: Path, name: str, content: str) -> Path:
     return path
 
 
+def overrides_from(
+    tmp_path: Path, content: str, authors: list[AuthorConfig] | None = None
+) -> list[Override]:
+    return load_overrides(write(tmp_path, "overrides.yml", content), authors or [])
+
+
 def test_missing_curation_files_mean_none(tmp_path: Path) -> None:
     assert load_manual(tmp_path / "manual.yml", []) == []
-    assert load_overrides(tmp_path / "overrides.yml") == []
+    assert load_overrides(tmp_path / "overrides.yml", []) == []
     assert load_tags(tmp_path / "tags.yml") == {}
 
 
@@ -85,8 +92,10 @@ def test_load_manual_single_author_string_and_id_collisions(tmp_path: Path) -> N
         ("- title: T\n  citations: 5\n", "unknown keys"),
         ("- title: T\n  type: sonnet\n", "not one of"),
         ("- title: T\n  year: 'twenty'\n", "integer"),
+        ("- title: T\n  year: true\n", "integer"),
         ("- title: T\n  date: 'Nov 2025'\n", "YYYY-MM-DD"),
         ("- title: T\n  date: 2025-13\n", "YYYY-MM-DD"),
+        ("- title: T\n  date: '2025-02-31'\n", "not a calendar date"),
         ("- title: T\n  year: 2024\n  date: 2025-11-03\n", "disagrees"),
     ],
 )
@@ -114,7 +123,10 @@ def test_load_manual_year_comes_from_date_when_absent(tmp_path: Path) -> None:
     ]
 
 
-def test_joined_author_names_flags_a_list_written_as_one_string(tmp_path: Path) -> None:
+def test_byline_warnings_flag_joined_lists_and_untracked_configured_names(
+    tmp_path: Path,
+) -> None:
+    surname_alias = AuthorConfig(name="Ann Example", aliases=["Example"])
     path = write(
         tmp_path,
         "manual.yml",
@@ -123,6 +135,10 @@ def test_joined_author_names_flags_a_list_written_as_one_string(tmp_path: Path) 
   authors: "Josiah Carberry, An Outsider"
 - title: Three Strangers
   authors: "One Person, Two Person, Three Person"
+- title: Suffix
+  authors: "Smith, John, Jr."
+- title: Surname First, Alias Inside
+  authors: "Example, Ann"
 - title: One Name, Surname First
   authors: ["Outsider, An", "J. S. Carberry"]
 """,
@@ -132,30 +148,39 @@ def test_joined_author_names_flags_a_list_written_as_one_string(tmp_path: Path) 
         "overrides.yml",
         '- id: W1\n  authors: "J. S. Carberry, An Outsider"\n- id: W2\n  authors: [Solo Author]\n',
     )
-    manual = load_manual(path, [CARBERRY])
-    overrides = load_overrides(overrides_path)
-    assert joined_author_names(manual, overrides, [CARBERRY]) == [
-        "manual entry 'Joined': 'Josiah Carberry, An Outsider'",
-        "manual entry 'Three Strangers': 'One Person, Two Person, Three Person'",
-        f"{overrides_path}: entry 1: 'J. S. Carberry, An Outsider'",
+    configured = [CARBERRY, surname_alias]
+    manual = load_manual(path, configured)
+    overrides = load_overrides(overrides_path, configured)
+
+    def holds(name: str) -> str:
+        return (
+            f"holds the configured name {name!r} but tracks nobody; "
+            "list several authors separately, or spell one author as configured"
+        )
+
+    may_be = "may be several authors in one string; if so, list them separately"
+    assert byline_warnings(manual, overrides, configured) == [
+        f"manual entry 'Joined': 'Josiah Carberry, An Outsider' {holds('Josiah Carberry')}",
+        f"manual entry 'Three Strangers': 'One Person, Two Person, Three Person' {may_be}",
+        f"manual entry 'Suffix': 'Smith, John, Jr.' {may_be}",
+        f"manual entry 'Surname First, Alias Inside': 'Example, Ann' {holds('Example')}",
+        f"{overrides_path}: entry 1: 'J. S. Carberry, An Outsider' {holds('J. S. Carberry')}",
     ]
 
 
 def test_load_overrides_validation(tmp_path: Path) -> None:
     with pytest.raises(ConfigError, match="exactly one"):
-        load_overrides(write(tmp_path, "o1.yml", "- doi: 10.1/x\n  id: W1\n"))
+        load_overrides(write(tmp_path, "o1.yml", "- doi: 10.1/x\n  id: W1\n"), [])
     with pytest.raises(ConfigError, match="exactly one"):
-        load_overrides(write(tmp_path, "o2.yml", "- venue: X\n"))
+        load_overrides(write(tmp_path, "o2.yml", "- venue: X\n"), [])
     with pytest.raises(ConfigError, match="unknown fields"):
-        load_overrides(write(tmp_path, "o3.yml", "- id: W1\n  venu: X\n"))
+        load_overrides(write(tmp_path, "o3.yml", "- id: W1\n  venu: X\n"), [])
 
 
 def test_apply_overrides_patch_exclude_and_stale(tmp_path: Path) -> None:
-    overrides = load_overrides(
-        write(
-            tmp_path,
-            "overrides.yml",
-            """\
+    overrides = overrides_from(
+        tmp_path,
+        """\
 - doi: https://doi.org/10.5555/XYZ123
   venue: Corrected Journal
   type: conference
@@ -164,13 +189,12 @@ def test_apply_overrides_patch_exclude_and_stale(tmp_path: Path) -> None:
 - id: W404
   venue: Never Applied
 """,
-        )
     )
     works = [
         Work(id="W1", title="A", doi="https://doi.org/10.5555/xyz123"),
         Work(id="W2", title="B"),
     ]
-    kept, excluded = apply_overrides(works, overrides, [])
+    kept, excluded = apply_overrides(works, overrides)
     assert [w.id for w in kept] == ["W1"]
     assert excluded == 1
     assert kept[0].venue == "Corrected Journal"
@@ -179,21 +203,18 @@ def test_apply_overrides_patch_exclude_and_stale(tmp_path: Path) -> None:
 
 
 def test_apply_overrides_explicit_exclude_false_marks_keep(tmp_path: Path) -> None:
-    overrides = load_overrides(
-        write(
-            tmp_path,
-            "overrides.yml",
-            """\
+    overrides = overrides_from(
+        tmp_path,
+        """\
 - id: W1
   exclude: false
   venue: Kept and Patched
 - id: W2
   venue: Only Patched
 """,
-        )
     )
     works = [Work(id="W1", title="A"), Work(id="W2", title="B")]
-    kept, excluded = apply_overrides(works, overrides, [])
+    kept, excluded = apply_overrides(works, overrides)
     assert excluded == 0
     assert kept[0].keep is True
     assert kept[0].venue == "Kept and Patched"
@@ -203,11 +224,9 @@ def test_apply_overrides_explicit_exclude_false_marks_keep(tmp_path: Path) -> No
 
 
 def test_redundant_overrides_compare_against_pre_patch_values(tmp_path: Path) -> None:
-    overrides = load_overrides(
-        write(
-            tmp_path,
-            "overrides.yml",
-            """\
+    overrides = overrides_from(
+        tmp_path,
+        """\
 - id: W1
   type: conference
 - id: W2
@@ -217,36 +236,33 @@ def test_redundant_overrides_compare_against_pre_patch_values(tmp_path: Path) ->
 - id: W404
   type: conference
 """,
-        )
     )
     works = [
         Work(id="W1", title="A", type="conference"),  # upstream caught up
         Work(id="W2", title="B", type="other"),  # still load-bearing
         Work(id="W3", title="C"),
     ]
-    apply_overrides(works, overrides, [])
+    apply_overrides(works, overrides)
     assert redundant_overrides(overrides) == [f"{tmp_path / 'overrides.yml'}: entry 1"]
 
 
 def test_apply_overrides_open_access_and_authors(tmp_path: Path) -> None:
-    overrides = load_overrides(
-        write(
-            tmp_path,
-            "overrides.yml",
-            """\
+    overrides = overrides_from(
+        tmp_path,
+        """\
 - id: W1
   open_access: {url: https://oa.example/pdf}
   authors: ["Josiah Carberry"]
 - id: W2
   open_access: null
 """,
-        )
+        [CARBERRY],
     )
     works = [
         Work(id="W1", title="A"),
         Work(id="W2", title="B", open_access_url="https://stale.example"),
     ]
-    kept, _ = apply_overrides(works, overrides, [CARBERRY])
+    kept, _ = apply_overrides(works, overrides)
     assert kept[0].open_access_url == "https://oa.example/pdf"
     assert kept[0].authors[0].tracked
     assert kept[1].open_access_url is None
@@ -263,49 +279,65 @@ def test_apply_overrides_open_access_and_authors(tmp_path: Path) -> None:
         ("date: 'Nov 2025'", "YYYY-MM-DD"),
     ],
 )
-def test_apply_overrides_rejects_mistyped_values(
+def test_load_overrides_rejects_mistyped_values_before_any_match(
     tmp_path: Path, field_line: str, message: str
 ) -> None:
-    overrides = load_overrides(write(tmp_path, "overrides.yml", f"- id: W1\n  {field_line}\n"))
+    # The id matches nothing on purpose: a stale entry must not carry a typo
+    # through a successful build.
     with pytest.raises(ConfigError, match=message):
-        apply_overrides([Work(id="W1", title="A")], overrides, [])
+        overrides_from(tmp_path, f"- id: W404\n  {field_line}\n")
 
 
 def test_apply_overrides_coerces_yaml_date(tmp_path: Path) -> None:
-    overrides = load_overrides(write(tmp_path, "overrides.yml", "- id: W1\n  date: 2024-03-01\n"))
-    kept, _ = apply_overrides([Work(id="W1", title="A")], overrides, [])
+    overrides = overrides_from(tmp_path, "- id: W1\n  date: 2024-03-01\n")
+    kept, _ = apply_overrides([Work(id="W1", title="A")], overrides)
     assert kept[0].date == "2024-03-01"
 
 
 def test_apply_overrides_patched_date_carries_its_year(tmp_path: Path) -> None:
-    overrides = load_overrides(
-        write(
-            tmp_path,
-            "overrides.yml",
-            "- id: W1\n  date: 2024-03-01\n- id: W2\n  date: null\n"
-            "- id: W3\n  date: 2024-03-01\n  year: 2023\n",
-        )
-    )
+    overrides = overrides_from(tmp_path, "- id: W1\n  date: 2024-03-01\n- id: W2\n  date: null\n")
     works = [
         Work(id="W1", title="A", year=2020, date="2020-01-01"),
         Work(id="W2", title="B", year=2020, date="2020-01-01"),
     ]
-    kept, _ = apply_overrides(works, overrides[:2], [])
+    kept, _ = apply_overrides(works, overrides)
     assert [(w.year, w.date) for w in kept] == [(2024, "2024-03-01"), (2020, None)]
+    # A contradiction inside one entry fails at load, matched or not.
     with pytest.raises(ConfigError, match="disagrees"):
-        apply_overrides([Work(id="W3", title="C")], overrides[2:], [])
+        overrides_from(tmp_path, "- id: W404\n  date: 2024-03-01\n  year: 2023\n")
+
+
+def test_apply_overrides_patched_year_must_agree_with_the_kept_date(tmp_path: Path) -> None:
+    overrides = overrides_from(
+        tmp_path,
+        "- id: W1\n  year: 1999\n  date: null\n"  # only the year is known
+        "- id: W2\n  year: 2020\n"  # agrees with the fetched date
+        "- id: W3\n  year: null\n"  # derived from the fetched date
+        "- id: W4\n  year: 1999\n",  # contradicts the fetched date
+    )
+    works = [
+        Work(id="W1", title="A", year=2003, date="2003-01-20"),
+        Work(id="W2", title="B", year=2019, date="2020-01-01"),
+        Work(id="W3", title="C", year=2019, date="2020-01-01"),
+    ]
+    kept, _ = apply_overrides(works, overrides[:3])
+    assert [(w.year, w.date) for w in kept] == [
+        (1999, None),
+        (2020, "2020-01-01"),
+        (2020, "2020-01-01"),
+    ]
+    with pytest.raises(ConfigError, match="disagrees with 'date' 2003-01-20 \\(patch 'date' too"):
+        apply_overrides([Work(id="W4", title="D", year=2003, date="2003-01-20")], overrides[3:])
 
 
 def test_mark_keep_distinct(tmp_path: Path) -> None:
-    overrides = load_overrides(
-        write(tmp_path, "overrides.yml", "- id: W1\n  keep_distinct: true\n")
-    )
+    overrides = overrides_from(tmp_path, "- id: W1\n  keep_distinct: true\n")
     works = [Work(id="W1", title="A"), Work(id="W2", title="A")]
     mark_keep_distinct(works, overrides)
     assert works[0].keep_distinct and not works[1].keep_distinct
     # A pin whose record survives must not warn: matched is settled by the
     # patch stage, so that verdict only exists once apply_overrides has run.
-    apply_overrides(works, overrides, [])
+    apply_overrides(works, overrides)
     assert unmatched_overrides(overrides) == []
 
 
@@ -315,12 +347,8 @@ def test_keep_distinct_pin_lost_to_doi_merge_reports_unmatched(tmp_path: Path) -
     When the pinned record loses that merge, the entry's patch cannot apply.
     The build must say so instead of reporting the correction as redundant.
     """
-    overrides = load_overrides(
-        write(
-            tmp_path,
-            "overrides.yml",
-            "- id: W1\n  keep_distinct: true\n  venue: Corrected Venue\n",
-        )
+    overrides = overrides_from(
+        tmp_path, "- id: W1\n  keep_distinct: true\n  venue: Corrected Venue\n"
     )
     works = [
         Work(id="W1", title="A Study of Things", doi="https://doi.org/10.5555/abc"),
@@ -335,7 +363,7 @@ def test_keep_distinct_pin_lost_to_doi_merge_reports_unmatched(tmp_path: Path) -
     survivors = cluster_by_title(dedup_by_doi(works))
     assert [w.id for w in survivors] == ["W9"]
 
-    kept, _ = apply_overrides(survivors, overrides, [])
+    kept, _ = apply_overrides(survivors, overrides)
     assert kept[0].venue is None
     assert unmatched_overrides(overrides) == [f"{tmp_path / 'overrides.yml'}: entry 1"]
     assert redundant_overrides(overrides) == []

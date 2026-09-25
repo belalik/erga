@@ -35,8 +35,9 @@ def validate_work_type(value: Any, where: str) -> str:
 _DOI_HOST = re.compile(r"^https?://(dx\.)?doi\.org/", re.IGNORECASE)
 # A DOI inside whatever surrounds it: OpenAlex has served one with an HTML
 # anchor's tail glued on (`…94883">https://dx.doi.org/…</a`). The suffix
-# stops only at a quote or whitespace, since old SICI DOIs contain < and >.
-_DOI_BODY = re.compile(r'10\.[0-9.]+/[^\s"]+')
+# stops at a quote, whitespace or a closing tag (`</`), and at nothing
+# less: old SICI DOIs contain < and >, never `</`.
+_DOI_BODY = re.compile(r'10\.[0-9.]+/(?:(?!</)[^\s"])+')
 _ORCID_HOST = re.compile(r"^https?://orcid\.org/", re.IGNORECASE)
 
 

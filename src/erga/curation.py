@@ -8,6 +8,7 @@ skipped patch is worse than an aborted run.
 from __future__ import annotations
 
 import copy
+import datetime
 import re
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -68,16 +69,22 @@ _ISO_DATE = re.compile(r"\d{4}(-(0[1-9]|1[0-2])(-(0[1-9]|[12]\d|3[01]))?)?")
 
 def _iso_date(value: Any, where: str) -> str | None:
     """An ISO date of any precision. YAML reads an unquoted full date as a
-    date object and a bare year as an int; both stringify to ISO."""
+    date object and a bare year as an int; both stringify to ISO. A quoted
+    full date is checked against the calendar too ('2025-02-31')."""
     if value is None:
         return None
     text = str(value)
     if not _ISO_DATE.fullmatch(text):
         raise ConfigError(f"{where}: 'date' must be YYYY, YYYY-MM or YYYY-MM-DD")
+    if len(text) == 10:
+        try:
+            datetime.date.fromisoformat(text)
+        except ValueError:
+            raise ConfigError(f"{where}: 'date' {text} is not a calendar date") from None
     return text
 
 
-def _year_for(date: str | None, year: Any, where: str) -> Any:
+def _year_for(date: str | None, year: Any, where: str, hint: str = "") -> Any:
     """The year a curated date implies when none is given, so a date-only
     entry does not publish without one; a year it contradicts is an error."""
     if date is None:
@@ -86,36 +93,46 @@ def _year_for(date: str | None, year: Any, where: str) -> Any:
     if year is None:
         return date_year
     if year != date_year:
-        raise ConfigError(f"{where}: 'year' {year} disagrees with 'date' {date}")
+        raise ConfigError(f"{where}: 'year' {year} disagrees with 'date' {date}{hint}")
     return year
 
 
-def joined_author_names(
+def byline_warnings(
     manual: list[Work], overrides: list[Override], authors_cfg: list[AuthorConfig]
 ) -> list[str]:
-    """Curated author strings that look like a list written as one string.
+    """Curated author strings that probably do not mean what they say.
 
     `authors: "A, B, C"` becomes one author named "A, B, C" who tracks
     nobody, at exit 0. A comma alone proves nothing, since "Surname, Given"
-    is one name; two commas, or a comma-separated piece that is itself a
-    configured name or alias, is the list.
+    is one name. Two commas usually mean a list, though a suffix ("Smith,
+    John, Jr.") reads the same, hence "may be". A comma-separated piece that
+    is itself a configured name or alias is the surer tell: the string is
+    either a list holding a configured author or one author spelt so that
+    nothing tracks them, and both need the maintainer.
     """
     known = {name for author in authors_cfg for name in author.match_names()}
     bylines = [(f"manual entry {work.title!r}", work.authors) for work in manual] + [
-        (o.where, _parse_authors(o.patch["authors"], authors_cfg, o.where))
-        for o in overrides
-        if "authors" in o.patch
+        (o.where, o.patch["authors"]) for o in overrides if "authors" in o.patch
     ]
-    return [
-        f"{label}: {author.name!r}"
-        for label, authors in bylines
-        for author in authors
-        if not author.tracked
-        and (
-            author.name.count(",") >= 2
-            or not known.isdisjoint(p.strip().casefold() for p in author.name.split(","))
-        )
-    ]
+    warnings = []
+    for label, authors in bylines:
+        for author in authors:
+            if author.tracked:
+                continue
+            pieces = [p.strip() for p in author.name.split(",")]
+            configured = next((p for p in pieces if p.casefold() in known), None)
+            if configured is not None:
+                warnings.append(
+                    f"{label}: {author.name!r} holds the configured name {configured!r} but "
+                    "tracks nobody; list several authors separately, or spell one author "
+                    "as configured"
+                )
+            elif len(pieces) >= 3:
+                warnings.append(
+                    f"{label}: {author.name!r} may be several authors in one string; "
+                    "if so, list them separately"
+                )
+    return warnings
 
 
 def load_manual(path: Path, authors_cfg: list[AuthorConfig]) -> list[Work]:
@@ -141,24 +158,26 @@ def load_manual(path: Path, authors_cfg: list[AuthorConfig]) -> list[Work]:
             work_id, suffix = f"{base_id}-{suffix}", suffix + 1
         used_ids.add(work_id)
 
-        year = entry.get("year")
-        if year is not None and not isinstance(year, int):
-            raise ConfigError(f"{where}: 'year' must be an integer")
-        date = _iso_date(entry.get("date"), where)
-        year = _year_for(date, year, where)
+        fields = {
+            key: _field_value(key, entry[key], authors_cfg, where)
+            for key in ("authors", "year", "date", "doi", "type", "tags")
+            if key in entry
+        }
+        date = fields.get("date")
+        year = _year_for(date, fields.get("year"), where)
 
         works.append(
             Work(
                 id=work_id,
                 title=title,
-                authors=_parse_authors(entry.get("authors", []), authors_cfg, where),
+                authors=fields.get("authors", []),
                 year=year,
                 date=date,
                 venue=_opt_str(entry, "venue"),
-                type=validate_work_type(entry.get("type", "other"), where),
-                doi=doi_url(str(entry["doi"])) if entry.get("doi") else None,
+                type=fields.get("type", "other"),
+                doi=fields.get("doi"),
                 abstract=_opt_str(entry, "abstract"),
-                tags=expect_str_list(entry.get("tags", []), f"{where}: 'tags'"),
+                tags=fields.get("tags", []),
                 source="manual",
                 # Manual entries are explicit curation: never type-filtered.
                 keep=True,
@@ -181,7 +200,13 @@ class Override:
     changed: bool = False
 
 
-def load_overrides(path: Path) -> list[Override]:
+def load_overrides(path: Path, authors_cfg: list[AuthorConfig]) -> list[Override]:
+    """Patches keyed by DOI or id; absent file means none.
+
+    Every field is checked and coerced here, not when a record matches: an
+    entry whose id has gone stale would otherwise carry a typo through a
+    successful build, the silently skipped patch the module contract bars.
+    """
     if not path.exists():
         return []
     entries = load_yaml(path, list)
@@ -196,6 +221,11 @@ def load_overrides(path: Path) -> list[Override]:
             k: v for k, v in entry.items() if k not in {"doi", "id", "exclude", "keep_distinct"}
         }
         reject_unknown_keys(patch, PATCH_KEYS, where, noun="fields")
+        patch = {k: _field_value(k, v, authors_cfg, where) for k, v in patch.items()}
+        # A patched date carries its year, as a manual date does, and a year
+        # the same patch contradicts is an error here, matched or not.
+        if patch.get("date") is not None:
+            patch["year"] = _year_for(patch["date"], patch.get("year"), where)
         overrides.append(
             Override(
                 where=where,
@@ -267,8 +297,8 @@ def mark_keep_distinct(works: list[Work], overrides: list[Override]) -> None:
         work.keep_distinct = True
 
 
-# Expected value shapes for the scalar patch fields; a mistyped value must
-# fail as a ConfigError at apply time, not as a TypeError deep in the
+# Expected value shapes for the scalar fields; a mistyped value must fail
+# as a ConfigError when the file loads, not as a TypeError deep in the
 # pipeline (sorting, clustering) where the file/entry context is lost.
 _SCALAR_PATCH_TYPES: dict[str, tuple[str, tuple[type, ...]]] = {
     "title": ("a string", (str,)),
@@ -280,38 +310,52 @@ _SCALAR_PATCH_TYPES: dict[str, tuple[str, tuple[type, ...]]] = {
 }
 
 
-def _patch_work(
-    work: Work, patch: dict[str, Any], authors_cfg: list[AuthorConfig], where: str
-) -> None:
+# Patch keys whose record attribute is named differently.
+_PATCH_ATTRS = {"open_access": "open_access_url"}
+
+
+def _field_value(key: str, value: Any, authors_cfg: list[AuthorConfig], where: str) -> Any:
+    """One curated field, checked and coerced. The manual and override
+    loaders share it, so the two files cannot drift apart on a rule."""
+    if key == "authors":
+        return _parse_authors(value, authors_cfg, where)
+    if key == "open_access":
+        if isinstance(value, dict):
+            value = value.get("url")
+        return str(value) if value else None
+    if key == "doi":
+        return doi_url(str(value)) if value else None
+    if key == "type":
+        return validate_work_type(value, where)
+    if key == "tags":
+        return expect_str_list(value, f"{where}: 'tags'")
+    if key == "date":
+        return _iso_date(value, where)
+    description, types = _SCALAR_PATCH_TYPES[key]
+    if not isinstance(value, types) or (isinstance(value, bool) and bool not in types):
+        raise ConfigError(f"{where}: '{key}' must be {description}")
+    return value
+
+
+def _patch_work(work: Work, patch: dict[str, Any], where: str) -> None:
     for key, value in patch.items():
-        if key == "authors":
-            work.authors = _parse_authors(value, authors_cfg, where)
-        elif key == "open_access":
-            if isinstance(value, dict):
-                value = value.get("url")
-            work.open_access_url = str(value) if value else None
-        elif key == "doi":
-            work.doi = doi_url(str(value)) if value else None
-        elif key == "type":
-            work.type = validate_work_type(value, where)
-        elif key == "tags":
-            work.tags = expect_str_list(value, f"{where}: 'tags'")
-        elif key == "date":
-            work.date = _iso_date(value, where)
-        else:
-            description, types = _SCALAR_PATCH_TYPES[key]
-            if not isinstance(value, types) or (isinstance(value, bool) and bool not in types):
-                raise ConfigError(f"{where}: '{key}' must be {description}")
-            setattr(work, key, value)
-    # A patched date carries the year with it, or the fetched year would
-    # stand beside a date that contradicts it.
-    if patch.get("date") is not None:
-        work.year = _year_for(work.date, patch.get("year"), where)
+        # Lists are copied: the record's own list gets appended to later
+        # (tags), and the override must keep what the file said.
+        copied = list(value) if isinstance(value, list) else value
+        setattr(work, _PATCH_ATTRS.get(key, key), copied)
+    # The one check that needs the record: a patched year against the date
+    # the record keeps, so no output carries a year beside a date that
+    # contradicts it. A date patch settled its own year when the file loaded.
+    if "year" in patch and "date" not in patch:
+        work.year = _year_for(
+            work.date,
+            patch["year"],
+            where,
+            hint=" (patch 'date' too, or 'date: null' when only the year is known)",
+        )
 
 
-def apply_overrides(
-    works: list[Work], overrides: list[Override], authors_cfg: list[AuthorConfig]
-) -> tuple[list[Work], int]:
+def apply_overrides(works: list[Work], overrides: list[Override]) -> tuple[list[Work], int]:
     """Patch or exclude merged records; returns (kept, excluded_count)."""
     excluded: set[int] = set()
     for override, work in _iter_matches(overrides, works):
@@ -324,10 +368,10 @@ def apply_overrides(
             # Compare against the pre-patch record: comparing the override
             # against the output would be circular, the output already has
             # the override applied and every entry would look load-bearing.
-            # Deep copy so the check stays honest even if a patch branch
-            # ever mutates a list in place instead of reassigning it.
+            # Deep copy so the check stays honest even if a value is ever
+            # mutated in place instead of reassigned.
             before = copy.deepcopy(work)
-            _patch_work(work, override.patch, authors_cfg, override.where)
+            _patch_work(work, override.patch, override.where)
             if work != before:
                 override.changed = True
     return [w for w in works if id(w) not in excluded], len(excluded)

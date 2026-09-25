@@ -18,6 +18,9 @@ def test_clean_doi_keeps_the_doi_and_drops_what_surrounds_it() -> None:
     # The upstream shape: an HTML anchor's tail glued onto the value.
     wrapped = 'https://doi.org/10.5555/rg.2.2.1">https://dx.doi.org/10.5555/rg.2.2.1</a'
     assert clean_doi(wrapped) == "https://doi.org/10.5555/rg.2.2.1"
+    # A closing tag with no quote before it ends the DOI, wherever it sits.
+    assert clean_doi("https://doi.org/10.5555/foo</a>") == "https://doi.org/10.5555/foo"
+    assert clean_doi("https://doi.org/10.5555/foo</span></a>.") == "https://doi.org/10.5555/foo"
     # A clean value passes through unchanged, case included.
     assert clean_doi("https://doi.org/10.5555/AbC") == "https://doi.org/10.5555/AbC"
     # Old SICI DOIs carry < and > legitimately; they must survive whole.
