@@ -1,10 +1,7 @@
 # TODO
 
 ## High
-- Review and merge branch `small-fixes` (DOI cleaning, output file mode,
-  manual and override date/byline traps; removes their three Normal items
-  below): `/code-review medium small-fixes` first, then a blind Codex
-  review of `git diff main...small-fixes`, then fix, merge, push
+(empty)
 
 ## Normal
 - `verify` section for unlinked authorships: works that carry a configured
