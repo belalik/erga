@@ -4,6 +4,13 @@
 (empty)
 
 ## Normal
+- Next release's notes name what the `small-fixes` merge changed for a
+  consumer's curation files (2026-09-25): every override field is checked
+  when the file loads, so a stale id no longer hides a typo; a year patched
+  without a date must agree with the fetched date (else `date: null`, or a
+  date); a quoted `2025-02-31` and a manual `year: true` are rejected; the
+  byline warning has two messages; a DOI ends at a closing tag. Neither
+  consumer's live overrides were run through the new loader here
 - `verify` section for unlinked authorships: works that carry a configured
   name in the byline but no author id, so no profile fetch sees them
   (smartmove-site, 2026-09-23: 4 of a member's 7 missing papers). OpenAlex
