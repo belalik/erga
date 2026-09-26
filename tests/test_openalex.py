@@ -139,6 +139,22 @@ def test_works_by_byline_quotes_each_rotation(name: str, phrases: str) -> None:
     assert client_with(transport).works_by_byline(name, exclude_ids=[], limit=10) == ([], 0)
 
 
+def test_works_by_byline_batches_excluded_ids() -> None:
+    # A contaminated iD can carry more profiles than one filter takes; a
+    # single list past the cap is a 400 that would abort verify.
+    ids = [f"A{i}" for i in range(150)]
+    exclusion = f"author.id:!{'|'.join(ids[:100])},author.id:!{'|'.join(ids[100:])}"
+    transport = FakeTransport()
+    add_pages(
+        transport,
+        "/works",
+        {"filter": f'raw_author_name.search:"Nair"~2,{exclusion}'},
+        [[]],
+        count=0,
+    )
+    assert client_with(transport).works_by_byline("Nair", exclude_ids=ids, limit=10) == ([], 0)
+
+
 def test_politeness_delay_between_requests() -> None:
     sleeps: list[float] = []
     transport = FakeTransport()

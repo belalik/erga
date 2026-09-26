@@ -247,9 +247,13 @@ class OpenAlexClient:
         rotations = [words[i:] + words[:i] for i in range(len(words))]
         query = " OR ".join(f'"{" ".join(rotation)}"~2' for rotation in rotations)
         filters = f"raw_author_name.search:{query}"
-        if exclude_ids:
-            # `!A|B` negates the whole list (verified live 2026-09-26).
-            filters += ",author.id:!" + "|".join(exclude_ids)
+        # `!A|B` negates the whole list, and repeated negations all apply, so
+        # a contaminated iD's hundred-plus profiles go in batches under the
+        # value cap, which a longer list fails with HTTP 400 (all verified
+        # live 2026-09-26).
+        for start in range(0, len(exclude_ids), AUTHOR_BATCH_SIZE):
+            batch = exclude_ids[start : start + AUTHOR_BATCH_SIZE]
+            filters += ",author.id:!" + "|".join(batch)
         pages = self._walk("/works", _works_params(filters, BYLINE_SELECT, include_xpac))
         first = next(pages)
         total = _meta_total(first, first.get("results", []))
