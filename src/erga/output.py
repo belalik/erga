@@ -13,7 +13,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from erga.model import Work, doi_key
+from erga.model import Work, WorkAuthor, doi_key
 
 SCHEMA_VERSION = 1
 
@@ -63,6 +63,40 @@ def read_output(path: Path) -> list[dict[str, Any]] | None:
         ):
             return None
     return records
+
+
+def work_from_record(record: dict[str, Any]) -> Work:
+    """One record of a file read_output accepted, back as a Work.
+
+    The inverse of Work.to_json, so a published record can meet a fresh
+    one in dedup's own ranking. Tolerant like the reader: a key an older
+    schema lacks takes the Work default.
+    """
+    open_access = record.get("open_access") or {}
+    return Work(
+        id=str(record.get("id")),
+        title=record.get("title") or "",
+        authors=[
+            WorkAuthor(
+                name=author.get("name") or "",
+                orcid=author.get("orcid"),
+                tracked=bool(author.get("tracked")),
+                tracked_as=author.get("tracked_as"),
+            )
+            for author in record.get("authors") or []
+        ],
+        year=record.get("year"),
+        date=record.get("date"),
+        venue=record.get("venue"),
+        type=record.get("type") or "other",
+        doi=record.get("doi"),
+        cited_by_count=record.get("cited_by_count") or 0,
+        abstract=record.get("abstract"),
+        open_access_url=open_access.get("url"),
+        tags=list(record.get("tags") or []),
+        is_retracted=bool(record.get("is_retracted")),
+        source=record.get("source") or "openalex",
+    )
 
 
 def previous_venues(records: list[dict[str, Any]] | None) -> dict[str, str]:

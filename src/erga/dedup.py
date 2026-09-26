@@ -103,18 +103,20 @@ def dedup_by_doi(works: list[Work]) -> list[Work]:
     return _dedup(works, keys)
 
 
-def cluster_by_title(works: list[Work]) -> list[Work]:
-    """Collapse records sharing a normalized title.
+def title_key(title: str, work_type: str) -> tuple[str, bool] | None:
+    """What title clustering compares, or None for a title too short to trust.
 
-    Datasets never merge with papers (the key includes is-dataset). Titles
-    under MIN_CLUSTER_TITLE_LENGTH normalized characters and keep_distinct
-    records bypass clustering entirely.
+    Datasets never merge with papers, so the key includes is-dataset.
     """
-    keys: dict[int, object] = {}
-    for work in works:
-        normalized = normalize_title(work.title)
-        if len(normalized) >= MIN_CLUSTER_TITLE_LENGTH and not work.keep_distinct:
-            keys[id(work)] = (normalized, work.type == "dataset")
-        else:
-            keys[id(work)] = None
+    normalized = normalize_title(title)
+    if len(normalized) < MIN_CLUSTER_TITLE_LENGTH:
+        return None
+    return normalized, work_type == "dataset"
+
+
+def cluster_by_title(works: list[Work]) -> list[Work]:
+    """Collapse records sharing a title key; keep_distinct records bypass it."""
+    keys: dict[int, object] = {
+        id(work): None if work.keep_distinct else title_key(work.title, work.type) for work in works
+    }
     return _dedup(works, keys)

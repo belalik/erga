@@ -7,8 +7,34 @@ from pathlib import Path
 
 import pytest
 
-from erga.model import Work
-from erga.output import document, dump, read_output, sort_works, write_atomic
+from erga.model import Work, WorkAuthor
+from erga.output import document, dump, read_output, sort_works, work_from_record, write_atomic
+
+
+def test_work_from_record_inverts_to_json(tmp_path: Path) -> None:
+    work = Work(
+        id="W1",
+        title="Ψυχοκεραμικά",
+        authors=[WorkAuthor(name="Priya Nair", orcid=None, tracked=True, tracked_as="Priya Nair")],
+        year=2024,
+        date="2024-03-01",
+        venue="Some Venue",
+        type="conference",
+        doi="https://doi.org/10.5555/x",
+        cited_by_count=7,
+        abstract="An abstract.",
+        open_access_url="https://example.org/x.pdf",
+        tags=["featured"],
+        is_retracted=True,
+        source="manual",
+    )
+    path = tmp_path / "publications.json"
+    path.write_text(dump(document([work])), encoding="utf-8")
+    records = read_output(path)
+    assert records is not None
+    assert work_from_record(records[0]) == work
+    # An older schema's missing keys take the defaults.
+    assert work_from_record({"id": "W2", "title": "T"}) == Work(id="W2", title="T")
 
 
 def test_sort_year_desc_then_id_with_nulls_last() -> None:

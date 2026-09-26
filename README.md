@@ -115,6 +115,18 @@ stays quiet whoever declares it. It is only ever
 read by this check: like the ORCID, a declared home is trusted as given and
 is never treated as evidence that a profile is the right person.
 
+The reverse gap, a work that is theirs but never arrives, is what the last
+lines of each author's `verify` entry are for. OpenAlex sometimes prints a
+name in a byline without linking it to any profile, and no fetch by profile
+can see that work. Once a build has written `publications.json`, `verify`
+searches bylines for each configured name and alias, drops whatever the
+list already holds by id, DOI or title, and lists the rest: add the ones
+that are theirs to your manual file. It also names a listed copy that lacks
+a DOI when a record carrying one exists. A full name matches only bylines
+that spell it out, in any order; an initial alias such as `P. Nair` catches
+the initial-only ones too, along with every namesake that shares the
+initial. A name too common to judge is skipped with a count.
+
 Finding the iD in the first place is your step, and erga does not guess at
 it. An ORCID in `erga.yml` is trusted as given. What worked for a department
 that had iDs on file for five of sixty-three staff: search OpenAlex under

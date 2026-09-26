@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from conftest import FakeTransport, no_sleep
+from conftest import FakeTransport, add_pages, no_sleep
 from erga.config import AuthorConfig
 from erga.errors import FetchError
 from erga.http import Response, request_with_retry
@@ -20,20 +20,6 @@ def profile(author_id: str, name: str = "Someone", works: int = 10) -> dict[str,
 
 def client_with(transport: FakeTransport) -> OpenAlexClient:
     return OpenAlexClient(transport, mailto="m@example.org", delay=0.0, sleep=no_sleep)
-
-
-def add_pages(
-    transport: FakeTransport, path: str, subset: dict[str, str], pages: list[list[object]]
-) -> None:
-    """Route one cursor-walked listing: page one at `*`, then `page-2`, `page-3`..."""
-    cursors = ["*", *(f"page-{n}" for n in range(2, len(pages) + 1))]
-    following: list[str | None] = [*cursors[1:], None]
-    for rows, cursor, next_cursor in zip(pages, cursors, following, strict=True):
-        transport.add(
-            path,
-            {**subset, "cursor": cursor},
-            {"results": rows, "meta": {"next_cursor": next_cursor}},
-        )
 
 
 def test_strip_openalex_host() -> None:

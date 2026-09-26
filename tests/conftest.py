@@ -23,6 +23,23 @@ def no_sleep(_seconds: float) -> None:
     return None
 
 
+def add_pages(
+    transport: FakeTransport,
+    path: str,
+    subset: dict[str, str],
+    pages: list[list[object]],
+    count: int | None = None,
+) -> None:
+    """Route one cursor-walked listing: page one at `*`, then `page-2`, `page-3`..."""
+    cursors = ["*", *(f"page-{n}" for n in range(2, len(pages) + 1))]
+    following: list[str | None] = [*cursors[1:], None]
+    for rows, cursor, next_cursor in zip(pages, cursors, following, strict=True):
+        meta: dict[str, object] = {"next_cursor": next_cursor}
+        if count is not None:
+            meta["count"] = count
+        transport.add(path, {**subset, "cursor": cursor}, {"results": rows, "meta": meta})
+
+
 class FakeTransport:
     """Routes requests to canned responses; unexpected requests fail the test."""
 

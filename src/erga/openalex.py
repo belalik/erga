@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
+from itertools import chain
 from typing import Any
 
 from erga.config import AuthorConfig
@@ -32,11 +33,20 @@ WORKS_SELECT = ",".join(
     ]
 )
 AUTHOR_SELECT = "id,display_name,display_name_alternatives,works_count"
+# What a byline search needs to judge, type and rank a work: no abstract.
+BYLINE_SELECT = "id,title,authorships,publication_year,primary_location,type,doi,cited_by_count"
 
 
 def strip_openalex_host(value: str) -> str:
     """Bare id (W..., A...) from https://openalex.org/... or bare form."""
     return value.rsplit("/", 1)[-1]
+
+
+def _works_params(filters: str, select: str, include_xpac: bool) -> dict[str, str]:
+    params = {"filter": filters, "select": select}
+    if include_xpac:
+        params["include_xpac"] = "true"
+    return params
 
 
 @dataclass
@@ -109,20 +119,24 @@ class OpenAlexClient:
             raise FetchError(f"{url}: HTTP {response.status_code}")
         return response.data
 
-    def _pages(self, path: str, params: dict[str, str]) -> Iterator[list[dict[str, Any]]]:
-        """Every results page of a listing, walked by cursor.
+    def _walk(self, path: str, params: dict[str, str]) -> Iterator[Any]:
+        """Every response of a listing, walked by cursor, meta included.
 
         Basic paging caps at 10,000 results; cursors do not.
         """
         params = {**params, "per-page": str(PER_PAGE), "cursor": "*"}
         while True:
             data = self._get(path, params)
-            results: list[dict[str, Any]] = data.get("results", [])
-            yield results
+            yield data
             cursor = (data.get("meta") or {}).get("next_cursor")
-            if not cursor or not results:
+            if not cursor or not data.get("results"):
                 return
             params = {**params, "cursor": cursor}
+
+    def _pages(self, path: str, params: dict[str, str]) -> Iterator[list[dict[str, Any]]]:
+        """Every results page of a listing."""
+        for data in self._walk(path, params):
+            yield data.get("results", [])
 
     def resolve_author(self, author: AuthorConfig) -> ResolvedAuthor:
         """All OpenAlex author profiles for a configured author.
@@ -191,13 +205,38 @@ class OpenAlexClient:
         works: dict[str, dict[str, Any]] = {}
         for start in range(0, len(author_ids), AUTHOR_BATCH_SIZE):
             batch = author_ids[start : start + AUTHOR_BATCH_SIZE]
-            params = {"filter": "author.id:" + "|".join(batch), "select": WORKS_SELECT}
-            if include_xpac:
-                params["include_xpac"] = "true"
+            params = _works_params("author.id:" + "|".join(batch), WORKS_SELECT, include_xpac)
             for page in self._pages("/works", params):
                 for raw in page:
                     works.setdefault(strip_openalex_host(raw["id"]), raw)
         return list(works.values())
+
+    def works_by_byline(
+        self, name: str, *, exclude_ids: list[str], limit: int, include_xpac: bool = False
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Works whose raw byline matches a name, off the given profiles, and their count.
+
+        The filter is a loose full-text match on `raw_author_name`: an
+        initial matches any given name and word order is free, so the caller
+        judges each authorship itself. Works on `exclude_ids` (the author's
+        own profiles, already fetched) are dropped server-side, so `limit`
+        counts only the rest. Past it only the count comes back, since a
+        common name would page through thousands of strangers' works to find
+        a handful.
+        """
+        # Commas separate filters and pipes mean OR in the filter grammar.
+        query = " ".join(name.replace(",", " ").replace("|", " ").split())
+        filters = f"raw_author_name.search:{query}"
+        if exclude_ids:
+            # `!A|B` negates the whole list (verified live 2026-09-26).
+            filters += ",author.id:!" + "|".join(exclude_ids)
+        pages = self._walk("/works", _works_params(filters, BYLINE_SELECT, include_xpac))
+        first = next(pages)
+        total = _meta_total(first, first.get("results", []))
+        if total > limit:
+            return [], total
+        works = [raw for data in chain([first], pages) for raw in data.get("results", [])]
+        return works, total
 
     def recent_works(self, author_id: str, count: int = 3) -> list[dict[str, Any]]:
         """Most recent works for one author profile (verify report)."""

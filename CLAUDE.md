@@ -71,7 +71,7 @@ record), `dedup` (DOI + title clustering), `contamination` (homonym works
 inside a correct profile), `curation` (manual/overrides/tags), `pipeline`
 (stage orchestration), `output` (deterministic JSON, and the tolerant
 reader of the previous file), `delta` (what changed since it, and the
-reviewer's page), `verify` (disambiguation report), `cli`. `action.yml`
+reviewer's page), `verify` (disambiguation report, unlinked bylines), `cli`. `action.yml`
 at the root wraps `uvx erga build`; it holds no logic of its own.
 
 ## Commands

@@ -11,24 +11,6 @@
   date); a quoted `2025-02-31` and a manual `year: true` are rejected; the
   byline warning has two messages; a DOI ends at a closing tag. Neither
   consumer's live overrides were run through the new loader here
-- `verify` section for unlinked authorships: works that carry a configured
-  name in the byline but no author id, so no profile fetch sees them
-  (smartmove-site, 2026-09-23: 4 of a member's 7 missing papers). OpenAlex
-  has the filter (`raw_author_name.search:<name>`, probed 2026-09-24). Query
-  each configured name and alias, keep hits whose matching authorship has no
-  author id, drop hits the existing dedup clusters with fetched works, apply
-  `exclude_types`, list the rest as advisory with a pointer to the manual
-  file. Benchmark: Troupiotis-Kapeliaris gave 38 hits, 30 linked, 8 unlinked
-  = 3 missing papers, 3 versions of one Zenodo dataset, 2 repository copies
-  of linked works. A Greek-script byline (his thesis) is caught only if an
-  alias carries that script; common names will pull in namesakes' works.
-  Second benchmark (dpsd-new, 2026-09-26): the filter under the configured
-  name finds all three no-entity records their ORCID check turned up
-  (`W7115913671`, `W2949119045`, `W2166485328`, checked live). The third is
-  a repair, not a gap: it title-clusters with a broken DOI-less copy
-  already fetched (`W3099828385`), so the drop rule above would hide it.
-  Report a clustered hit that carries a DOI its fetched twin lacks as a
-  better record instead of dropping it
 - ORCID reconciliation, report-only (dpsd-new inbox, 2026-09-26; the
   section 12 carve-out and section 3's ORCID facts). Read each tracked
   iD's works list, resolve every DOI the build did not produce to its
@@ -39,7 +21,8 @@
   classes that are the test cases. A twin already listed under another DOI
   (dedup-merged); a deliberate exclusion (override or `exclude_types`,
   front matter such as a Preface or a workshop chairs' message); a broken
-  copy fetched without its DOI (the repair case in the item above). So it
+  copy fetched without its DOI (the repair `verify`'s unlinked bylines
+  report as a better record when the DOI record has no entity). So it
   runs inside `build`, where merges and exclusions are known. What only
   this reaches: works on a detached entity (Papageorgiou's
   `A5004005331`, "X. Papageorgiou", 2 works, which `verify` does not list:
