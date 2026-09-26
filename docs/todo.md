@@ -1,6 +1,9 @@
 # TODO
 
 ## High
+- Release v0.9.0 once the four-OpenAlex-types item (Normal) lands: main
+  carries the unreleased `id` + `doi` override patch (ab175f1), which
+  lets dpsd-new retire its Gavalas manual stopgap; route both consumers
 
 ## Normal
 - A listed work whose byline names a member on an authorship with no
