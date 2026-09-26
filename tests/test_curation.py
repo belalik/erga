@@ -15,6 +15,7 @@ from erga.curation import (
     load_tags,
     mark_keep_distinct,
     redundant_overrides,
+    shared_dois,
     unmatched_overrides,
 )
 from erga.dedup import cluster_by_title, dedup_by_doi
@@ -169,12 +170,70 @@ def test_byline_warnings_flag_joined_lists_and_untracked_configured_names(
 
 
 def test_load_overrides_validation(tmp_path: Path) -> None:
-    with pytest.raises(ConfigError, match="exactly one"):
-        load_overrides(write(tmp_path, "o1.yml", "- doi: 10.1/x\n  id: W1\n"), [])
-    with pytest.raises(ConfigError, match="exactly one"):
+    with pytest.raises(ConfigError, match="needs 'id' or 'doi' to match on"):
         load_overrides(write(tmp_path, "o2.yml", "- venue: X\n"), [])
     with pytest.raises(ConfigError, match="unknown fields"):
         load_overrides(write(tmp_path, "o3.yml", "- id: W1\n  venu: X\n"), [])
+
+
+def test_id_override_patches_doi_and_a_doi_override_matches_on_it(tmp_path: Path) -> None:
+    overrides = overrides_from(
+        tmp_path,
+        """\
+- id: W1
+  doi: 10.5555/FOUND
+  venue: Found Proceedings
+- id: W2
+  doi: null
+- doi: 10.5555/kept
+  venue: Only A Patch
+- id: W4
+  doi: https://doi.org/10.5555/same
+""",
+    )
+    assert [(o.match_id, o.match_doi) for o in overrides] == [
+        ("W1", None),
+        ("W2", None),
+        (None, "10.5555/kept"),
+        ("W4", None),
+    ]
+    assert "doi" not in overrides[2].patch
+    works = [
+        Work(id="W1", title="A Broken Copy"),
+        Work(id="W2", title="B", doi="https://doi.org/10.5555/wrong"),
+        Work(id="W3", title="C", doi="https://doi.org/10.5555/kept"),
+        Work(id="W4", title="D", doi="https://doi.org/10.5555/same"),
+    ]
+    kept, _ = apply_overrides(works, overrides)
+    assert [w.doi for w in kept] == [
+        "https://doi.org/10.5555/found",
+        None,
+        "https://doi.org/10.5555/kept",
+        "https://doi.org/10.5555/same",
+    ]
+    assert kept[0].venue == "Found Proceedings"
+    assert kept[2].venue == "Only A Patch"
+    assert unmatched_overrides(overrides) == []
+    assert redundant_overrides(overrides) == [f"{tmp_path / 'overrides.yml'}: entry 4"]
+    # Tags run after overrides and match the patched DOI.
+    assert apply_tags(kept, {"found": ["10.5555/found"]}) == []
+    assert kept[0].tags == ["found"]
+
+
+def test_shared_dois_warns_on_a_patched_doi_and_keeps_both(tmp_path: Path) -> None:
+    overrides = overrides_from(tmp_path, "- id: W1\n  doi: 10.5555/taken\n")
+    works = [
+        Work(id="W1", title="A Broken Copy"),
+        Work(id="W2", title="The Record Itself", doi="https://doi.org/10.5555/TAKEN"),
+        Work(id="W3", title="Unrelated", doi="https://doi.org/10.5555/other"),
+    ]
+    assert shared_dois(works) == []
+    kept, _ = apply_overrides(works, overrides)
+    assert [w.id for w in kept] == ["W1", "W2", "W3"]
+    assert shared_dois(kept) == [
+        "DOI 10.5555/taken is on W1, W2 after an override patched it in; both stay listed: "
+        "exclude the patched copy if the other is its DOI record, else fix the patch"
+    ]
 
 
 def test_apply_overrides_patch_exclude_and_stale(tmp_path: Path) -> None:

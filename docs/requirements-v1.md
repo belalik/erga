@@ -331,8 +331,14 @@ All three survive every refresh; a missing file means "none".
   is either a list or a misspelling, so it is named. `date` is `YYYY`,
   `YYYY-MM` or `YYYY-MM-DD` (a calendar date); it supplies `year` when
   that is absent, and a `year` it contradicts is an error.
-- **`overrides.yml`**: list of patches keyed by `doi` (case-insensitive) or
-  `id`. Any other key overwrites that field on the merged record. Special
+- **`overrides.yml`**: list of patches keyed by `id`, or by `doi`
+  (case-insensitive) on an entry without one. Any other key overwrites
+  that field on the merged record, `doi` included on an entry keyed by
+  `id`: that gives a DOI-less copy its DOI (the repair `verify` reports as
+  a better record) and keeps it refreshing, where a manual entry would
+  freeze it. Overrides run after DOI dedup, so a patched DOI another kept
+  record carries leaves both listed with a warning; merging them instead
+  would drop a real work on a mistyped DOI. Special
   keys: `exclude: true` drops the record; an explicit `exclude: false`
   exempts it from the `output.exclude_types` filter; `keep_distinct: true`
   exempts it from title clustering. `date` and `authors` patches follow
@@ -612,7 +618,9 @@ Ported from the production origin pipeline with generalization deltas noted.
    and `open_access` from absorbed copies when it lacks them.
 8. Apply overrides (patch or exclude), then drop `output.exclude_types`
    records. Manual entries are explicit curation and never type-filtered;
-   an `exclude: false` override rescues an individual fetched record.
+   an `exclude: false` override rescues an individual fetched record. A
+   DOI two kept records share afterwards, which only a `doi` patch can
+   cause, is a warning (section 6).
 9. Crossref venue backfill with the last-known-good ratchet: reuse venues
    from the previous output first, then query Crossref (polite mailto
    User-Agent) only for records still lacking one; DataCite DOIs 404 there
@@ -713,7 +721,8 @@ Ported from the production origin pipeline with generalization deltas noted.
   `exclude_types` drops), then anything the list holds by id, DOI or
   title drops out (a title key needs 12 normalized characters, as in
   clustering, so a shorter title never matches). A dropped work that carries a DOI its listed twin
-  lacks is reported as a better record, a repair rather than a gap. One
+  lacks is reported as a better record, a repair rather than a gap, which
+  an override on the listed id patching `doi` makes. One
   whose listed record credits no authorship to the author (`tracked_as`)
   is reported as listed without crediting them: the build tracks an
   authorship with no id by exact name only, so a byline printed another

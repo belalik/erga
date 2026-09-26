@@ -270,7 +270,7 @@ def _unlinked_lines(
     for work, listed in sorted(better, key=lambda pair: pair[0].id):
         lines.append(
             f"  better record for a listed work: {work.id} carries {work.doi_key}; "
-            f"listed as {', '.join(listed)} without a DOI"
+            f"listed as {', '.join(listed)} without a DOI, which an `id` override can patch in"
         )
     return lines
 

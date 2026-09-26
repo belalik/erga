@@ -22,6 +22,7 @@ from erga.curation import (
     load_tags,
     mark_keep_distinct,
     redundant_overrides,
+    shared_dois,
     unmatched_overrides,
 )
 from erga.dedup import cluster_by_title, dedup_by_doi
@@ -230,6 +231,7 @@ def build(
         f"override redundant (upstream now agrees; kept as-is): {w}"
         for w in redundant_overrides(overrides)
     )
+    stats.warnings.extend(shared_dois(works))
 
     # Read once: the previous output feeds the venue ratchet here and the
     # delta below, and it must be the file as found, before it is replaced.

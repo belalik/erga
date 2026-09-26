@@ -129,6 +129,18 @@ def test_golden_build_warns_about_an_unreadable_previous_output(tmp_path: Path) 
     ]
 
 
+def test_golden_build_warns_about_a_patched_doi_another_record_carries(tmp_path: Path) -> None:
+    run_golden(tmp_path, dry_run=True)
+    with (tmp_path / "overrides.yml").open("a", encoding="utf-8") as f:
+        f.write("- id: W1011\n  doi: 10.5555/cracked\n")
+    stats = run_golden(tmp_path, seed=False)
+    assert stats.total == 9
+    assert stats.warnings == [
+        "DOI 10.5555/cracked is on W1003, W1011 after an override patched it in; both stay "
+        "listed: exclude the patched copy if the other is its DOI record, else fix the patch"
+    ]
+
+
 def test_golden_dry_run_leaves_output_untouched(tmp_path: Path) -> None:
     stats = run_golden(tmp_path, dry_run=True)
     assert not stats.written

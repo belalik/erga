@@ -59,18 +59,6 @@
   stubs from ORCID were declined at triage 2026-09-26: work summaries
   carry no byline, the one field a manual entry cannot do without; reopen
   if a consumer asks. Fixtures synthetic: ORCID lists are personal data
-- An override cannot give a record a DOI: `doi` is only a match key, and
-  `id:` plus `doi:` is refused at load (`needs exactly one of 'doi' or
-  'id'`), so a DOI-less broken copy can be fixed only by a manual entry,
-  which freezes the record (dpsd-new, 2026-09-26: Gavalas ICC 2006,
-  `W3099828385`, DOI record `10.1109/icc.2006.255712`). Rule: an entry
-  that matches on `id` may patch `doi`; both keys were always an error,
-  so no existing file changes meaning. `PATCH_KEYS` already lists `doi`
-  but the loader strips it as a match key first. Overrides run after
-  dedup, so a patched DOI equal to another record's is a duplicate the
-  build must catch; Crossref backfill and tags run later and pick up the
-  patched DOI, as wanted. Section 6's overrides paragraph changes with it.
-  The ORCID item's repair case lands here
 - Four OpenAlex types warn and fall back to `other`, seen by both
   consumers. dpsd-new builds: `reference-entry` (10 works: encyclopedia
   entries in two editions, a handbook chapter under two DOIs),
@@ -176,6 +164,14 @@
   under the fixture rule; only signals traced to public OpenAlex records
   are fixture material
 ## Low
+- Curated DOIs are not checked for shape: `_field_value` turns any value
+  into `https://doi.org/<value>`, so a manual or override `doi: 5`, or a
+  typo that drops the `10.` prefix, publishes a dead link at exit 0. The
+  `id` + `doi` patch (2026-09-26) makes it a patch value as well as a
+  manual field. Refuse at load anything whose `doi_key` is not
+  `10.<digits>/<suffix>`, the shape `model._DOI_BODY` already encodes.
+  Both consumers' 28 curated DOIs pass that shape (checked 2026-09-26), so
+  it should break no file
 - Advisory warning when an IEEE conference DOI's year segment disagrees
   with `publication_year` (dpsd-new, 2026-09-25: `10.1109/icc.1999.765564`,
   `10.1109/iscc.1999.780940`, `10.1109/glocom.1999.831671` carry

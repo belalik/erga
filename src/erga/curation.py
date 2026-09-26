@@ -201,7 +201,11 @@ class Override:
 
 
 def load_overrides(path: Path, authors_cfg: list[AuthorConfig]) -> list[Override]:
-    """Patches keyed by DOI or id; absent file means none.
+    """Patches keyed by id or DOI; absent file means none.
+
+    An entry matches on `id` when it has one, and its `doi` is then a patch:
+    the one way to give a DOI-less copy its DOI without freezing it as a
+    manual entry. Both keys used to be an error, so no file changes meaning.
 
     Every field is checked and coerced here, not when a record matches: an
     entry whose id has gone stale would otherwise carry a typo through a
@@ -215,11 +219,10 @@ def load_overrides(path: Path, authors_cfg: list[AuthorConfig]) -> list[Override
         where = f"{path}: entry {index + 1}"
         if not isinstance(entry, dict):
             raise ConfigError(f"{where}: expected a mapping")
-        if ("doi" in entry) == ("id" in entry):
-            raise ConfigError(f"{where}: needs exactly one of 'doi' or 'id' to match on")
-        patch = {
-            k: v for k, v in entry.items() if k not in {"doi", "id", "exclude", "keep_distinct"}
-        }
+        match_key = "id" if "id" in entry else "doi"
+        if match_key not in entry:
+            raise ConfigError(f"{where}: needs 'id' or 'doi' to match on")
+        patch = {k: v for k, v in entry.items() if k not in {match_key, "exclude", "keep_distinct"}}
         reject_unknown_keys(patch, PATCH_KEYS, where, noun="fields")
         patch = {k: _field_value(k, v, authors_cfg, where) for k, v in patch.items()}
         # A patched date carries its year, as a manual date does, and a year
@@ -229,8 +232,8 @@ def load_overrides(path: Path, authors_cfg: list[AuthorConfig]) -> list[Override
         overrides.append(
             Override(
                 where=where,
-                match_doi=doi_key(str(entry["doi"])) if "doi" in entry else None,
-                match_id=str(entry["id"]) if "id" in entry else None,
+                match_doi=doi_key(str(entry["doi"])) if match_key == "doi" else None,
+                match_id=str(entry["id"]) if match_key == "id" else None,
                 exclude=bool(entry["exclude"]) if "exclude" in entry else None,
                 keep_distinct=bool(entry.get("keep_distinct", False)),
                 patch=patch,
@@ -392,6 +395,27 @@ def redundant_overrides(overrides: list[Override]) -> list[str]:
     exclude entry carrying patch fields never runs them.
     """
     return [o.where for o in overrides if o.matched and o.patch and not o.exclude and not o.changed]
+
+
+def shared_dois(works: list[Work]) -> list[str]:
+    """DOIs that more than one kept record carries, as warnings.
+
+    DOI dedup ran before overrides, so a shared DOI can only come from a
+    `doi` patch: a DOI-less copy given the DOI of a record the build also
+    lists (OpenAlex linked it later, under a title clustering cannot
+    match), or a patch naming the wrong work. Both records stay rather than
+    merge, since a merge would drop a real work on a mistyped DOI.
+    """
+    by_doi: dict[str, list[str]] = {}
+    for work in works:
+        if work.doi_key:
+            by_doi.setdefault(work.doi_key, []).append(work.id)
+    return [
+        f"DOI {key} is on {', '.join(sorted(ids))} after an override patched it in; both "
+        "stay listed: exclude the patched copy if the other is its DOI record, else fix the patch"
+        for key, ids in sorted(by_doi.items())
+        if len(ids) > 1
+    ]
 
 
 def apply_tags(works: list[Work], tags: dict[str, list[str]]) -> list[str]:

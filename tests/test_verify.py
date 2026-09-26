@@ -408,7 +408,10 @@ def test_unlinked_bylines_report_gaps_and_repairs_against_the_published_list(
     assert "W1  A Paper No Profile Fetch Sees (2024)  10.5555/missing  as 'Nair, Priya'" in report
     # Two releases of one dataset are one line, as a build would keep them.
     assert ("W8  Synthetic" in report) != ("W9  Synthetic" in report)
-    assert "better record for a listed work: W4 carries 10.5555/better; listed as W20" in report
+    assert (
+        "better record for a listed work: W4 carries 10.5555/better; listed as W20 without a DOI, "
+        "which an `id` override can patch in"
+    ) in report
     for dropped in ("W10  ", "W3  ", "W5  ", "W6  ", "W7  ", "W12", "W13"):
         assert dropped not in report
     assert f"Unlinked bylines: compared against {output} (5 works)." in report

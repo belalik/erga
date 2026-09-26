@@ -124,7 +124,8 @@ list already holds by id, DOI or title (a title of 12 characters or more,
 as dedup requires), and lists the rest: add the ones
 that are theirs to your manual file. A work your overrides exclude stays
 out. It also names a listed copy that lacks a DOI when a record carrying
-one exists, and a listed work that does not credit them because its
+one exists (an override on the copy's id can patch that DOI in), and a
+listed work that does not credit them because its
 byline prints their name another way ("Nair, Priya"): an alias spelling
 that byline, or an override patching the record's authors, credits them. A full name matches only bylines
 that spell it out, in any order; an initial alias such as `P. Nair` catches
