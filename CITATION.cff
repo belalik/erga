@@ -6,6 +6,7 @@ abstract: "Keep a website's academic publications list current: fetch from OpenA
 authors:
   - family-names: Kogias
     given-names: Thomas
+    orcid: "https://orcid.org/0009-0001-3431-2825"
     website: "https://kogias.org"
 repository-code: "https://github.com/belalik/erga"
 url: "https://github.com/belalik/erga"

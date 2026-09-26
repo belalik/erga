@@ -2,29 +2,9 @@
 
 ## High
 - Merge branch `unlinked-authorships` (the `verify` unlinked-bylines
-  section) after one more pass. The review pair ran 2026-09-26 and its
-  triaged fixes are committed on the branch: override exclusions and
-  `keep_distinct` honoured through a shared `pipeline.curate`, a quoted
-  per-rotation byline query, a "listed without crediting them" line,
-  stricter `read_output` and alias checks. Next: `/code-review medium
-  unlinked-authorships` in a fresh session (a fork here would inherit the
-  triage), triage, merge. Deferred from that session's `/simplify`, each
-  a behaviour change for its own decision: (1) the uncredited line mixes
-  two causes, a listed record printing the byline another way (alias
-  fixes it) and a listed twin lacking the authorship (override fixes it);
-  scanning `publications.json` for untracked authors that
-  `_byline_matches` accepts would find the first without any search, also
-  for names too common to search, and doubles as the re-track count the
-  tracking item below asks for; (2) `read_output` checks shapes one
-  reader at a time and still accepts `doi: 5`, `year: "2024"` and a
-  string `cited_by_count`, each a verify crash: one field-to-type table
-  beside `work_from_record` would be complete by construction, but could
-  reject an older erga's file, so check what earlier versions wrote
-  first; (3) "a word in a name" has three definitions (config's
-  `normalize_title`, the query's `\w+`, the matcher's `normalize_title`),
-  which disagree only on edge input (an NFD "Pérez" splits in the
-  query); one `name_words()` in the names module the tracking item
-  proposes would serve all three
+  section, review-pair fixes in 145e176): `/code-review medium
+  unlinked-authorships` in a fresh session first (a fork inherits the
+  session that wrote the fixes), triage, then Thomas decides the merge
 
 ## Normal
 - Next release's notes name what the `small-fixes` merge changed for a
@@ -41,12 +21,26 @@
   "Papageorgiou, Xanthi" or "Xanthi S. Papageorgiou" gets `tracked:
   false`, and a site filtering on `tracked_as` drops the work from her
   page (altitude review of `unlinked-authorships`, 2026-09-26). `verify`
-  now reports it ("listed without crediting them"; the remedy today is an
-  alias spelling the byline), and found no case on either consumer's list
-  (2026-09-26). Candidate fix at the source: track id-less authorships
-  with `verify`'s `_byline_matches`, moved to a names module both use.
-  Changes tracking and the golden output, so it needs its own decision and
-  a measurement of how many listed works it would re-track per consumer
+  now reports it ("listed without crediting them"), and found no case on
+  either consumer's list (2026-09-26). Candidate fix at the source: track
+  id-less authorships with `verify`'s `_byline_matches`, moved to a names
+  module both use. Changes tracking and the golden output, so it needs its
+  own decision and a measurement of how many listed works it would
+  re-track per consumer: a scan of `publications.json` for untracked
+  authors `_byline_matches` accepts gives that count with no search, and
+  would also let `verify` split its uncredited line by cause (a listed
+  record printing the byline another way, fixed by an alias, versus a
+  listed twin lacking the authorship, fixed by an override), including for
+  names too common to search. The same names module should own "a word in
+  a name", now defined three ways (config and matcher `normalize_title`,
+  the byline query `\w+`), which disagree only on edge input such as an
+  NFD "Pérez" (/simplify altitude review, 2026-09-26)
+- `read_output` checks record shapes one reader at a time and still
+  accepts `doi: 5`, `year: "2024"` and a string `cited_by_count`, each a
+  `verify` crash rather than its "not checked" line. One field-to-type
+  table beside `work_from_record` would be complete by construction, but
+  could reject a file an older erga wrote: check the shapes earlier
+  versions wrote first (/simplify altitude review, 2026-09-26)
 - ORCID reconciliation, report-only (dpsd-new inbox, 2026-09-26; the
   section 12 carve-out and section 3's ORCID facts). Read each tracked
   iD's works list, resolve every DOI the build did not produce to its
@@ -207,13 +201,10 @@
   tests with a `9999` placeholder, per the CLAUDE.md fixture rule: six
   test modules plus the OpenAlex and golden fixtures, so the golden
   expected output changes with it (`grep -rl 1825-0097 tests`)
-- Add `orcid:` under the author in `CITATION.cff` once Thomas confirms
-  his iD: the one public record under his name (0009-0001-3431-2825,
-  empty, 2023) is unconfirmed; orcid.org's forgot-iD form settles it
 - Thomas registers ORCID public API credentials in a future session
-  (Developer Tools, steps in requirements section 3). He confirmed he
-  holds an iD (2026-09-26), so this is no longer blocked on the item
-  above. The form wants name (`erga`), website URL, description and an
+  (Developer Tools, steps in requirements section 3), signed in with his
+  iD 0009-0001-3431-2825 (confirmed 2026-09-26, now in `CITATION.cff`).
+  The form wants name (`erga`), website URL, description and an
   HTTPS redirect URI, which the client-credentials exchange never uses
   (the repo URL serves for both); he can open it in the Chrome debug
   profile for a playwright-cli walk-through. The client secret never goes
