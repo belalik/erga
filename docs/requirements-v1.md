@@ -157,6 +157,41 @@ founding documents where they conflict.
   affiliation must never read as anomalous, since roughly a third of works
   have none.
 
+### ORCID public API (verified 2026-09-26)
+
+Read only by the reconciliation check that section 12 allows, never as a
+record source. Sources, read 2026-09-26: ORCID's API limits FAQ, its
+December 2024 traffic-management notice (in force since February 2025),
+and the Public APIs Terms of Service (updated 2024-10-23).
+
+- **Free for non-commercial use.** The licence bars charging re-use fees
+  and using the API "in connection with any revenue-generating product or
+  service". A university or lab publications page qualifies; a consumer
+  running erga inside a paid service needs ORCID membership instead, which
+  is theirs to arrange.
+- **Two free tiers at one rate.** Anonymous reads of `pub.orcid.org` need
+  no registration: 12 requests/s (burst 40, a 503 beyond it) and 25,000
+  reads a day per IP address. Registered public credentials: the same
+  rate, 100,000 reads a day per client. Verified live: an anonymous
+  `GET /v3.0/<iD>/works` returns a whole record's work summaries in one
+  response, no paging (113 groups on the largest record probed), so a
+  build costs about one read per tracked author.
+- **Anonymous is not dependable on CI,** for the reason keyless OpenAlex is
+  not: the quota counts per IP and GitHub-hosted runners share IPs. A
+  registered token takes the check off the shared quota. Registration: sign
+  in at orcid.org with a verified email, name menu → Developer Tools,
+  register an application (name, URL, description; redirect URIs must be
+  HTTPS), which yields a client ID and secret. One
+  `POST https://orcid.org/oauth/token` with `grant_type=client_credentials`
+  and `scope=/read-public` exchanges them for a `/read-public` token valid
+  about 20 years. erga reads that token from an env var, as it does the
+  OpenAlex key, and reads anonymously without it.
+- **Credentials are personal.** "Only an individual with an ORCID iD may
+  obtain Public API Credentials"; they may not be shared or transferred,
+  and the client secret must not appear in public code. A site's token
+  belongs to its maintainer and lives in the repo's secrets; a successor
+  registers their own.
+
 ## 4. Canonical output schema
 
 Top-level object, not a bare array, so the schema version has a home:
@@ -733,5 +768,8 @@ scheduling, the `v1` tag policy, how CI exercises it) lives in
 No rendering or UI components, no Google Scholar (scraping is the failure
 mode this tool exists to replace), no database, no hosted service, no
 sources beyond OpenAlex plus manual entries. Multi-source merging (PubMed,
-ADS, DBLP) stays a documented architectural possibility only.
+ADS, DBLP) stays a documented architectural possibility only. One carve-out
+(2026-09-26): a tracked author's ORCID works list may be read as a check
+that reports works the build lacks, never as a record source; nothing read
+from ORCID enters the JSON. Access terms and limits: section 3.
 

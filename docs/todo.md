@@ -21,7 +21,55 @@
   file. Benchmark: Troupiotis-Kapeliaris gave 38 hits, 30 linked, 8 unlinked
   = 3 missing papers, 3 versions of one Zenodo dataset, 2 repository copies
   of linked works. A Greek-script byline (his thesis) is caught only if an
-  alias carries that script; common names will pull in namesakes' works
+  alias carries that script; common names will pull in namesakes' works.
+  Second benchmark (dpsd-new, 2026-09-26): the filter under the configured
+  name finds all three no-entity records their ORCID check turned up
+  (`W7115913671`, `W2949119045`, `W2166485328`, checked live). The third is
+  a repair, not a gap: it title-clusters with a broken DOI-less copy
+  already fetched (`W3099828385`), so the drop rule above would hide it.
+  Report a clustered hit that carries a DOI its fetched twin lacks as a
+  better record instead of dropping it
+- ORCID reconciliation, report-only (dpsd-new inbox, 2026-09-26; the
+  section 12 carve-out and section 3's ORCID facts). Read each tracked
+  iD's works list, resolve every DOI the build did not produce to its
+  OpenAlex work (one batched `doi:` filter), and report the rest with
+  where each sits: another author entity (its id) or none. Compare against
+  the build's own state, never DOI strings: dpsd-new's outside script made
+  22 gaps of 6 real ones on 9 members, through three false-positive
+  classes that are the test cases. A twin already listed under another DOI
+  (dedup-merged); a deliberate exclusion (override or `exclude_types`,
+  front matter such as a Preface or a workshop chairs' message); a broken
+  copy fetched without its DOI (the repair case in the item above). So it
+  runs inside `build`, where merges and exclusions are known. What only
+  this reaches: works on a detached entity (Papageorgiou's
+  `A5004005331`, "X. Papageorgiou", 2 works, which `verify` does not list:
+  `_same_name_lines` searches the configured name only, not aliases),
+  and the confirmation that a same-name entity's works are the member's:
+  put that on `verify`'s same-name line (`A5135377975` was listed and read
+  as a homonym). Advisory: an outage, a 503 or a spent quota skips it with
+  a warning. Token optional from an env var, anonymous without; README and
+  `docs/action.md` gain the registration steps when the code ships, not
+  before. Later, DOI-less entries by title: `filter=title.search:`
+  (full-text `search=` missed known titles) needs every query word in the
+  title, so truncate from both ends (a subtitle hid the i-Walk match); of
+  one member's 38, 27 are on site and 11 not in OpenAlex. Works OpenAlex
+  lacks are not ingested, only reported in that phase; whether one enters
+  as a manual entry is the site's call per member. Draft `manual.yml`
+  stubs from ORCID were declined at triage 2026-09-26: work summaries
+  carry no byline, the one field a manual entry cannot do without; reopen
+  if a consumer asks. Fixtures synthetic: ORCID lists are personal data
+- An override cannot give a record a DOI: `doi` is only a match key, and
+  `id:` plus `doi:` is refused at load (`needs exactly one of 'doi' or
+  'id'`), so a DOI-less broken copy can be fixed only by a manual entry,
+  which freezes the record (dpsd-new, 2026-09-26: Gavalas ICC 2006,
+  `W3099828385`, DOI record `10.1109/icc.2006.255712`). Rule: an entry
+  that matches on `id` may patch `doi`; both keys were always an error,
+  so no existing file changes meaning. `PATCH_KEYS` already lists `doi`
+  but the loader strips it as a match key first. Overrides run after
+  dedup, so a patched DOI equal to another record's is a duplicate the
+  build must catch; Crossref backfill and tags run later and pick up the
+  patched DOI, as wanted. Section 6's overrides paragraph changes with it.
+  The ORCID item's repair case lands here
 - Four OpenAlex types warn and fall back to `other`, seen by both
   consumers. dpsd-new builds: `reference-entry` (10 works: encyclopedia
   entries in two editions, a handbook chapter under two DOIs),
@@ -91,8 +139,10 @@
   counting for each. Case (dpsd-new, 2026-09-25): a member asked why the
   site lists 91 of his 103 OpenAlex works; the answer (9 title-cluster
   merges, 3 editorial exclusions, all deliberate) took a diff script when
-  the build log could have carried it. The 113 → 103 step above that is
-  upstream (ORCID entries OpenAlex never linked) and out of reach
+  the build log could have carried it. The 113 → 103 step above that was
+  upstream, and its DOI part benign for him (ORCID DOIs landing on dedup
+  twins), but not out of reach in general: for two other members it hid
+  real gaps and for a third a repair (the ORCID reconciliation item)
 - Delta page: report field updates that come from overrides apart from
   drift. The page compares the previous and current output, both
   post-curation, so a newly added override tables as drift under "Metadata
@@ -168,9 +218,10 @@
   right institution on OpenAlex)
 - `erga suggest` (name and institution in, ranked candidate profiles out),
   proposed by dpsd-new and declined for v1 on 2026-09-02. The signal that
-  separated both of their traps was orcid.org employment history, a second
-  source the v1 non-goals exclude; a ranker without it puts the wrong Zissis
-  first with confidence. Reopen if a third consumer hits the discovery wall,
+  separated both of their traps was orcid.org employment history; a ranker
+  without it puts the wrong Zissis first with confidence. The 2026-09-26
+  ORCID carve-out (section 12) covers reading a given iD's works as a
+  check, not finding the iD, which stays the consumer's step. Reopen if a third consumer hits the discovery wall,
   or when the sources non-goal is revisited after v1
 - Surface no consumer has exercised yet, so unproven in the field before
   v1.0: `keep_distinct` overrides, thesis/software types in templates,

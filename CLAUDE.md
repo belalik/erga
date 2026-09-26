@@ -107,6 +107,7 @@ at the root wraps `uvx erga build`; it holds no logic of its own.
   prefix): ORCID's fictitious-researcher iD and 0000-0000-0000-0000 are
   both carried by real OpenAlex profiles and fetch strangers' works
 - v1 non-goals: no rendering or UI, no Google Scholar scraping, no database,
-  no hosted service, no sources beyond OpenAlex + manual entries
+  no hosted service, no sources beyond OpenAlex + manual entries (ORCID
+  may be read as a check, never as a record source: requirements section 12)
 - No `.claudeignore`, deliberately: every noise dir is gitignored and CC
   search respects `.gitignore`, so it would duplicate that for no gain
