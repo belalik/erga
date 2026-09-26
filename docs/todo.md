@@ -1,7 +1,11 @@
 # TODO
 
 ## High
-(empty)
+- Review and merge branch `unlinked-authorships` (48212ee, the `verify`
+  unlinked-bylines section): `/code-review medium` first, then a blind
+  Codex review of the same pinned diff. The brief also asks whether
+  comparing against the published list, rather than a fresh fetch, is the
+  right call (requirements section 8)
 
 ## Normal
 - Next release's notes name what the `small-fixes` merge changed for a
@@ -10,7 +14,19 @@
   without a date must agree with the fetched date (else `date: null`, or a
   date); a quoted `2025-02-31` and a manual `year: true` are rejected; the
   byline warning has two messages; a DOI ends at a closing tag. Neither
-  consumer's live overrides were run through the new loader here
+  consumer's live overrides were run through the new loader here. Once
+  merged, `verify`'s unlinked-bylines section goes in the same notes
+- A listed work whose byline names a member on an authorship with no
+  author id leaves that member untracked: `normalize` tracks a name only
+  by exact casefold match on the configured name or alias, so
+  "Papageorgiou, Xanthi" or "Xanthi S. Papageorgiou" gets `tracked:
+  false`, and a site filtering on `tracked_as` drops the work from her
+  page. `verify`'s unlinked section drops it too, as already listed, so
+  nothing reports it (altitude review of `unlinked-authorships`,
+  2026-09-26). Candidate: track id-less authorships with `verify`'s
+  `_byline_matches`, moved to a names module both use. Changes tracking
+  and the golden output, so it needs its own decision and a measurement
+  of how many listed works it would re-track per consumer
 - ORCID reconciliation, report-only (dpsd-new inbox, 2026-09-26; the
   section 12 carve-out and section 3's ORCID facts). Read each tracked
   iD's works list, resolve every DOI the build did not produce to its
@@ -174,6 +190,12 @@
 - Add `orcid:` under the author in `CITATION.cff` once Thomas confirms
   his iD: the one public record under his name (0009-0001-3431-2825,
   empty, 2023) is unconfirmed; orcid.org's forgot-iD form settles it
+- Thomas registers ORCID public API credentials (Developer Tools, steps in
+  requirements section 3; needs the signed-in iD the item above settles)
+  and keeps the `/read-public` token in his password manager; it reaches
+  consumer repo secrets when the ORCID reconciliation ships. Claude puts
+  the token exchange command in `cc-commands.txt` once he has the client
+  ID and secret
 - `verify`'s `recent:` lines repeat one paper across the three slots
   (smartmove-site, 2026-09-23: H3CPP three times): `recent_works` takes the
   three newest records before any dedup. Ask for ~10 in the same call, drop
