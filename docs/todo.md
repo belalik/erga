@@ -1,18 +1,11 @@
 # TODO
 
 ## High
-(empty)
+- Route v0.8.0 to dpsd-new and smartmove-site (release.md step 7), from
+  minis, where their sessions run; both entries are drafted in the
+  2026-09-26 next-session prompt
 
 ## Normal
-- Next release's notes name what the `small-fixes` merge changed for a
-  consumer's curation files (2026-09-25): every override field is checked
-  when the file loads, so a stale id no longer hides a typo; a year patched
-  without a date must agree with the fetched date (else `date: null`, or a
-  date); a quoted `2025-02-31` and a manual `year: true` are rejected; the
-  byline warning has two messages; a DOI ends at a closing tag. Neither
-  consumer's live overrides were run through the new loader here.
-  `verify`'s unlinked-bylines section (merged 2026-09-26) goes in the
-  same notes, with its advice to write names with their diacritics
 - A listed work whose byline names a member on an authorship with no
   author id leaves that member untracked: `normalize` tracks a name only
   by exact casefold match on the configured name or alias, so
