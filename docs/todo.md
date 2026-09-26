@@ -1,9 +1,6 @@
 # TODO
 
 ## High
-- Route v0.8.0 to dpsd-new and smartmove-site (release.md step 7), from
-  minis, where their sessions run; both entries are drafted in the
-  2026-09-26 next-session prompt
 
 ## Normal
 - A listed work whose byline names a member on an authorship with no
