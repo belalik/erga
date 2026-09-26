@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import time
+import unicodedata
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from itertools import chain
@@ -45,8 +46,19 @@ def strip_openalex_host(value: str) -> str:
 
 def _byline_words(name: str) -> list[str]:
     """What a byline search sends of a name: its words, so nothing else in
-    it reads as filter or search syntax."""
-    return re.findall(r"\w+", name)
+    it reads as filter or search syntax. An apostrophe inside a word stays,
+    since the index keeps "O'Brien" whole: split, it reached 9 bylines of
+    872 (measured 2026-09-26). Composed first, since `\\w` takes no
+    combining accent and would split a decomposed "José" at it."""
+    return re.findall(
+        r"\w+(?:['\N{RIGHT SINGLE QUOTATION MARK}]\w+)*", unicodedata.normalize("NFC", name)
+    )
+
+
+def _unaccented(word: str) -> str:
+    """The word without its diacritics, as erga's own name match reads it."""
+    decomposed = unicodedata.normalize("NFKD", word)
+    return "".join(ch for ch in decomposed if unicodedata.category(ch) != "Mn")
 
 
 def byline_search_key(name: str) -> tuple[str, ...]:
@@ -242,9 +254,17 @@ class OpenAlexClient:
         # `limit` judges up to tenfold on the consumers' names (measured
         # 2026-09-26). Bylines keep the printed order ("Troupiotis-Kapeliaris,
         # Alexandros"), so every rotation is searched, each with room for two
-        # middle words.
+        # middle words. The index keeps diacritics, which erga's own match
+        # drops, so a name carrying any is searched without them too
+        # ("Jurgen Muller" bylines: 45, against 1,815 for "Jürgen Müller",
+        # 2026-09-26); the reverse cannot be guessed, so a name is configured
+        # as bylines print it.
         words = _byline_words(name)
-        rotations = [words[i:] + words[:i] for i in range(len(words))]
+        forms = [words]
+        unaccented = [_unaccented(word) for word in words]
+        if unaccented != words:
+            forms.append(unaccented)
+        rotations = [form[i:] + form[:i] for form in forms for i in range(len(form))]
         query = " OR ".join(f'"{" ".join(rotation)}"~2' for rotation in rotations)
         filters = f"raw_author_name.search:{query}"
         # `!A|B` negates the whole list, and repeated negations all apply, so

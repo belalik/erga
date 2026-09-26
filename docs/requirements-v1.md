@@ -696,7 +696,13 @@ Ported from the production origin pipeline with generalization deltas noted.
   phrase, two words of slop each, so a phrase matches within one byline;
   unquoted words can match across a work's different authors, and
   inflated counts up to tenfold on both consumers' names (measured
-  2026-09-26, no accepted work lost). erga's own match then decides:
+  2026-09-26, no accepted work lost). An apostrophe inside a word
+  stays, since the index holds "O'Brien" as one word (split, the query
+  reached 9 bylines of 872), and a name carrying diacritics is searched
+  without them too, since the index keeps them where erga's match does
+  not ("Jurgen Muller": 45 bylines, beside 1,815 for "Jürgen Müller",
+  both measured 2026-09-26); the reverse cannot be guessed, so a name
+  is configured as bylines print it. erga's own match then decides:
   every full word of the name in any order, each initial fitting a
   remaining word, so an initial alias opts into initial-only bylines.
   The finds are compared with the published list, not a fresh fetch,

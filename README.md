@@ -129,7 +129,9 @@ byline prints their name another way ("Nair, Priya"): an alias spelling
 that byline, or an override patching the record's authors, credits them. A full name matches only bylines
 that spell it out, in any order; an initial alias such as `P. Nair` catches
 the initial-only ones too, along with every namesake that shares the
-initial. A name too common to judge is skipped with a count.
+initial. Write a name with its diacritics, as bylines print it: the search
+also tries it without them, but cannot restore accents a configured name
+lacks. A name too common to judge is skipped with a count.
 
 Finding the iD in the first place is your step, and erga does not guess at
 it. An ORCID in `erga.yml` is trusted as given. What worked for a department

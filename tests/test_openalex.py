@@ -130,7 +130,24 @@ def test_fetch_works_passes_xpac_and_credentials() -> None:
         # Every rotation, so a byline printed surname-first still matches.
         ("Priya K. Nair", '"Priya K Nair"~2 OR "K Nair Priya"~2 OR "Nair Priya K"~2'),
         # Filter and search syntax in a name reduces to its words.
-        ('Wei* "Zhang",|(x)', '"Wei Zhang x"~2 OR "Zhang x Wei"~2 OR "x Wei Zhang"~2'),
+        ('Wei* "Zhang",|(x)\'', '"Wei Zhang x"~2 OR "Zhang x Wei"~2 OR "x Wei Zhang"~2'),
+        # An apostrophe inside a word stays: the index keeps "O'Brien" whole.
+        ("Sean O'Brien", '"Sean O\'Brien"~2 OR "O\'Brien Sean"~2'),
+        (
+            "Sean O\N{RIGHT SINGLE QUOTATION MARK}Brien",
+            '"Sean O\N{RIGHT SINGLE QUOTATION MARK}Brien"~2 OR '
+            '"O\N{RIGHT SINGLE QUOTATION MARK}Brien Sean"~2',
+        ),
+        # Diacritics: as written, then without, since bylines print both.
+        (
+            "José García",
+            '"José García"~2 OR "García José"~2 OR "Jose Garcia"~2 OR "Garcia Jose"~2',
+        ),
+        # Typed decomposed, the same name composes before it splits.
+        (
+            "Jose\N{COMBINING ACUTE ACCENT} Garci\N{COMBINING ACUTE ACCENT}a",
+            '"José García"~2 OR "García José"~2 OR "Jose Garcia"~2 OR "Garcia Jose"~2',
+        ),
     ],
 )
 def test_works_by_byline_quotes_each_rotation(name: str, phrases: str) -> None:
