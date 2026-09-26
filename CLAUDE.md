@@ -19,7 +19,7 @@ a fallback, never solved inside erga.
 
 ## Status
 
-v0.7.0 released 2026-09-23 (PyPI via Trusted Publishing, GitHub
+v0.8.0 released 2026-09-26 (PyPI via Trusted Publishing, GitHub
 Releases; repo public since v0.1.0, 2026-08-05). The pipeline is
 implemented end-to-end (config, fetch, normalize, dedup, curation,
 Crossref backfill, deterministic output, `build`/`verify` CLI) with unit
@@ -61,7 +61,9 @@ run's cohort was recorded. v0.6.0 ships the build delta (`build
 --summary`, `erga diff`, the Action's `summary` input), which turns the
 consumer's weekly PR into a reviewable page; its three change classes
 and the shrink warning are stage 12 of section 7, settled 2026-09-21
-and frozen by a golden test. See `docs/requirements-v1.md`
+and frozen by a golden test. v0.8.0 adds `verify`'s unlinked bylines:
+works naming a member on an authorship with no author id, which no
+profile fetch sees, checked against the published list. See `docs/requirements-v1.md`
 for the v1 design, `docs/action.md` for the Action, and `docs/todo.md`
 for open work.
 

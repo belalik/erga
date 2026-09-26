@@ -795,6 +795,10 @@ scheduling, the `v1` tag policy, how CI exercises it) lives in
   recent mover's entry names every post and the check stops reading
   their career as someone else's (sections 5 and 7); the wrong-profile
   warning names the incomplete declaration first.
+- **v0.8** (released 2026-09-26 as v0.8.0): `verify`'s unlinked bylines
+  (section 8), works naming a member on an authorship with no author id,
+  checked against the published list; and curated fields checked when
+  the files load, manual entries and overrides through one coercer.
 - **CSL-JSON and BibTeX emitters** slot in after v0.1 as demand warrants,
   before the v1.0 promotion push.
 - **v1.0**: strong README (before/after dedup story, head-on "why not
