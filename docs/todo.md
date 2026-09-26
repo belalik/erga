@@ -1,11 +1,30 @@
 # TODO
 
 ## High
-- Review and merge branch `unlinked-authorships` (48212ee, the `verify`
-  unlinked-bylines section): `/code-review medium` first, then a blind
-  Codex review of the same pinned diff. The brief also asks whether
-  comparing against the published list, rather than a fresh fetch, is the
-  right call (requirements section 8)
+- Merge branch `unlinked-authorships` (the `verify` unlinked-bylines
+  section) after one more pass. The review pair ran 2026-09-26 and its
+  triaged fixes are committed on the branch: override exclusions and
+  `keep_distinct` honoured through a shared `pipeline.curate`, a quoted
+  per-rotation byline query, a "listed without crediting them" line,
+  stricter `read_output` and alias checks. Next: `/code-review medium
+  unlinked-authorships` in a fresh session (a fork here would inherit the
+  triage), triage, merge. Deferred from that session's `/simplify`, each
+  a behaviour change for its own decision: (1) the uncredited line mixes
+  two causes, a listed record printing the byline another way (alias
+  fixes it) and a listed twin lacking the authorship (override fixes it);
+  scanning `publications.json` for untracked authors that
+  `_byline_matches` accepts would find the first without any search, also
+  for names too common to search, and doubles as the re-track count the
+  tracking item below asks for; (2) `read_output` checks shapes one
+  reader at a time and still accepts `doi: 5`, `year: "2024"` and a
+  string `cited_by_count`, each a verify crash: one field-to-type table
+  beside `work_from_record` would be complete by construction, but could
+  reject an older erga's file, so check what earlier versions wrote
+  first; (3) "a word in a name" has three definitions (config's
+  `normalize_title`, the query's `\w+`, the matcher's `normalize_title`),
+  which disagree only on edge input (an NFD "Pérez" splits in the
+  query); one `name_words()` in the names module the tracking item
+  proposes would serve all three
 
 ## Normal
 - Next release's notes name what the `small-fixes` merge changed for a
@@ -21,12 +40,13 @@
   by exact casefold match on the configured name or alias, so
   "Papageorgiou, Xanthi" or "Xanthi S. Papageorgiou" gets `tracked:
   false`, and a site filtering on `tracked_as` drops the work from her
-  page. `verify`'s unlinked section drops it too, as already listed, so
-  nothing reports it (altitude review of `unlinked-authorships`,
-  2026-09-26). Candidate: track id-less authorships with `verify`'s
-  `_byline_matches`, moved to a names module both use. Changes tracking
-  and the golden output, so it needs its own decision and a measurement
-  of how many listed works it would re-track per consumer
+  page (altitude review of `unlinked-authorships`, 2026-09-26). `verify`
+  now reports it ("listed without crediting them"; the remedy today is an
+  alias spelling the byline), and found no case on either consumer's list
+  (2026-09-26). Candidate fix at the source: track id-less authorships
+  with `verify`'s `_byline_matches`, moved to a names module both use.
+  Changes tracking and the golden output, so it needs its own decision and
+  a measurement of how many listed works it would re-track per consumer
 - ORCID reconciliation, report-only (dpsd-new inbox, 2026-09-26; the
   section 12 carve-out and section 3's ORCID facts). Read each tracked
   iD's works list, resolve every DOI the build did not produce to its
@@ -190,12 +210,18 @@
 - Add `orcid:` under the author in `CITATION.cff` once Thomas confirms
   his iD: the one public record under his name (0009-0001-3431-2825,
   empty, 2023) is unconfirmed; orcid.org's forgot-iD form settles it
-- Thomas registers ORCID public API credentials (Developer Tools, steps in
-  requirements section 3; needs the signed-in iD the item above settles)
-  and keeps the `/read-public` token in his password manager; it reaches
-  consumer repo secrets when the ORCID reconciliation ships. Claude puts
-  the token exchange command in `cc-commands.txt` once he has the client
-  ID and secret
+- Thomas registers ORCID public API credentials in a future session
+  (Developer Tools, steps in requirements section 3). He confirmed he
+  holds an iD (2026-09-26), so this is no longer blocked on the item
+  above. The form wants name (`erga`), website URL, description and an
+  HTTPS redirect URI, which the client-credentials exchange never uses
+  (the repo URL serves for both); he can open it in the Chrome debug
+  profile for a playwright-cli walk-through. The client secret never goes
+  in chat (transcripts export to logbook): Claude puts the token exchange
+  command in `cc-commands.txt` once he has the ID and secret, and the
+  `/read-public` token goes to his password manager, reaching consumer
+  repo secrets when the ORCID reconciliation ships. Not urgent before
+  then: anonymous reads serve local runs; the token matters on CI
 - `verify`'s `recent:` lines repeat one paper across the three slots
   (smartmove-site, 2026-09-23: H3CPP three times): `recent_works` takes the
   three newest records before any dedup. Ask for ~10 in the same call, drop

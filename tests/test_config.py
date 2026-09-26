@@ -75,6 +75,10 @@ curation:
         ("authors:\n  - {name: X, orcid: 0000-0002-1825-0097}\n", "mailto"),
         ("mailto: a@b.c\nauthors: []\n", "non-empty"),
         ("mailto: a@b.c\nauthors:\n  - {orcid: 0000-0002-1825-0097}\n", "name"),
+        ("mailto: a@b.c\nauthors:\n  - {name: '.', orcid: 0000-0002-1825-0097}\n", "name"),
+        # A blank alias would search every byline for nothing at all.
+        ("mailto: a@b.c\nauthors:\n  - {name: X, aliases: ['  ']}\n", "no name in it"),
+        ("mailto: a@b.c\nauthors:\n  - {name: X, aliases: ['_']}\n", "no name in it"),
         ("mailto: a@b.c\nauthors:\n  - {name: X, orcid: not-an-orcid}\n", "invalid ORCID"),
         ("mailto: a@b.c\nauthors:\n  - {name: X, openalex_id: W123}\n", "OpenAlex author id"),
         (MINIMAL + "surprise: true\n", "unknown keys"),

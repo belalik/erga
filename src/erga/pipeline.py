@@ -13,6 +13,7 @@ from erga.contamination import (
 )
 from erga.crossref import CrossrefClient
 from erga.curation import (
+    Override,
     apply_overrides,
     apply_tags,
     byline_warnings,
@@ -113,6 +114,22 @@ def exclude_by_type(works: list[Work], types: frozenset[str]) -> tuple[list[Work
     return kept, len(works) - len(kept)
 
 
+def curate(
+    works: list[Work], overrides: list[Override], types: frozenset[str], stats: BuildStats
+) -> list[Work]:
+    """Merge versions, apply overrides, drop unwanted types, in the build's order.
+
+    `verify` runs its byline finds through this too, so they meet the
+    published list as a build would have kept them.
+    """
+    mark_keep_distinct(works, overrides)
+    merged = cluster_by_title(dedup_by_doi(works))
+    stats.deduplicated = len(works) - len(merged)
+    kept, stats.excluded = apply_overrides(merged, overrides)
+    kept, stats.excluded_types = exclude_by_type(kept, types)
+    return kept
+
+
 def backfill_venues(
     works: list[Work], previous: dict[str, str], crossref: CrossrefClient, stats: BuildStats
 ) -> None:
@@ -207,19 +224,12 @@ def build(
     homes = _declared_homes(declarations, raw_works, openalex)
     stats.warnings.extend(contamination_warnings(find_contamination(raw_works, tracked_ids, homes)))
 
-    mark_keep_distinct(works, overrides)
-    before = len(works)
-    works = cluster_by_title(dedup_by_doi(works))
-    stats.deduplicated = before - len(works)
-
-    works, stats.excluded = apply_overrides(works, overrides)
+    works = curate(works, overrides, config.exclude_types, stats)
     stats.warnings.extend(f"override matched nothing: {w}" for w in unmatched_overrides(overrides))
     stats.warnings.extend(
         f"override redundant (upstream now agrees; kept as-is): {w}"
         for w in redundant_overrides(overrides)
     )
-
-    works, stats.excluded_types = exclude_by_type(works, config.exclude_types)
 
     # Read once: the previous output feeds the venue ratchet here and the
     # delta below, and it must be the file as found, before it is replaced.

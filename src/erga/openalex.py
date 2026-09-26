@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
@@ -40,6 +41,19 @@ BYLINE_SELECT = "id,title,authorships,publication_year,primary_location,type,doi
 def strip_openalex_host(value: str) -> str:
     """Bare id (W..., A...) from https://openalex.org/... or bare form."""
     return value.rsplit("/", 1)[-1]
+
+
+def _byline_words(name: str) -> list[str]:
+    """What a byline search sends of a name: its words, so nothing else in
+    it reads as filter or search syntax."""
+    return re.findall(r"\w+", name)
+
+
+def byline_search_key(name: str) -> tuple[str, ...]:
+    """Names sharing this key send one byline search: the same words, up to
+    case and rotation ("Xanthi Papageorgiou", "Papageorgiou, Xanthi")."""
+    words = [word.casefold() for word in _byline_words(name)]
+    return min((tuple(words[i:] + words[:i]) for i in range(len(words))), default=())
 
 
 def _works_params(filters: str, select: str, include_xpac: bool) -> dict[str, str]:
@@ -216,16 +230,22 @@ class OpenAlexClient:
     ) -> tuple[list[dict[str, Any]], int]:
         """Works whose raw byline matches a name, off the given profiles, and their count.
 
-        The filter is a loose full-text match on `raw_author_name`: an
-        initial matches any given name and word order is free, so the caller
-        judges each authorship itself. Works on `exclude_ids` (the author's
-        own profiles, already fetched) are dropped server-side, so `limit`
-        counts only the rest. Past it only the count comes back, since a
-        common name would page through thousands of strangers' works to find
-        a handful.
+        The filter is a full-text phrase match on `raw_author_name`, looser
+        than erga's own name match, so the caller judges each authorship
+        itself. Works on `exclude_ids` (the author's own profiles, already
+        fetched) are dropped server-side, so `limit` counts only the rest.
+        Past it only the count comes back, since a common name would page
+        through thousands of strangers' works to find a handful.
         """
-        # Commas separate filters and pipes mean OR in the filter grammar.
-        query = " ".join(name.replace(",", " ").replace("|", " ").split())
+        # Quoted, so a phrase matches within one byline: unquoted words may
+        # come from different authors on the work, which inflated the count
+        # `limit` judges up to tenfold on the consumers' names (measured
+        # 2026-09-26). Bylines keep the printed order ("Troupiotis-Kapeliaris,
+        # Alexandros"), so every rotation is searched, each with room for two
+        # middle words.
+        words = _byline_words(name)
+        rotations = [words[i:] + words[:i] for i in range(len(words))]
+        query = " OR ".join(f'"{" ".join(rotation)}"~2' for rotation in rotations)
         filters = f"raw_author_name.search:{query}"
         if exclude_ids:
             # `!A|B` negates the whole list (verified live 2026-09-26).

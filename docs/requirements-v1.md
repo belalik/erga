@@ -691,16 +691,30 @@ Ported from the production origin pipeline with generalization deltas noted.
   not look like the configured author (mistyped id), zero-work authors,
   and implausible works counts. Last per author, unlinked bylines: works
   whose byline carries a configured name or alias on an authorship with
-  no author id, which no profile fetch sees (`raw_author_name.search`,
-  a loose full-text filter, then erga's own match: every full word of
-  the name in any order, each initial fitting a remaining word, so an
-  initial alias opts into initial-only bylines). They are compared with
-  the published list, not a fresh fetch, since that list already holds
-  the manual entries, overrides and type exclusions: versions collapse as
-  dedup would, `exclude_types` applies, and anything the list holds by
-  id, DOI or title drops out. A dropped work that carries a DOI its
-  listed twin lacks is reported as a better record, a repair rather than
-  a gap. Informational lines: only a human can tell a namesake, and the
+  no author id, which no profile fetch sees. The search is
+  `raw_author_name.search` with every rotation of the name as a quoted
+  phrase, two words of slop each, so a phrase matches within one byline;
+  unquoted words can match across a work's different authors, and
+  inflated counts up to tenfold on both consumers' names (measured
+  2026-09-26, no accepted work lost). erga's own match then decides:
+  every full word of the name in any order, each initial fitting a
+  remaining word, so an initial alias opts into initial-only bylines.
+  The finds are compared with the published list, not a fresh fetch,
+  since that list already holds the manual entries, patches and type
+  exclusions. What the list cannot show, an override's `exclude` or
+  `keep_distinct`, comes from the overrides file: the finds go through
+  the build's own curation step (versions collapse, overrides apply,
+  `exclude_types` drops), then anything the list holds by id, DOI or
+  title drops out (a title key needs 12 normalized characters, as in
+  clustering, so a shorter title never matches). A dropped work that carries a DOI its listed twin
+  lacks is reported as a better record, a repair rather than a gap. One
+  whose listed record credits no authorship to the author (`tracked_as`)
+  is reported as listed without crediting them: the build tracks an
+  authorship with no id by exact name only, so a byline printed another
+  way ("Nair, Priya") leaves the work off a page that filters on
+  `tracked_as`; an alias spelling that byline, or an override patching
+  the record's authors, credits it. `verify` loads the overrides first,
+  as a build does, so a typo in them aborts it before any request. Informational lines: only a human can tell a namesake, and the
   remedy is a manual entry. The search leaves out works on the author's
   own resolved profiles (`author.id:!A|B`, which negates the whole list),
   and a name with more than 1,000 matches beyond them is skipped with its

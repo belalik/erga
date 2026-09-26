@@ -120,9 +120,13 @@ lines of each author's `verify` entry are for. OpenAlex sometimes prints a
 name in a byline without linking it to any profile, and no fetch by profile
 can see that work. Once a build has written `publications.json`, `verify`
 searches bylines for each configured name and alias, drops whatever the
-list already holds by id, DOI or title, and lists the rest: add the ones
-that are theirs to your manual file. It also names a listed copy that lacks
-a DOI when a record carrying one exists. A full name matches only bylines
+list already holds by id, DOI or title (a title of 12 characters or more,
+as dedup requires), and lists the rest: add the ones
+that are theirs to your manual file. A work your overrides exclude stays
+out. It also names a listed copy that lacks a DOI when a record carrying
+one exists, and a listed work that does not credit them because its
+byline prints their name another way ("Nair, Priya"): an alias spelling
+that byline, or an override patching the record's authors, credits them. A full name matches only bylines
 that spell it out, in any order; an initial alias such as `P. Nair` catches
 the initial-only ones too, along with every namesake that shares the
 initial. A name too common to judge is skipped with a count.

@@ -99,6 +99,10 @@ def test_read_output_returns_the_records_of_a_file_erga_wrote(tmp_path: Path) ->
         # A byline that is not a list of mappings would crash the delta.
         b'{"works": [{"id": "W1", "authors": [1]}]}',
         b'{"works": [{"id": "W1", "authors": {"name": "x"}}]}',
+        # Fields verify reads back into a record, in shapes erga never writes.
+        b'{"works": [{"id": "W1", "open_access": "https://example.org/w1"}]}',
+        b'{"works": [{"id": "W1", "title": ["t"]}]}',
+        b'{"works": [{"id": "W1", "tags": 3}]}',
     ],
 )
 def test_read_output_rejects_files_erga_did_not_write(tmp_path: Path, content: bytes) -> None:

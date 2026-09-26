@@ -39,8 +39,8 @@ def read_output(path: Path) -> list[dict[str, Any]] | None:
     The reader-side inverse of document/Work.to_json, kept next to them so a
     schema change touches one module. Deliberately tolerant: the file may be
     absent, malformed, or from an older schema, and its readers (the venue
-    ratchet, the build delta) must degrade to "nothing known" rather than
-    abort.
+    ratchet, the build delta, verify's unlinked bylines) must degrade to
+    "nothing known" rather than abort.
     """
     try:
         with open(path, encoding="utf-8") as fh:
@@ -51,15 +51,22 @@ def read_output(path: Path) -> list[dict[str, Any]] | None:
         return None
     records: list[Any] = data["works"]
     # Only the shapes the readers touch are checked: a work that is not a
-    # mapping, or a byline that is not a list of mappings, is not a file erga
-    # wrote, and dropping the odd entry would let a hand-edited or truncated
-    # file pass as a real, smaller output.
+    # mapping, a byline that is not a list of mappings, or a title, open
+    # access or tags field work_from_record cannot read back is not a file
+    # erga wrote, and dropping the odd entry would let a hand-edited or
+    # truncated file pass as a real, smaller output.
     if not all(isinstance(record, dict) for record in records):
         return None
     for record in records:
         authors = record.get("authors")
         if authors is not None and not (
             isinstance(authors, list) and all(isinstance(a, dict) for a in authors)
+        ):
+            return None
+        if not (
+            isinstance(record.get("title") or "", str)
+            and isinstance(record.get("open_access") or {}, dict)
+            and isinstance(record.get("tags") or [], list)
         ):
             return None
     return records

@@ -11,12 +11,18 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from erga.config import AuthorConfig, Config
-from erga.dedup import cluster_by_title, dedup_by_doi, merge_group, normalize_title, title_key
+from erga.curation import Override, load_overrides, mark_keep_distinct
+from erga.dedup import merge_group, normalize_title, title_key
 from erga.model import Work
 from erga.normalize import normalize_work
-from erga.openalex import AuthorProfile, OpenAlexClient, strip_openalex_host
+from erga.openalex import (
+    AuthorProfile,
+    OpenAlexClient,
+    byline_search_key,
+    strip_openalex_host,
+)
 from erga.output import read_output, sort_works, work_from_record
-from erga.pipeline import exclude_by_type
+from erga.pipeline import BuildStats, curate
 
 IMPLAUSIBLE_WORKS_COUNT = 2000
 RECENT_TITLES = 3
@@ -117,35 +123,66 @@ def _unlinked_byline(raw: dict[str, Any], names: list[str]) -> str | None:
 class _Published:
     """The published list, keyed the ways a build would merge a record into it."""
 
-    ids: set[str] = field(default_factory=set)
-    dois: set[str] = field(default_factory=set)
+    by_id: dict[str, Work] = field(default_factory=dict)
+    by_doi: dict[str, Work] = field(default_factory=dict)
     titles: dict[tuple[str, bool], list[Work]] = field(default_factory=dict)
 
     @classmethod
-    def of(cls, records: list[dict[str, Any]]) -> _Published:
+    def of(cls, records: list[dict[str, Any]], overrides: list[Override]) -> _Published:
         published = cls()
-        for work in map(work_from_record, records):
-            published.ids.add(work.id)
+        works = [work_from_record(record) for record in records]
+        # The list cannot show a keep_distinct; only the overrides record it.
+        mark_keep_distinct(works, overrides)
+        for work in works:
+            published.by_id[work.id] = work
             if work.doi_key:
-                published.dois.add(work.doi_key)
-            key = title_key(work.title, work.type)
+                published.by_doi[work.doi_key] = work
+            key = title_key(work)
             if key is not None:
                 published.titles.setdefault(key, []).append(work)
         return published
 
+    def holding(self, work: Work) -> tuple[list[Work], bool]:
+        """The listed records that hold a work, and whether only by title."""
+        listed = self.by_id.get(work.id)
+        if listed is None and work.doi_key:
+            listed = self.by_doi.get(work.doi_key)
+        if listed is not None:
+            return [listed], False
+        key = title_key(work)
+        return (self.titles.get(key, []) if key else []), True
+
+
+def _work_lines(works: list[Work], bylines: dict[str, str]) -> list[str]:
+    """One line per work with the byline that names the author, capped."""
+    lines = []
+    for work in sort_works(works)[:MAX_UNLINKED]:
+        year = f" ({work.year})" if work.year else ""
+        doi = f"  {work.doi_key}" if work.doi_key else ""
+        title = work.title or "(untitled)"
+        lines.append(f"    {work.id}  {title}{year}{doi}  as {bylines[work.id]!r}")
+    if len(works) > MAX_UNLINKED:
+        lines.append(f"    … and {len(works) - MAX_UNLINKED} more")
+    return lines
+
 
 def _byline_candidates(
-    client: OpenAlexClient, author: AuthorConfig, own_ids: list[str], config: Config
+    client: OpenAlexClient,
+    author: AuthorConfig,
+    own_ids: list[str],
+    config: Config,
+    overrides: list[Override],
 ) -> tuple[list[Work], dict[str, str], list[str]]:
     """Works off the author's profiles whose unlinked byline carries their name.
 
     Returned as a build would keep them, with the matching byline by work
     id and a line for each name too common to search.
     """
-    # One search per distinct name, distinct as match_names() counts them.
-    unique: dict[str, str] = {}
+    # One search per distinct query: names differing only in case, order or
+    # punctuation send the same one, and the byline match ignores all three.
+    unique: dict[tuple[str, ...], str] = {}
     for name in [author.name, *author.aliases]:
-        unique.setdefault(name.casefold().strip(), name)
+        unique.setdefault(byline_search_key(name), name)
     names = list(unique.values())
     skipped: list[str] = []
     bylines: dict[str, str] = {}
@@ -166,9 +203,9 @@ def _byline_candidates(
                 bylines[work_id] = byline
                 raws.append(raw)
     works = [normalize_work(raw, {}, {}, {}) for raw in raws]
-    # The build's order: versions of one work (a dataset's releases, a
-    # deposit beside its published copy) collapse, then types drop.
-    works, _ = exclude_by_type(cluster_by_title(dedup_by_doi(works)), config.exclude_types)
+    # Versions of one work (a dataset's releases, a deposit beside its
+    # published copy) collapse, and a work the maintainer excluded stays out.
+    works = curate(works, overrides, config.exclude_types, BuildStats())
     return works, bylines, skipped
 
 
@@ -178,6 +215,7 @@ def _unlinked_lines(
     own_ids: list[str],
     config: Config,
     published: _Published | None,
+    overrides: list[Override],
 ) -> list[str]:
     """Works carrying the author's name with no author id, missing from the list.
 
@@ -186,40 +224,49 @@ def _unlinked_lines(
     the same, and only a human can tell, so the remedy is a manual entry.
     Compared against the published list rather than a fresh fetch, because
     that is what a member reads and it already holds the manual entries,
-    overrides and type exclusions.
+    patches and type exclusions; the finds go through the same overrides.
     """
     if published is None:
         return []
-    works, bylines, lines = _byline_candidates(client, author, own_ids, config)
+    works, bylines, lines = _byline_candidates(client, author, own_ids, config, overrides)
     missing: list[Work] = []
     better: list[tuple[Work, list[str]]] = []
+    # Listed record id to the byline naming the author, for a record that
+    # does not credit them: the build tracks an authorship with no id only by
+    # exact name, so a byline printed another way, or a listed copy lacking
+    # it, leaves the work off any page that filters on tracked_as.
+    uncredited: dict[str, str] = {}
     for work in works:
-        if work.id in published.ids or (work.doi_key and work.doi_key in published.dois):
-            continue
-        key = title_key(work.title, work.type)
-        twins = published.titles.get(key, []) if key else []
-        if not twins:
+        held, by_title = published.holding(work)
+        if not held:
             missing.append(work)
-        elif (
-            work.doi and not any(twin.doi for twin in twins) and merge_group([*twins, work]) is work
+            continue
+        if not any(a.tracked_as == author.name for record in held for a in record.authors):
+            for record in held:
+                uncredited.setdefault(record.id, bylines[work.id])
+        if (
+            by_title
+            and work.doi
+            and not any(twin.doi for twin in held)
+            and merge_group([*held, work]) is work
         ):
             # Dedup would keep this record over the listed copy, which lacks
             # the DOI it carries: a repair, not a gap. A deposit's DOI loses
             # to a listed version of record and is no repair.
-            better.append((work, sorted(twin.id for twin in twins)))
+            better.append((work, sorted(twin.id for twin in held)))
 
     if missing:
         lines.append(
             f"  name in the byline, no author id, not on the published list: "
             f"{len(missing)} work(s); add any that are theirs to {config.manual_path.name}"
         )
-        for work in sort_works(missing)[:MAX_UNLINKED]:
-            year = f" ({work.year})" if work.year else ""
-            doi = f"  {work.doi_key}" if work.doi_key else ""
-            title = work.title or "(untitled)"
-            lines.append(f"    {work.id}  {title}{year}{doi}  as {bylines[work.id]!r}")
-        if len(missing) > MAX_UNLINKED:
-            lines.append(f"    … and {len(missing) - MAX_UNLINKED} more")
+        lines.extend(_work_lines(missing, bylines))
+    if uncredited:
+        lines.append(
+            f"  listed without crediting them: {len(uncredited)} work(s); if theirs, an alias "
+            f"spelling the byline or an override patching the record's authors credits them"
+        )
+        lines.extend(_work_lines([published.by_id[i] for i in uncredited], uncredited))
     for work, listed in sorted(better, key=lambda pair: pair[0].id):
         lines.append(
             f"  better record for a listed work: {work.id} carries {work.doi_key}; "
@@ -228,12 +275,13 @@ def _unlinked_lines(
     return lines
 
 
-def _published_list(config: Config) -> tuple[_Published | None, str]:
+def _published_list(config: Config, overrides: list[Override]) -> tuple[_Published | None, str]:
     """The published list to compare bylines against, and what was compared."""
     path = config.output_path
     records = read_output(path)
     if records is not None:
-        return _Published.of(records), f"compared against {path} ({len(records)} works)."
+        published = _Published.of(records, overrides)
+        return published, f"compared against {path} ({len(records)} works)."
     if path.exists():
         return None, f"not checked; {path} is not a publications.json erga can read."
     return None, f"not checked; no published list at {path} yet (build first)."
@@ -243,12 +291,15 @@ def verify_report(config: Config, client: OpenAlexClient) -> tuple[str, list[str
     """Human-readable report plus a list of warnings."""
     lines: list[str] = []
     warnings: list[str] = []
-    published, published_note = _published_list(config)
+    # Curation loads first, as in build: a typo in it aborts before any
+    # network traffic, whether or not a build has run yet.
+    overrides = load_overrides(config.overrides_path, config.authors)
+    published, published_note = _published_list(config, overrides)
     for author in config.authors:
         if author.tracking_only:
             lines.append(f"{author.name} (no ids; tracked by name only, nothing fetched)")
             lines.extend(_same_name_lines(client, author, set()))
-            lines.extend(_unlinked_lines(client, author, [], config, published))
+            lines.extend(_unlinked_lines(client, author, [], config, published, overrides))
             lines.append("")
             continue
         identity = author.orcid or author.openalex_id or ""
@@ -305,7 +356,7 @@ def verify_report(config: Config, client: OpenAlexClient) -> tuple[str, list[str
         if resolved.profiles and total_works == 0:
             warnings.append(f"{author.name}: resolved profile(s) have zero works")
         lines.extend(_same_name_lines(client, author, set(resolved.ids)))
-        lines.extend(_unlinked_lines(client, author, resolved.ids, config, published))
+        lines.extend(_unlinked_lines(client, author, resolved.ids, config, published, overrides))
         lines.append("")
     lines.append(f"Unlinked bylines: {published_note}")
     return "\n".join(lines).rstrip() + "\n", warnings

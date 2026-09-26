@@ -6,10 +6,15 @@ import pytest
 
 from conftest import FakeTransport, add_pages, no_sleep
 from erga.config import AuthorConfig, Config
-from erga.model import Work
+from erga.model import Work, WorkAuthor
 from erga.openalex import OpenAlexClient
 from erga.output import document, dump
 from erga.verify import BYLINE_SEARCH_LIMIT, _byline_matches, verify_report
+
+# How a build credits the configured author on a record it lists.
+CREDITED = WorkAuthor(name="Priya Nair", tracked=True, tracked_as="Priya Nair")
+# The byline search for her name; test_openalex pins the phrase syntax.
+PRIYA_BYLINES = 'raw_author_name.search:"Priya Nair"~2 OR "Nair Priya"~2'
 
 
 def profile(author_id: str, name: str, works: int, alternatives: list[str]) -> dict[str, object]:
@@ -340,24 +345,33 @@ def test_unlinked_bylines_report_gaps_and_repairs_against_the_published_list(
     write_published(
         output,
         [
-            Work(id="W10", title="Already Listed By Its Id"),
+            Work(id="W10", title="Already Listed By Its Id", authors=[CREDITED]),
             Work(
                 id="W11",
                 title="Listed Under Its Version Of Record",
                 doi="https://doi.org/10.5555/twin",
+                authors=[CREDITED],
             ),
-            Work(id="W20", title="A Broken Copy Without Its DOI"),
+            Work(id="W20", title="A Broken Copy Without Its DOI", authors=[CREDITED]),
             Work(
-                id="W21", title="A Listed Twin With Its Own DOI", doi="https://doi.org/10.5555/vor"
+                id="W21",
+                title="A Listed Twin With Its Own DOI",
+                doi="https://doi.org/10.5555/vor",
+                authors=[CREDITED],
             ),
-            Work(id="W22", title="A Version Of Record Listed Bare", type="journal"),
+            Work(
+                id="W22",
+                title="A Version Of Record Listed Bare",
+                type="journal",
+                authors=[CREDITED],
+            ),
         ],
     )
     transport = FakeTransport()
     add_search(transport, "Priya Nair", author_page([]))
     add_byline_search(
         transport,
-        "raw_author_name.search:Priya Nair",
+        PRIYA_BYLINES,
         [
             [
                 raw_work(
@@ -382,8 +396,8 @@ def test_unlinked_bylines_report_gaps_and_repairs_against_the_published_list(
     )
     config = Config(
         mailto="m@example.org",
-        # The alias repeats the name in another case: one search, not two.
-        authors=[AuthorConfig(name="Priya Nair", aliases=["priya nair"])],
+        # The aliases repeat the name in another case and order: one search.
+        authors=[AuthorConfig(name="Priya Nair", aliases=["priya nair", "Nair, Priya"])],
         output_path=output,
         exclude_types=frozenset({"other"}),
     )
@@ -401,6 +415,107 @@ def test_unlinked_bylines_report_gaps_and_repairs_against_the_published_list(
     # Both pages walked, and the alias did not search a second time.
     assert [p["cursor"] for p in byline_calls(transport)] == ["*", "page-2"]
     assert warnings == []
+
+
+def test_unlinked_bylines_follow_the_curation_the_list_was_built_with(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    write_published(
+        output,
+        [
+            Work(id="W30", title="Editorial For The Special Issue"),
+            Work(id="W32", title="Report Of The Annual Meeting"),
+        ],
+    )
+    overrides = tmp_path / "overrides.yml"
+    overrides.write_text(
+        "- doi: 10.5555/rejected\n"
+        "  exclude: true\n"
+        "- id: W5\n"
+        "  exclude: false\n"
+        # Distinct from its same-title neighbour, on either side of the list.
+        "- id: W30\n"
+        "  keep_distinct: true\n"
+        "- id: W33\n"
+        "  keep_distinct: true\n",
+        encoding="utf-8",
+    )
+    transport = FakeTransport()
+    add_search(transport, "Priya Nair", author_page([]))
+    add_byline_search(
+        transport,
+        PRIYA_BYLINES,
+        [
+            [
+                raw_work("W4", "A Namesake Paper Rejected Once", doi="10.5555/rejected"),
+                raw_work("W5", "Correction Kept On Purpose", work_type="erratum"),
+                raw_work("W31", "Editorial For The Special Issue"),
+                raw_work("W33", "Report Of The Annual Meeting"),
+            ]
+        ],
+    )
+    config = Config(
+        mailto="m@example.org",
+        authors=[AuthorConfig(name="Priya Nair")],
+        output_path=output,
+        overrides_path=overrides,
+        exclude_types=frozenset({"other"}),
+    )
+
+    report, _ = verify_report(config, make_client(transport))
+
+    assert "not on the published list: 3 work(s)" in report
+    for listed in ("W5  Correction", "W31  Editorial", "W33  Report"):
+        assert listed in report
+    assert "W4  " not in report
+
+
+def test_unlinked_bylines_name_a_listed_work_that_does_not_credit_them(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    colleague = WorkAuthor(name="Ravi Rao", tracked=True, tracked_as="Ravi Rao")
+    write_published(
+        output,
+        [
+            # Listed through a colleague, her byline linked to no one.
+            Work(
+                id="W40",
+                title="Fetched Through A Colleague",
+                year=2024,
+                authors=[WorkAuthor(name="Nair, Priya"), colleague],
+            ),
+            Work(
+                id="W41",
+                title="Listed Under Its Other Record",
+                year=2024,
+                doi="https://doi.org/10.5555/other",
+                authors=[colleague],
+            ),
+            Work(id="W42", title="Credited Where It Is Listed", year=2024, authors=[CREDITED]),
+        ],
+    )
+    transport = FakeTransport()
+    add_search(transport, "Priya Nair", author_page([]))
+    add_byline_search(
+        transport,
+        PRIYA_BYLINES,
+        [
+            [
+                raw_work("W40", "Fetched Through A Colleague", bylines=(("Nair, Priya", None),)),
+                raw_work("W43", "Listed Under Its Other Record", doi="10.5555/other"),
+                raw_work("W42", "Credited Where It Is Listed"),
+            ]
+        ],
+    )
+    config = Config(
+        mailto="m@example.org", authors=[AuthorConfig(name="Priya Nair")], output_path=output
+    )
+
+    report, _ = verify_report(config, make_client(transport))
+
+    assert "listed without crediting them: 2 work(s)" in report
+    assert "W40  Fetched Through A Colleague (2024)  as 'Nair, Priya'" in report
+    assert "W41  Listed Under Its Other Record (2024)  10.5555/other  as 'Priya Nair'" in report
+    assert "W42" not in report
+    assert "not on the published list" not in report
 
 
 def test_unlinked_bylines_leave_the_authors_own_profiles_to_the_fetch(tmp_path: Path) -> None:
@@ -421,7 +536,7 @@ def test_unlinked_bylines_leave_the_authors_own_profiles_to_the_fetch(tmp_path: 
     add_search(transport, "Josiah Carberry", author_page([]))
     add_byline_search(
         transport,
-        "raw_author_name.search:Josiah Carberry,author.id:!A1|A2",
+        'raw_author_name.search:"Josiah Carberry"~2 OR "Carberry Josiah"~2,author.id:!A1|A2',
         [[raw_work("W1", "Unlinked Everywhere But Here", bylines=(("Josiah Carberry", None),))]],
     )
     config = Config(
@@ -461,7 +576,7 @@ def test_unlinked_bylines_skip_a_name_too_common_to_judge(tmp_path: Path) -> Non
     add_search(transport, "Wei Zhang", author_page([]))
     add_byline_search(
         transport,
-        "raw_author_name.search:Wei Zhang",
+        'raw_author_name.search:"Wei Zhang"~2 OR "Zhang Wei"~2',
         [[raw_work("W1", "Some Paper", bylines=(("Wei Zhang", None),))], []],
         total=BYLINE_SEARCH_LIMIT + 1,
     )

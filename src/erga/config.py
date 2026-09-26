@@ -9,6 +9,7 @@ from typing import Any
 
 import yaml
 
+from erga.dedup import normalize_title
 from erga.errors import ConfigError
 from erga.model import bare_ror, normalize_orcid, validate_work_type
 
@@ -126,6 +127,13 @@ def expect_str_list(value: Any, where: str) -> list[str]:
     return list(value)
 
 
+def _has_words(name: str) -> bool:
+    """Whether a name leaves words for verify's byline match, which folds
+    names as titles are folded. A name of punctuation alone would search
+    for nothing and match every byline."""
+    return bool(normalize_title(name))
+
+
 def _parse_author(
     entry: Any, path: Path, index: int, default_home: tuple[str, ...] | None
 ) -> AuthorConfig:
@@ -134,7 +142,7 @@ def _parse_author(
         raise ConfigError(f"{where}: expected a mapping")
     reject_unknown_keys(entry, {"name", "orcid", "openalex_id", "aliases", "home"}, where)
     name = entry.get("name")
-    if not isinstance(name, str) or not name.strip():
+    if not isinstance(name, str) or not _has_words(name):
         raise ConfigError(f"{where}: 'name' is required")
     orcid = entry.get("orcid")
     if orcid is not None:
@@ -150,6 +158,9 @@ def _parse_author(
     # flag but resolves and fetches nothing (authors without any registrar
     # identity, or whose works OpenAlex misassigns to a conflated profile).
     aliases = expect_str_list(entry.get("aliases", []), f"{where}: 'aliases'")
+    for alias in aliases:
+        if not _has_words(alias):
+            raise ConfigError(f"{where}: 'aliases' holds an entry with no name in it: {alias!r}")
     # Three states, because a department-wide default must be able to carry
     # an exception: the key absent inherits it, a value replaces it, and an
     # explicit null opts this author out without inventing a false ROR.

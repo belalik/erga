@@ -124,6 +124,21 @@ def test_fetch_works_passes_xpac_and_credentials() -> None:
     assert params["mailto"] == "m@example.org"
 
 
+@pytest.mark.parametrize(
+    ("name", "phrases"),
+    [
+        # Every rotation, so a byline printed surname-first still matches.
+        ("Priya K. Nair", '"Priya K Nair"~2 OR "K Nair Priya"~2 OR "Nair Priya K"~2'),
+        # Filter and search syntax in a name reduces to its words.
+        ('Wei* "Zhang",|(x)', '"Wei Zhang x"~2 OR "Zhang x Wei"~2 OR "x Wei Zhang"~2'),
+    ],
+)
+def test_works_by_byline_quotes_each_rotation(name: str, phrases: str) -> None:
+    transport = FakeTransport()
+    add_pages(transport, "/works", {"filter": f"raw_author_name.search:{phrases}"}, [[]], count=0)
+    assert client_with(transport).works_by_byline(name, exclude_ids=[], limit=10) == ([], 0)
+
+
 def test_politeness_delay_between_requests() -> None:
     sleeps: list[float] = []
     transport = FakeTransport()

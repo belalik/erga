@@ -103,20 +103,21 @@ def dedup_by_doi(works: list[Work]) -> list[Work]:
     return _dedup(works, keys)
 
 
-def title_key(title: str, work_type: str) -> tuple[str, bool] | None:
-    """What title clustering compares, or None for a title too short to trust.
+def title_key(work: Work) -> tuple[str, bool] | None:
+    """What title clustering compares, or None for a record it leaves alone:
+    one marked keep_distinct, or a title too short to trust.
 
     Datasets never merge with papers, so the key includes is-dataset.
     """
-    normalized = normalize_title(title)
+    if work.keep_distinct:
+        return None
+    normalized = normalize_title(work.title)
     if len(normalized) < MIN_CLUSTER_TITLE_LENGTH:
         return None
-    return normalized, work_type == "dataset"
+    return normalized, work.type == "dataset"
 
 
 def cluster_by_title(works: list[Work]) -> list[Work]:
-    """Collapse records sharing a title key; keep_distinct records bypass it."""
-    keys: dict[int, object] = {
-        id(work): None if work.keep_distinct else title_key(work.title, work.type) for work in works
-    }
+    """Collapse records sharing a title key."""
+    keys: dict[int, object] = {id(work): title_key(work) for work in works}
     return _dedup(works, keys)
