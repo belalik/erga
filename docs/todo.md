@@ -1,10 +1,7 @@
 # TODO
 
 ## High
-- Merge branch `unlinked-authorships` (the `verify` unlinked-bylines
-  section, review-pair fixes in 145e176): `/code-review medium
-  unlinked-authorships` in a fresh session first (a fork inherits the
-  session that wrote the fixes), triage, then Thomas decides the merge
+(empty)
 
 ## Normal
 - Next release's notes name what the `small-fixes` merge changed for a
@@ -13,8 +10,9 @@
   without a date must agree with the fetched date (else `date: null`, or a
   date); a quoted `2025-02-31` and a manual `year: true` are rejected; the
   byline warning has two messages; a DOI ends at a closing tag. Neither
-  consumer's live overrides were run through the new loader here. Once
-  merged, `verify`'s unlinked-bylines section goes in the same notes
+  consumer's live overrides were run through the new loader here.
+  `verify`'s unlinked-bylines section (merged 2026-09-26) goes in the
+  same notes, with its advice to write names with their diacritics
 - A listed work whose byline names a member on an authorship with no
   author id leaves that member untracked: `normalize` tracks a name only
   by exact casefold match on the configured name or alias, so
