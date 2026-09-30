@@ -1,23 +1,6 @@
 # TODO
 
 ## High
-- Release v0.9.0: main carries the `id` + `doi` override patch (ab175f1),
-  which lets dpsd-new retire its Gavalas manual stopgap, and the four
-  OpenAlex types (2026-09-30: `reference-entry` → `book-chapter`;
-  `peer-review`, `conference-abstract`, `report` deliberately `other`),
-  and `verify`'s ORCID advice across scripts (a profile named wholly in a
-  script the configured names lack points to `aliases:`, and a split
-  profile's warning no longer suggests pinning, which dropped
-  Stavrakis's three Greek-named works: tell dpsd-new so, since its
-  inbox raised it).
-  Route both consumers. dpsd-new's note: its next refresh flips five
-  encyclopedia and handbook entries `other` → `book-chapter` (scratch
-  build 2026-09-30, 701 works, nothing else changed) under the delta
-  page's "Nothing to action", and the three unmapped-type warnings go;
-  suggest an override for the HICSS paper `W1627971907` (`type:
-  conference`, `year: 1999`, `date: null`: a full paper OpenAlex types
-  `conference-abstract`, dated 2003 on a `hicss.1999` DOI).
-  smartmove-site's configured profiles carry none of the four types
 
 ## Normal
 - Preprint/published pairs defeat DOI excludes (dpsd-new inbox,
