@@ -228,6 +228,31 @@
   members is recorded here, never as fixtures: it is curated personal data
   under the fixture rule; only signals traced to public OpenAlex records
   are fixture material
+- Re-survey the visibility track, a full session, before building on it
+  (Thomas, 2026-09-30). The v1.0 promotion plan (channels, the BibTeX
+  lever, competitors) rests on the kickoff scan,
+  `local/reference/pubs-tool-concept.md` and `pubs-tool-prior-art.md`
+  (August 2026), never rechecked: star counts, al-folio's broken Scholar
+  automation, HugoBlox's paid tier, the academicpages ORCID/DOI request,
+  tools that appeared since, and whether OpenAlex lists tools built on
+  it. Comes before the BibTeX emitter, whose priority rests on that scan.
+  Fits a two-part Codex review with web search: Part A a blind survey,
+  Part B the kickoff scan
+- BibTeX emitter, raised from Low (2026-09-30), pending the re-survey:
+  the kickoff scan found al-folio, jekyll-scholar and Hugo Blox all run
+  on hand-kept BibTeX, so this output is what lets their users adopt erga
+  without changing theme. Before any promotion
+- One consumer run by someone other than Thomas, before v1.0 freezes the
+  schema: he set up both current ones, so the docs' first-run path
+  (finding iDs, keyless runs, reviewing the first build) has never been
+  walked by anyone else. A Greek department or a colleague's lab is the
+  reachable shape; ΕΘΑΑΕ's assessments make publication pages timely there
+- Report confirmed upstream problems to OpenAlex, which is also how erga
+  becomes known there. Candidates: preprint/published pairs flapping
+  between merged and separate (the Malisova pairs), IEEE back-catalogue
+  DOIs dated by Crossref registration (the Low DOI-year item), and the
+  author-filtered listing lag if the probe confirms it. Check OpenAlex's
+  current support channel first
 ## Low
 - Curated DOIs are not checked for shape: `_field_value` turns any value
   into `https://doi.org/<value>`, so a manual or override `doi: 5`, or a
@@ -321,7 +346,7 @@
   declared `other` 2026-09-30, no consumer author carried one) earns a
   canonical type: adding one after v1.0 breaks renderers that switch
   exhaustively. Reopen at once if a consumer's authors carry reports
-- CSL-JSON and BibTeX emitters (before the v1.0 promotion push)
+- CSL-JSON emitter (before the v1.0 promotion push; BibTeX is in Normal)
 - Per-author review export (markdown per tracked author) so the maintainer
   can send each person their list for confirmation before publishing. A
   sibling of the other emitters; the consumer #2 pilot returned no input on
