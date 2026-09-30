@@ -7,6 +7,7 @@ to before a build trusts those ids.
 
 from __future__ import annotations
 
+import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -58,6 +59,26 @@ def _looks_like(profile: AuthorProfile, author: AuthorConfig) -> bool:
         _name_tokens(candidate) & configured
         for candidate in [profile.display_name, *profile.alternatives]
     )
+
+
+def _scripts(name: str) -> set[str]:
+    """The scripts a name's letters are written in ("LATIN", "GREEK", …)."""
+    return {unicodedata.name(ch, "").split(" ", 1)[0] for ch in name if ch.isalpha()} - {""}
+
+
+def _other_script(profile: AuthorProfile, author: AuthorConfig) -> bool:
+    """Whether the profile's name is written wholly in scripts the configured
+    names lack: `_looks_like` can never match it, and an alias can.
+
+    Wholly, so a lone homoglyph inside a Latin name (a Greek capital kappa
+    as a middle initial, seen upstream) does not make a same-script
+    stranger read as a transliteration.
+    """
+    configured: set[str] = set()
+    for name in [author.name, *author.aliases]:
+        configured |= _scripts(name)
+    scripts = _scripts(profile.display_name or "")
+    return bool(scripts) and not scripts & configured
 
 
 def _same_name_lines(
@@ -320,21 +341,39 @@ def verify_report(config: Config, client: OpenAlexClient) -> tuple[str, list[str
             total = len(orcid_profiles)
             if orcid_strangers:
                 example = orcid_strangers[0].display_name or orcid_strangers[0].id
-                warnings.append(
-                    f"{author.name}: ORCID is carried by {total} author profiles that "
-                    f"look like different people (e.g. {example!r}); fetching would pull "
-                    f"strangers' works — remove the orcid and pin openalex_id instead"
-                )
+                # Pinning drops every other profile, so when the only
+                # mismatch is a script no word can cross, the alias comes
+                # first: it keeps a real split's works (Stavrakis, dpsd-new).
+                if all(_other_script(p, author) for p in orcid_strangers):
+                    warnings.append(
+                        f"{author.name}: ORCID is carried by {total} author profiles, and "
+                        f"{example!r} is written in a script the configured names lack; "
+                        f"if it is the same person, add it to aliases and keep the orcid, "
+                        f"which fetches every profile; if not, remove the orcid and pin "
+                        f"openalex_id"
+                    )
+                else:
+                    warnings.append(
+                        f"{author.name}: ORCID is carried by {total} author profiles that "
+                        f"look like different people (e.g. {example!r}); fetching would pull "
+                        f"strangers' works — remove the orcid and pin openalex_id instead"
+                    )
                 reported = orcid_strangers
             else:
                 warnings.append(
-                    f"{author.name}: ORCID resolves to {total} author ids "
-                    f"(split profile; consider pinning openalex_id)"
+                    f"{author.name}: ORCID resolves to {total} author ids (split profile); "
+                    f"all are fetched, so pin openalex_id only if one holds works that "
+                    f"are not theirs"
                 )
         for stranger in [p for p in strangers if p not in reported]:
+            hint = (
+                "written in a script the configured names lack: add it to aliases if it is them"
+                if _other_script(stranger, author)
+                else "mistyped orcid or openalex_id?"
+            )
             warnings.append(
                 f"{author.name}: resolves to {stranger.display_name!r}, which does "
-                f"not look like the configured name (mistyped orcid or openalex_id?)"
+                f"not look like the configured name ({hint})"
             )
 
         total_works = 0

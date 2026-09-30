@@ -4,7 +4,12 @@
 - Release v0.9.0: main carries the `id` + `doi` override patch (ab175f1),
   which lets dpsd-new retire its Gavalas manual stopgap, and the four
   OpenAlex types (2026-09-30: `reference-entry` → `book-chapter`;
-  `peer-review`, `conference-abstract`, `report` deliberately `other`).
+  `peer-review`, `conference-abstract`, `report` deliberately `other`),
+  and `verify`'s ORCID advice across scripts (a profile named wholly in a
+  script the configured names lack points to `aliases:`, and a split
+  profile's warning no longer suggests pinning, which dropped
+  Stavrakis's three Greek-named works: tell dpsd-new so, since its
+  inbox raised it).
   Route both consumers. dpsd-new's note: its next refresh flips five
   encyclopedia and handbook entries `other` → `book-chapter` (scratch
   build 2026-09-30, 701 works, nothing else changed) under the delta
@@ -109,22 +114,6 @@
   stubs from ORCID were declined at triage 2026-09-26: work summaries
   carry no byline, the one field a manual entry cannot do without; reopen
   if a consumer asks. Fixtures synthetic: ORCID lists are personal data
-- `verify`'s two ORCID warnings advise the one remedy that loses works
-  when a split is real (dpsd-new inbox, 2026-09-29). Stavrakis's ORCID
-  resolves to `A5043204875` "Modestos Stavrakis" (53 works) and
-  `A5113438086` "Μόδεστος Σταυράκης" (3, all his: the PhD thesis
-  `W57574069`, its library catalog copy, a 2021 paper). `_looks_like`
-  shares no token across scripts, so the first warning says "look like
-  different people ... remove the orcid and pin openalex_id"; with
-  `aliases: ["Μόδεστος Σταυράκης"]` the split warning says "consider
-  pinning openalex_id". Either remedy drops the three works, while keeping
-  the ORCID, which fetches both profiles, is right. Wording only, small
-  enough to ride in v0.9.0: when the other profile's name is in a script
-  the configured names lack, point to `aliases:` first and keep "remove
-  the orcid and pin" for same-script mismatches; the split warning says
-  every profile is fetched, and to pin only if one holds works that are
-  not theirs. No transliteration: conventions vary (Χ as Ch, H or X) and
-  an alias is exact. The two author entities are CC0, a permitted fixture
 - Contamination cluster warning: drop "exclude them by DOI" for works that
   carry another configured author, and name that author instead
   (`contamination.py`, `contamination_warnings`). Excluding such a work

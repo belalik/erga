@@ -90,6 +90,10 @@ reliably identify one person on OpenAlex. The same iD can appear on several
 profiles when it has been mistyped or copied into submissions, and erga
 tracks all of them, so a wrong iD shows up as a pile of strangers' papers
 rather than as an error. The report tells you what you are about to fetch.
+One of those profiles can be the same person under a name in another
+script, a Greek copy of a Latin-named career, say, which no name
+comparison can match: add that spelling to `aliases:` and keep the iD,
+which fetches every profile it is on.
 
 `verify` works by comparing names, so the opposite failure is invisible to
 it: an iD that is correct, on a profile that has collected a same-name

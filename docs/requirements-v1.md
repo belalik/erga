@@ -699,11 +699,16 @@ Ported from the production origin pipeline with generalization deltas noted.
   holding misassigned works — surfaced for tracking-only authors too).
   Warnings separate the ORCID failure modes by comparing profile names
   to the configured name/aliases: a split profile (several ids, names
-  all match; pin `openalex_id`) versus an iD carried by apparently
+  all match; all are fetched, so pin `openalex_id` only if one holds works
+  that are not theirs) versus an iD carried by apparently
   different people (strangers' works would be fetched; remove the
   `orcid` and pin `openalex_id` — judged only against the profiles the
   ORCID itself resolved to), plus any resolved profile whose name does
-  not look like the configured author (mistyped id), zero-work authors,
+  not look like the configured author (mistyped id). A profile named
+  wholly in a script the configured names lack can share no word with
+  them, so its advice names `aliases:` first: pinning would drop a real
+  split's works (a Greek-named copy of a Latin-named career holding the
+  thesis, dpsd-new, 2026-09-29). It also flags zero-work authors
   and implausible works counts. Last per author, unlinked bylines: works
   whose byline carries a configured name or alias on an authorship with
   no author id, which no profile fetch sees. The search is

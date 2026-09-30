@@ -83,6 +83,7 @@ def test_verify_report_split_orcid_and_zero_works() -> None:
     assert "recent: Toward a Unified Theory (2024)" in report
     assert "Silent Sam" in report
     assert any("2 author ids" in w and "split profile" in w for w in warnings)
+    assert not any("consider pinning" in w for w in warnings)
     assert any("zero works" in w for w in warnings)
 
 
@@ -139,6 +140,85 @@ def test_verify_report_contaminated_orcid_flags_different_people() -> None:
     assert "'John Smith'" in contaminated[0]
     assert "remove the orcid and pin openalex_id" in contaminated[0]
     assert not any("split profile" in w for w in warnings)
+
+
+GREEK_CARBERRY = "Ιωσίας Κάρμπερι"
+
+
+def orcid_warnings(
+    profiles: list[dict[str, object]], aliases: list[str] | None = None
+) -> list[str]:
+    """Warnings for Josiah Carberry, whose ORCID resolves to these profiles."""
+    transport = FakeTransport()
+    transport.add("/authors", {"filter": "orcid:9999-0000-0000-0001"}, author_page(profiles))
+    for p in profiles:
+        author_id = str(p["id"]).rsplit("/", 1)[-1]
+        transport.add(
+            "/works",
+            {"filter": f"author.id:{author_id}", "sort": "publication_date:desc"},
+            {"results": []},
+        )
+    add_search(transport, "Josiah Carberry", author_page([]))
+    author = AuthorConfig(
+        name="Josiah Carberry", orcid="9999-0000-0000-0001", aliases=aliases or []
+    )
+    _, warnings = verify_report(
+        Config(mailto="m@example.org", authors=[author]), make_client(transport)
+    )
+    return warnings
+
+
+def test_verify_report_cross_script_split_points_to_aliases_not_pinning() -> None:
+    """No word crosses scripts, and pinning would drop the other profile's works."""
+    warnings = orcid_warnings(
+        [profile("A1", "Josiah Carberry", 53, []), profile("A2", GREEK_CARBERRY, 3, [])]
+    )
+    assert len(warnings) == 1
+    assert f"{GREEK_CARBERRY!r} is written in a script the configured names lack" in warnings[0]
+    assert "add it to aliases and keep the orcid" in warnings[0]
+    assert "different people" not in warnings[0]
+
+
+def test_verify_report_split_profile_advice_keeps_the_orcid() -> None:
+    """With the alias the split is recognised, and pinning is no longer the remedy."""
+    warnings = orcid_warnings(
+        [profile("A1", "Josiah Carberry", 53, []), profile("A2", GREEK_CARBERRY, 3, [])],
+        aliases=[GREEK_CARBERRY],
+    )
+    assert warnings == [
+        "Josiah Carberry: ORCID resolves to 2 author ids (split profile); all are "
+        "fetched, so pin openalex_id only if one holds works that are not theirs"
+    ]
+
+
+@pytest.mark.parametrize(
+    "stranger",
+    [
+        "John Smith",
+        # A Greek capital kappa inside a Latin name is still Latin.
+        "John Κ. Smith",  # noqa: RUF001
+    ],
+)
+def test_verify_report_same_script_stranger_keeps_the_pinning_advice(stranger: str) -> None:
+    warnings = orcid_warnings(
+        [
+            profile("A1", "Josiah Carberry", 8, []),
+            profile("A2", GREEK_CARBERRY, 3, []),
+            profile("A3", stranger, 300, []),
+        ]
+    )
+    assert len(warnings) == 1
+    assert "look like different people" in warnings[0]
+    assert "remove the orcid and pin openalex_id" in warnings[0]
+
+
+def test_verify_report_single_cross_script_profile_suggests_an_alias() -> None:
+    warnings = orcid_warnings([profile("A2", GREEK_CARBERRY, 3, [])])
+    assert warnings == [
+        f"Josiah Carberry: resolves to {GREEK_CARBERRY!r}, which does not look like the "
+        "configured name (written in a script the configured names lack: add it to "
+        "aliases if it is them)"
+    ]
 
 
 def test_verify_report_single_profile_name_mismatch_warns() -> None:
