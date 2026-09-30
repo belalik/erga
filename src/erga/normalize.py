@@ -20,6 +20,9 @@ TYPE_MAP = {
     "conference-paper": "conference",
     "book": "book",
     "book-chapter": "book-chapter",
+    # Encyclopedia and handbook entries: authored contributions to an edited
+    # reference work, which is what a book chapter is.
+    "reference-entry": "book-chapter",
     "dissertation": "thesis",
     "preprint": "preprint",
     "dataset": "dataset",
@@ -27,11 +30,17 @@ TYPE_MAP = {
     "software-paper": "software",
 }
 
-# Raw types deliberately left in "other": corrections and special-issue
-# front matter are not research outputs, paratext is other by definition.
+# Raw types deliberately left in "other": corrections, special-issue front
+# matter and peer reviews (referee reports, author responses) are not
+# research outputs, paratext is other by definition. A conference abstract
+# stays "other" rather than pass for a conference paper: a full paper
+# misfiled as one under-claims visibly and an override fixes it. Reports
+# have no canonical type; whether they earn one is a pre-v1.0 question.
 # Raw "other" belongs here too — upstream already classified it, so the
 # fallback is an identity and a warning would alarm without informing.
-KNOWN_OTHER_TYPES = frozenset({"editorial", "erratum", "other", "paratext"})
+KNOWN_OTHER_TYPES = frozenset(
+    {"conference-abstract", "editorial", "erratum", "other", "paratext", "peer-review", "report"}
+)
 
 
 def unmapped_types(raw_works: list[dict[str, Any]]) -> dict[str, int]:

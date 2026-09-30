@@ -127,7 +127,14 @@ founding documents where they conflict.
   (a silent catch-all misfiled sixty conference papers on the origin site
   for months). `software-paper` at a journal source is classified `journal`:
   it is a peer-reviewed article about software (SoftwareX, JOSS), not a
-  software artifact. Gotcha, should stats ever use it: `group_by=type`
+  software artifact. Four types consumers met unmapped were settled
+  2026-09-30: `reference-entry` (encyclopedia and handbook entries) is a
+  `book-chapter`; `peer-review` (referee reports, author responses),
+  `conference-abstract` and `report` are deliberately `other`. An abstract
+  mapped to `conference` would over-claim on a CV, while a full paper
+  misfiled as an abstract under-claims visibly and one override fixes it;
+  whether reports earn a canonical type is decided before v1.0 freezes the
+  vocabulary. Gotcha, should stats ever use it: `group_by=type`
   returns full URI keys (`https://openalex.org/types/...`) while `type` on
   works is the bare string.
 - **OpenAlex already merges many cross-registrar copies**: a single work can

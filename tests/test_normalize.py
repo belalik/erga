@@ -37,9 +37,20 @@ def test_map_type_vocabulary() -> None:
     assert map_type({"type": "conference-paper"}) == "conference"
     assert map_type({"type": "dissertation"}) == "thesis"
     assert map_type({"type": "software-paper"}) == "software"
+    assert map_type({"type": "reference-entry"}) == "book-chapter"
     assert map_type({"type": "erratum"}) == "other"
+    assert map_type({"type": "peer-review"}) == "other"
+    assert map_type({"type": "conference-abstract"}) == "other"
+    assert map_type({"type": "report"}) == "other"
     assert map_type({"type": None}) == "other"
     assert map_type({}) == "other"
+
+
+def test_map_type_reference_entry_ignores_a_journal_typed_source() -> None:
+    # Springer's Encyclopedia of Computer Graphics and Games is a source
+    # OpenAlex types "journal"; its entries are still chapters.
+    raw = {"type": "reference-entry", "primary_location": {"source": {"type": "journal"}}}
+    assert map_type(raw) == "book-chapter"
 
 
 def test_map_type_conference_from_source() -> None:
@@ -66,6 +77,10 @@ def test_unmapped_types_flags_only_undecided_vocabulary() -> None:
     raw_works: list[dict[str, Any]] = [
         {"type": "article"},  # mapped
         {"type": "erratum"},  # deliberately other
+        {"type": "peer-review"},
+        {"type": "conference-abstract"},
+        {"type": "report"},
+        {"type": "reference-entry"},  # mapped since 2026-09-30
         {"type": "other"},  # upstream said other; the fallback is an identity
         {"type": "expression-of-concern"},
         {"type": "expression-of-concern"},

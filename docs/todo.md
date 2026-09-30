@@ -1,11 +1,58 @@
 # TODO
 
 ## High
-- Release v0.9.0 once the four-OpenAlex-types item (Normal) lands: main
-  carries the unreleased `id` + `doi` override patch (ab175f1), which
-  lets dpsd-new retire its Gavalas manual stopgap; route both consumers
+- Release v0.9.0: main carries the `id` + `doi` override patch (ab175f1),
+  which lets dpsd-new retire its Gavalas manual stopgap, and the four
+  OpenAlex types (2026-09-30: `reference-entry` → `book-chapter`;
+  `peer-review`, `conference-abstract`, `report` deliberately `other`).
+  Route both consumers. dpsd-new's note: its next refresh flips five
+  encyclopedia and handbook entries `other` → `book-chapter` (scratch
+  build 2026-09-30, 701 works, nothing else changed) under the delta
+  page's "Nothing to action", and the three unmapped-type warnings go;
+  suggest an override for the HICSS paper `W1627971907` (`type:
+  conference`, `year: 1999`, `date: null`: a full paper OpenAlex types
+  `conference-abstract`, dated 2003 on a `hicss.1999` DOI).
+  smartmove-site's configured profiles carry none of the four types
 
 ## Normal
+- Preprint/published pairs defeat DOI excludes (dpsd-new inbox,
+  2026-09-29, three entries). A homonym's pairs merge one week and split
+  the next. Merged, the record keeps the winner's DOI only (`merge_group`
+  drops the absorbed copy's; overrides match after dedup), so an exclude
+  on the other DOI "matches nothing"; split, an exclude on one DOI lets the
+  twin through. That leaked a stranger's preprint (`W4391163269`, twin of
+  excluded `10.1186/s12889-024-18384-2`) into dpsd-new's refresh PR
+  (run 36591757287), unflagged by the contamination check. dpsd-new now
+  excludes both DOIs of every pair, so a "matched nothing" line recurs
+  weekly and trains the reader to skip it. In order: (1) probe whether
+  OpenAlex's author-filtered listing lags its work records: three works
+  whose records carry `A5045528045` were absent from that build
+  (`W4410541693`, `W4415664258`, `W4393357993`; dedup folding them is the
+  other explanation, neither tested); if it lags, the fetch itself is
+  sometimes incomplete, beyond excludes. (2) Let an exclude bind across a
+  merge: the winner remembers absorbed DOIs and an exclude on either hits
+  it, so "exclude both DOIs of a pair" is quiet in every state and becomes
+  the documented recipe. Excludes only: a field patch aimed at a preprint
+  landing on its published record would surprise. (3) When an exclude
+  matches nothing, look its DOI up (one batched `doi:` filter) and warn by
+  name if a fetched record title-clusters with it ("excluded X is absent,
+  but its twin Y arrived"); advisory, skipped on failure
+- A manual stopgap is never reported once OpenAlex catches up: dedup
+  merges the fetched record into it, the manual entry wins the rank
+  (`_rank_key`), and the build says nothing, so it stays and masks
+  upstream's record (citation count included). Overrides already get
+  "override redundant (upstream now agrees)"; give manual entries the
+  same informational line whenever one absorbs a fetched record ("manual
+  entry also fetched (upstream caught up): <manual id> ↔ <W id>"), off
+  the merge dedup already makes. Match as dedup does, by DOI and title
+  key, never by W id: upstream may mint a new record rather than move the
+  old one. Case (dpsd-new inbox, 2026-09-29): between 09-26 and 09-29,
+  with no action from either repo, OpenAlex attached three of
+  Papageorgiou's five stopgap works to her profile (`W7160440128`,
+  `W7160285383`, `W7115913671`) and Zissis's `W2949119045` to his; the
+  two ICSC 2022 papers on `A5004005331` and Gavalas's `W2166485328` were
+  still unfixed. Whether those records moved or were minted new was not
+  checked
 - A listed work whose byline names a member on an authorship with no
   author id leaves that member untracked: `normalize` tracks a name only
   by exact casefold match on the configured name or alias, so
@@ -62,17 +109,22 @@
   stubs from ORCID were declined at triage 2026-09-26: work summaries
   carry no byline, the one field a manual entry cannot do without; reopen
   if a consumer asks. Fixtures synthetic: ORCID lists are personal data
-- Four OpenAlex types warn and fall back to `other`, seen by both
-  consumers. dpsd-new builds: `reference-entry` (10 works: encyclopedia
-  entries in two editions, a handbook chapter under two DOIs),
-  `peer-review` (2, author responses), `conference-abstract` (1).
-  smartmove-site scratch profiles (2026-09-23): `conference-abstract` (9),
-  `peer-review` (1), `report` (4). Map them or declare them unmapped on
-  purpose (`KNOWN_OTHER_TYPES` in `normalize.py` is the declare-on-purpose
-  list; either list silences the warning); the warning fires on raw works
-  before curation, so an override cannot silence it. dpsd-new's first
-  v0.7.0 build (2026-09-25, 626 works) confirms the same three names and
-  the warning now heads their weekly PR body until this is done
+- `verify`'s two ORCID warnings advise the one remedy that loses works
+  when a split is real (dpsd-new inbox, 2026-09-29). Stavrakis's ORCID
+  resolves to `A5043204875` "Modestos Stavrakis" (53 works) and
+  `A5113438086` "Μόδεστος Σταυράκης" (3, all his: the PhD thesis
+  `W57574069`, its library catalog copy, a 2021 paper). `_looks_like`
+  shares no token across scripts, so the first warning says "look like
+  different people ... remove the orcid and pin openalex_id"; with
+  `aliases: ["Μόδεστος Σταυράκης"]` the split warning says "consider
+  pinning openalex_id". Either remedy drops the three works, while keeping
+  the ORCID, which fetches both profiles, is right. Wording only, small
+  enough to ride in v0.9.0: when the other profile's name is in a script
+  the configured names lack, point to `aliases:` first and keep "remove
+  the orcid and pin" for same-script mismatches; the split warning says
+  every profile is fetched, and to pin only if one holds works that are
+  not theirs. No transliteration: conventions vary (Χ as Ch, H or X) and
+  an alias is exact. The two author entities are CC0, a permitted fixture
 - Contamination cluster warning: drop "exclude them by DOI" for works that
   carry another configured author, and name that author instead
   (`contamination.py`, `contamination_warnings`). Excluding such a work
@@ -98,7 +150,14 @@
   ORCID) and `A5028359938`, both carrying "J. Darzentas" in
   `display_name_alternatives`. Their two author entities are a permitted
   recorded fixture (CC0); per-work ground truth stays with dpsd-new.
-  Informational, as the same-name lines are: the remedy is manual either way
+  Informational, as the same-name lines are: the remedy is manual either way.
+  Also mark a profile "machine translations" when every work's title ends
+  in `【Powered by NICT】` (JST's Japanese translations of real papers, no
+  DOI): 4 of dpsd-new's 9 same-name profiles were only that, and a reader
+  had to open each to learn it (dpsd-new inbox, 2026-09-29). Not checked:
+  whether a `title.search` count per profile finds the marker, which would
+  keep this a count query, or whether JST's source id is a steadier signal
+  than the title suffix. Ids: `A5058798701`, `A5040504023`, `A5030134532`
 - A repository as `primary_location` sets both venue and type.
   `normalize` reads the venue and the source-type refinement from the
   primary location's source alone; when that source is a repository and
@@ -108,6 +167,24 @@
   `book-chapter`; the second location is the IASTED CSN 2006 conference).
   Prefer the first non-repository location for venue and source type when
   the raw type is not `preprint`; the public record is a permitted fixture
+- A chapter in a book series gets the series as its venue, not the book
+  (dpsd-new inbox, 2026-09-30, from a member's reply). Measured on
+  dpsd-new's list (minis copy, 2026-09-30): 17 of 66 `book-chapter`
+  records have a primary source typed `book series`, 15 of them show the
+  series (two already carry the book, by override); Crossref's
+  `container-title` was `[series, book]` on all 9 checked (e.g.
+  `10.4018/978-1-7998-2871-6.ch006`: "Advances in Religious and Cultural
+  Studies", then "Applying Innovative Technologies in Heritage Science").
+  Rule: when the source type is `book series`, take the venue from
+  Crossref's `container-title` entry that is not the series name; keep
+  the series without a DOI or a second title. Traps: the venue ratchet
+  would carry the series name forward from the previous output, so a
+  previous venue equal to it counts as absent; and `venue_for_doi` takes
+  `container-title[0]`, the series in that shape, so the plain backfill
+  shares the flaw. Changes `venue` once on about 15 dpsd-new records,
+  visible in the delta. Structural signal, no name regex: `series|lecture
+  notes|advances in` caught 9 of the 15 and two false positives (a 1999
+  book titled "Advances in Intelligent Systems")
 - Author names: render the byline when the entity name carries a script
   the byline lacks. `normalize` takes `author.display_name` first and
   `raw_author_name` only when it is missing, so every upstream rename of
@@ -135,15 +212,28 @@
   upstream, and its DOI part benign for him (ORCID DOIs landing on dedup
   twins), but not out of reach in general: for two other members it hid
   real gaps and for a third a repair (the ORCID reconciliation item)
-- Delta page: report field updates that come from overrides apart from
-  drift. The page compares the previous and current output, both
-  post-curation, so a newly added override tables as drift under "Metadata
-  drift from OpenAlex. Nothing to action." (dpsd-new dry run, 2026-09-25:
-  type 4, date 3, venue 3, year 3, title 1, all curation). Have the
-  pipeline pass `compute_delta` the (work id, field) pairs a patch touched
-  this build; a changed field under a patch is curation, the rest drift.
-  `Override.changed` alone cannot do it: it fires on every build a binding
-  override runs. Changes the frozen golden summary
+- Delta page, "Other changes": two defects in one table, one stage-12
+  revision (section 7) and one golden regeneration. (a) Field updates from
+  overrides table as drift: the page compares the previous and current
+  output, both post-curation, so a newly added override lands under
+  "Metadata drift from OpenAlex. Nothing to action." (dpsd-new dry run,
+  2026-09-25: type 4, date 3, venue 3, year 3, title 1, all curation).
+  Have the pipeline pass `compute_delta` the (work id, field) pairs a
+  patch touched this build; a changed field under a patch is curation,
+  the rest drift. `Override.changed` alone cannot do it: it fires on every
+  build a binding override runs. (b) A count per field hides regressions
+  (dpsd-new inbox, 2026-09-30, refresh PR #7, run 36742683367): of 40
+  field updates, `W2800028494` retyped `journal` → `book-chapter` (a
+  Springer journal article, moved between the site's filter groups) and
+  `W2767568788`'s title switched to the journal's Italian translation,
+  both since pinned by override, while the same record's venue and
+  open-access link improved, so flagging whole records is wrong too. List
+  the fields a reader sees or filters on (`type`, `title`, `venue`,
+  `year`, `doi`) per record with old → new, under the listed sections'
+  cap; keep counts for the volume fields (`cited_by_count`, `authors`,
+  `open_access`, `abstract`, `date`), and "nothing to action" on that
+  table only. One refresh observed; how often such flips recur is unknown.
+  Changes the frozen golden summary
   (`tests/fixtures/golden/expected-summary.md`); regenerate and read by eye
 - Docs from the smartmove-site inbox (2026-09-23): README, one sentence
   that an undeclared check reads a profile holding mostly someone else's
@@ -232,12 +322,33 @@
   ORCID carve-out (section 12) covers reading a given iD's works as a
   check, not finding the iD, which stays the consumer's step. Reopen if a third consumer hits the discovery wall,
   or when the sources non-goal is revisited after v1
+- Scopus, post-v1 only (a v1 non-goal, section 12; declined at triage
+  2026-09-30). Two dpsd-new members asked (Gavalas 2026-09-25, Vosinakis
+  2026-09-30): fewer works, better metadata. The reason worth keeping:
+  ΕΘΑΑΕ, the Greek higher-education quality authority, now assesses staff
+  research from Scopus data, so it is the record Greek departments are
+  measured by. Access terms, read from dev.elsevier.com/ir_cris_vivo.html
+  on 2026-09-30 (recheck before any plan): an application run by or for a
+  subscribing institution may show its researchers' titles, years, source
+  titles, DOIs, authors, affiliations, types and citation counts publicly,
+  never abstracts; a contractor needs its own agreement with Elsevier; the
+  API key is free, entitlement comes from the campus IP range or an
+  institutional token kept server-side, so CI needs the token; stored
+  metadata may be kept after the subscription ends. So never a default:
+  either a check that reports works the build lacks, nothing entering the
+  JSON (the ORCID carve-out's shape), or an optional per-institution
+  source. Reopen when a consumer institution has access and someone there
+  to hold the token
 - Surface no consumer has exercised yet, so unproven in the field before
   v1.0: `keep_distinct` overrides, thesis/software types in templates,
   keyless runs
 - Publish a formal JSON Schema for the output and validate against it in
   tests (pre-v1.0): consumers get machine-checkable contract + generated
-  types (Astro/TS)
+  types (Astro/TS). The schema freezes the type vocabulary, so decide
+  first whether `report` (technical reports, working papers, deliverables;
+  declared `other` 2026-09-30, no consumer author carried one) earns a
+  canonical type: adding one after v1.0 breaks renderers that switch
+  exhaustively. Reopen at once if a consumer's authors carry reports
 - CSL-JSON and BibTeX emitters (before the v1.0 promotion push)
 - Per-author review export (markdown per tracked author) so the maintainer
   can send each person their list for confirmation before publishing. A
