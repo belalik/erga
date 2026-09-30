@@ -19,7 +19,7 @@ a fallback, never solved inside erga.
 
 ## Status
 
-v0.8.0 released 2026-09-26 (PyPI via Trusted Publishing, GitHub
+v0.9.0 released 2026-09-30 (PyPI via Trusted Publishing, GitHub
 Releases; repo public since v0.1.0, 2026-08-05). The pipeline is
 implemented end-to-end (config, fetch, normalize, dedup, curation,
 Crossref backfill, deterministic output, `build`/`verify` CLI) with unit
@@ -63,7 +63,10 @@ consumer's weekly PR into a reviewable page; its three change classes
 and the shrink warning are stage 12 of section 7, settled 2026-09-21
 and frozen by a golden test. v0.8.0 adds `verify`'s unlinked bylines:
 works naming a member on an authorship with no author id, which no
-profile fetch sees, checked against the published list. See `docs/requirements-v1.md`
+profile fetch sees, checked against the published list. v0.9.0 settles
+the four OpenAlex types consumers met unmapped, lets an id-matched
+override patch `doi`, and points `verify`'s ORCID advice to aliases when
+a profile's name is in another script. See `docs/requirements-v1.md`
 for the v1 design, `docs/action.md` for the Action, and `docs/todo.md`
 for open work.
 
