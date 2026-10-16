@@ -1,7 +1,32 @@
 from __future__ import annotations
 
 from erga.model import Work
-from erga.pipeline import exclude_by_type
+from erga.pipeline import exclude_by_type, ratchet_venues
+
+
+def test_ratchet_venues_drops_platform_names_this_fetch_carries() -> None:
+    """A venue an earlier erga wrote from a platform source is not last-known-good."""
+    previous = [
+        {"id": "W1", "doi": "https://doi.org/10.5555/ch1", "venue": "Springer eBooks"},
+        {"id": "W2", "doi": "https://doi.org/10.5555/ch2", "venue": "A Real Book"},
+        {"id": "W3", "venue": "Springer eBooks"},
+    ]
+    raw_works = [
+        {
+            "id": "https://openalex.org/W9",
+            "primary_location": {
+                "source": {"display_name": "Springer eBooks", "type": "ebook platform"},
+                "raw_source_name": "Some Other Book",
+            },
+        }
+    ]
+    assert ratchet_venues(previous, raw_works) == {
+        "10.5555/ch2": "A Real Book",
+        "W2": "A Real Book",
+    }
+    # Without a platform source in the fetch, nothing marks the name and it rides along.
+    assert ratchet_venues(previous, [])["W3"] == "Springer eBooks"
+    assert ratchet_venues(None, raw_works) == {}
 
 
 def test_exclude_by_type_filters_fetched_records() -> None:

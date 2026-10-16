@@ -381,7 +381,14 @@ Ported from the production origin pipeline with generalization deltas noted.
    API failure must never shrink a published list.
 4. Normalize to the canonical schema: type mapping, abstract
    reconstruction, OA URL from `best_oa_location`/`open_access.oa_url`,
-   author `tracked` flags. The raw works are also read for contamination
+   author `tracked` flags, and the venue from the primary location's
+   source. A source typed `ebook platform` ("Springer eBooks"; OpenAlex
+   moved 40 of consumer #2's chapters onto such sources in one week,
+   2026-10) names where the work is hosted, so there the venue is the
+   location's `raw_source_name`, the book's own title (v0.9.1). The type
+   decides, never the name, and a source-less location gets no venue
+   from its raw name: on consumer #2 that string was a PDF URL nine times
+   in eleven. The raw works are also read for contamination
    (a homonym's works sitting inside a correctly-named profile, which
    `verify` cannot see because the names match): a work is a candidate
    only when it has affiliation data, falls outside the author's home
@@ -631,7 +638,11 @@ Ported from the production origin pipeline with generalization deltas noted.
 9. Crossref venue backfill with the last-known-good ratchet: reuse venues
    from the previous output first, then query Crossref (polite mailto
    User-Agent) only for records still lacking one; DataCite DOIs 404 there
-   and are skipped silently.
+   and are skipped silently. A previous venue naming a platform source this
+   fetch carries ("Springer eBooks", written by an erga before 0.9.1) is
+   not last-known-good and is treated as absent; a platform that has since
+   vanished from the corpus leaves no such signal, so its name can ride
+   along (one record on consumer #2, 2026-10-16, an override's job).
 10. Apply tags.
 11. Sort deterministically and write.
 12. Build delta (after v0.5.0; decided 2026-09-21 on consumer #2's

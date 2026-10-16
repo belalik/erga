@@ -8,8 +8,10 @@ from erga.normalize import (
     map_type,
     normalize_work,
     open_access_url,
+    platform_names,
     reconstruct_abstract,
     unmapped_types,
+    venue,
 )
 
 
@@ -221,3 +223,68 @@ def test_normalize_work_null_venue_and_defaults() -> None:
     assert work.doi is None
     assert work.title == ""
     assert work.cited_by_count == 0
+
+
+def platform_location(
+    raw_source_name: str | None = "Problems of Fracture Mechanics",
+) -> dict[str, Any]:
+    location: dict[str, Any] = {
+        "source": {"display_name": "Springer eBooks", "type": "ebook platform"}
+    }
+    if raw_source_name is not None:
+        location["raw_source_name"] = raw_source_name
+    return location
+
+
+def test_venue_is_the_book_not_the_platform() -> None:
+    # OpenAlex files a chapter under the publisher's platform; the book's
+    # title survives only as the location's raw source name.
+    assert venue({"primary_location": platform_location()}) == "Problems of Fracture Mechanics"
+    work = normalize_work(
+        raw_work(type="book-chapter", primary_location=platform_location()),
+        tracked_ids={},
+        tracked_orcids={},
+        tracked_names={},
+    )
+    assert work.venue == "Problems of Fracture Mechanics"
+    assert work.type == "book-chapter"
+
+
+def test_venue_falls_back_to_the_platform_without_a_raw_name() -> None:
+    assert venue({"primary_location": platform_location(raw_source_name=None)}) == "Springer eBooks"
+    assert venue({"primary_location": platform_location(raw_source_name="")}) == "Springer eBooks"
+
+
+def test_venue_keeps_the_source_name_off_platforms() -> None:
+    # The rule is gated on the source type, not on a raw name differing:
+    # a journal's curated name beats whatever the publisher deposited.
+    location = {
+        "source": {"display_name": "Journal of Psychoceramics", "type": "journal"},
+        "raw_source_name": "J. Psychoceram.",
+    }
+    assert venue({"primary_location": location}) == "Journal of Psychoceramics"
+    assert venue({"primary_location": None}) is None
+    assert venue({"primary_location": {"source": None}}) is None
+
+
+def test_venue_without_a_source_stays_unknown() -> None:
+    # The raw name of a source-less location is the depositor's text, a PDF
+    # URL as often as not; unknown goes on to the ratchet and Crossref.
+    location = {"source": None, "raw_source_name": "http://example.org/papers/2009.pdf"}
+    assert venue({"primary_location": location}) is None
+    assert venue({"primary_location": {"raw_source_name": "EDULEARN15 Proceedings"}}) is None
+
+
+def test_platform_names_collects_only_platform_sources() -> None:
+    raw_works: list[dict[str, Any]] = [
+        {"primary_location": platform_location()},
+        {
+            "primary_location": {
+                "source": {"display_name": "Routledge eBooks", "type": "ebook platform"}
+            }
+        },
+        {"primary_location": {"source": {"display_name": "Springer Journals", "type": "journal"}}},
+        {"primary_location": None},
+    ]
+    assert platform_names(raw_works) == frozenset({"Springer eBooks", "Routledge eBooks"})
+    assert platform_names([]) == frozenset()

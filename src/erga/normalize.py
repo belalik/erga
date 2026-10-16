@@ -117,6 +117,43 @@ def map_type(raw: dict[str, Any]) -> str:
     return mapped
 
 
+# Source types that name where a work is hosted, not what it is part of.
+# OpenAlex files book chapters under the publisher's e-book platform
+# ("Springer eBooks", "Routledge eBooks"; 40 of a consumer's chapters moved
+# there in one week, 2026-10) and keeps the book's own title only in the
+# location's raw_source_name. The type decides, never the name.
+PLATFORM_SOURCE_TYPES = frozenset({"ebook platform"})
+
+
+def venue(raw: dict[str, Any]) -> str | None:
+    """The publication a work belongs to, never the platform it sits on.
+
+    On a platform source the display name is the imprint, so the venue is
+    the location's raw source name, with the imprint as the fallback when
+    even that is missing. Everywhere else the source's display name is the
+    curated one, and with no source at all the venue stays unknown for the
+    ratchet and Crossref: a source-less location's raw name is whatever the
+    depositor wrote, and on a consumer's list that was a PDF URL nine times
+    in eleven (2026-10-16), so it never serves as a venue.
+    """
+    location = raw.get("primary_location") or {}
+    source = location.get("source") or {}
+    if source.get("type") in PLATFORM_SOURCE_TYPES:
+        return location.get("raw_source_name") or source.get("display_name") or None
+    return source.get("display_name") or None
+
+
+def platform_names(raw_works: list[dict[str, Any]]) -> frozenset[str]:
+    """Display names of the corpus's platform sources: an earlier erga
+    wrote them as venues, so the ratchet must not carry them forward."""
+    names = set()
+    for raw in raw_works:
+        source = (raw.get("primary_location") or {}).get("source") or {}
+        if source.get("type") in PLATFORM_SOURCE_TYPES and source.get("display_name"):
+            names.add(str(source["display_name"]))
+    return frozenset(names)
+
+
 def open_access_url(raw: dict[str, Any]) -> str | None:
     oa_url = (raw.get("open_access") or {}).get("oa_url")
     if oa_url:
@@ -160,16 +197,13 @@ def normalize_work(
             )
         )
 
-    source = (raw.get("primary_location") or {}).get("source") or {}
-    venue = source.get("display_name") or None
-
     return Work(
         id=strip_openalex_host(raw["id"]),
         title=raw.get("title") or "",
         authors=authors,
         year=raw.get("publication_year"),
         date=raw.get("publication_date"),
-        venue=venue,
+        venue=venue(raw),
         type=map_type(raw),
         doi=clean_doi(raw["doi"]) if raw.get("doi") else None,
         cited_by_count=raw.get("cited_by_count") or 0,

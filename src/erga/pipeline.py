@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 from erga.config import Config
 from erga.contamination import (
@@ -29,7 +30,7 @@ from erga.dedup import cluster_by_title, dedup_by_doi
 from erga.delta import Delta, compute_delta
 from erga.errors import ConfigError, FetchError
 from erga.model import Work
-from erga.normalize import malformed_dois, normalize_work, unmapped_types
+from erga.normalize import malformed_dois, normalize_work, platform_names, unmapped_types
 from erga.openalex import OpenAlexClient
 from erga.output import document, dump, previous_venues, read_output, write_atomic
 
@@ -161,6 +162,23 @@ def backfill_venues(
             stats.backfilled_crossref += 1
 
 
+def ratchet_venues(
+    previous: list[dict[str, Any]] | None, raw_works: list[dict[str, Any]]
+) -> dict[str, str]:
+    """The previous output's venues worth carrying forward.
+
+    An erga before 0.9.1 wrote a platform's name ("Springer eBooks") as the
+    venue of every chapter OpenAlex filed under it. That is the one value
+    worse than none, since a missing venue goes on to Crossref, so a
+    previous venue naming a platform this fetch carries is treated as
+    absent.
+    """
+    platforms = platform_names(raw_works)
+    return {
+        key: venue for key, venue in previous_venues(previous).items() if venue not in platforms
+    }
+
+
 def build(
     config: Config,
     openalex: OpenAlexClient,
@@ -243,7 +261,7 @@ def build(
             f"{config.output_path}: not a publications.json erga can read; "
             "treated as a first build, so nothing was compared or ratcheted"
         )
-    backfill_venues(works, previous_venues(previous), crossref, stats)
+    backfill_venues(works, ratchet_venues(previous, raw_works), crossref, stats)
 
     stats.warnings.extend(f"tag matched nothing: {w}" for w in apply_tags(works, tags))
 
