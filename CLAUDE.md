@@ -19,7 +19,7 @@ a fallback, never solved inside erga.
 
 ## Status
 
-v0.9.0 released 2026-09-30 (PyPI via Trusted Publishing, GitHub
+v0.9.1 released 2026-10-16 (PyPI via Trusted Publishing, GitHub
 Releases; repo public since v0.1.0, 2026-08-05). The pipeline is
 implemented end-to-end (config, fetch, normalize, dedup, curation,
 Crossref backfill, deterministic output, `build`/`verify` CLI) with unit
@@ -66,7 +66,10 @@ works naming a member on an authorship with no author id, which no
 profile fetch sees, checked against the published list. v0.9.0 settles
 the four OpenAlex types consumers met unmapped, lets an id-matched
 override patch `doi`, and points `verify`'s ORCID advice to aliases when
-a profile's name is in another script. See `docs/requirements-v1.md`
+a profile's name is in another script. v0.9.1 takes a chapter's venue
+from the book's own title when OpenAlex files it under an e-book
+platform source (the type decides, never the name), after one such move
+rewrote 40 of a consumer's venues in a week. See `docs/requirements-v1.md`
 for the v1 design, `docs/action.md` for the Action, and `docs/todo.md`
 for open work.
 

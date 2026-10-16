@@ -156,7 +156,12 @@
   shares the flaw. Changes `venue` once on about 15 dpsd-new records,
   visible in the delta. Structural signal, no name regex: `series|lecture
   notes|advances in` caught 9 of the 15 and two false positives (a 1999
-  book titled "Advances in Intelligent Systems")
+  book titled "Advances in Intelligent Systems"). Second shape since
+  v0.9.1 (2026-10-16): a chapter on an `ebook platform` source whose
+  `raw_source_name` is the series ("Lecture Notes in Computer Science",
+  the IFIP volumes; 5 of dpsd-new's 52 restored venues), where `venue()`
+  in `normalize` now prints the series; the same Crossref rule applies,
+  keyed on the raw name rather than the source type
 - Author names: render the byline when the entity name carries a script
   the byline lacks. `normalize` takes `author.display_name` first and
   `raw_author_name` only when it is missing, so every upstream rename of

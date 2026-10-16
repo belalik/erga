@@ -4,7 +4,13 @@ The version lives in `src/erga/__init__.py`; hatch reads it from there. Main
 carries `X.Y.Z.dev0` between releases.
 
 1. CI green on main; `uv run pytest`, `ruff check`, `ruff format --check`
-   and `mypy` clean locally. Docs current.
+   and `mypy` clean locally. Docs current. For a change that touches the
+   output, a live control per consumer: copy its config and curation
+   files into the scratchpad, fetch its main `publications.json` with
+   `gh api` (a local clone lags the CI refreshes), build under the
+   previous release (`uvx --from erga==<prev>`) and under the working
+   tree (`uv run --project <repo>`), and compare the two outputs field by
+   field; the counts feed the release notes and the step 7 entries.
 2. Update whatever pins the previous version: the Action examples in
    `README.md` and `docs/action.md`, the milestones in
    `docs/requirements-v1.md`, and `version` plus `date-released` in
