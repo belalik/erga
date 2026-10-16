@@ -174,6 +174,24 @@
   loses its tracking when the byline is chosen. Synthetic fixture: a Greek
   entity name over a Latin byline, a homoglyph case, and a Greek byline
   under a Latin entity (the thesis case, which must come out Greek)
+- One author id on two authorships of one work (dpsd-new inbox,
+  2026-10-02). OpenAlex gave both Darzentas bylines of `W1627971907`,
+  `W2147248713` and `W2159824452` Jenny's id (`A5028359938`) with the raw
+  names apart ("J.S. Darzentas", "J. Darzentas"); `normalize` renders the
+  entity name first, so the site listed her twice on each (3 of 700
+  works, each confirmed on Crossref, fixed there by `authors` overrides).
+  Detect in the fetched record: one id on two authorships, raw names
+  differing. On an untracked id, one informational build line (a
+  misprinted byline); on a tracked id, a contamination warning: a second
+  person's byline merged into the member's profile, the work-level
+  same-name case `verify` cannot see. `_index` in `contamination.py`
+  already meets the repeat and collapses it to one appearance, so it is
+  where the check belongs. First step: whether OpenAlex ever repeats an
+  id with the same raw name (a genuinely duplicated authorship), to skip
+  or report apart; the pinned probe cohorts under
+  `local/contamination-probes/` can answer that offline. Sibling of the
+  item above, both choosing between entity name and byline; the two
+  Darzentas entities are a permitted recorded fixture (CC0)
 - Per-author stage counts in the build summary (`BuildStats` is global
   only: fetched, deduplicated, excluded, total). One line per tracked
   author, fetched / merged away / excluded / written, a co-authored work
@@ -205,7 +223,9 @@
   cap; keep counts for the volume fields (`cited_by_count`, `authors`,
   `open_access`, `abstract`, `date`), and "nothing to action" on that
   table only. One refresh observed; how often such flips recur is unknown.
-  Changes the frozen golden summary
+  A third shape (dpsd-new inbox, 2026-10-16): one new venue value
+  absorbing 36 previously distinct ones, a collapse a count cannot show
+  and a line naming the value could. Changes the frozen golden summary
   (`tests/fixtures/golden/expected-summary.md`); regenerate and read by eye
 - Docs from the smartmove-site inbox (2026-09-23): README, one sentence
   that an undeclared check reads a profile holding mostly someone else's
