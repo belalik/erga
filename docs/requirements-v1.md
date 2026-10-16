@@ -836,6 +836,9 @@ scheduling, the `v1` tag policy, how CI exercises it) lives in
   `id` may patch `doi`, repairing a DOI-less copy without freezing it
   (section 6); and `verify`'s ORCID advice across scripts, aliases first
   and no pinning suggested for a split profile (section 8).
+- **v0.9.1** (released 2026-10-16): a chapter's venue is the book, not the
+  e-book platform OpenAlex files it under (stage 4), and the ratchet stops
+  carrying a platform name forward (stage 9).
 - **CSL-JSON and BibTeX emitters** slot in after v0.1 as demand warrants,
   before the v1.0 promotion push.
 - **v1.0**: strong README (before/after dedup story, head-on "why not
