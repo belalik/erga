@@ -267,6 +267,20 @@
   and a line naming the value could (the static case, one source named
   after one edition, is its own item above). Changes the frozen golden summary
   (`tests/fixtures/golden/expected-summary.md`); regenerate and read by eye
+- Say where a removed work went (smartmove-site inbox, 2026-10-17). OpenAlex
+  merged the arXiv preprint `W4399252589` into the MDM 2024 record
+  `W4400728518`, whose Zissis authorship sits on the homonym's
+  `A5103188414`, so no configured profile fetches it and the delta said
+  only "1 removed" (erga's own v0.9.1 routing called it upstream noise).
+  The old id 404s with no redirect; the removed record's DOI
+  (`10.48550/arxiv.2405.19870`) resolves to the survivor through
+  `/works/doi:`. For each removed work with a DOI, one batched `doi:`
+  filter; a different W-id goes on the removed line ("merged into W…,
+  the member's authorship there credited to A…, not configured"), no DOI
+  reads "not traced". Report only, never re-add: the survivor's byline
+  matches the decoy's name too. Advisory, skipped on failure. Shares the
+  lookup with the preprint-exclude item's step (3) and the ORCID
+  reconciliation; may change the golden summary
 - Docs from the smartmove-site inbox (2026-09-23): README, one sentence
   that an undeclared check reads a profile holding mostly someone else's
   works backwards, listing the real person's few works as the strangers;
