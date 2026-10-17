@@ -155,9 +155,9 @@ use to commit or open pull requests.
 
 ```yaml
 - uses: actions/checkout@v5
-- uses: belalik/erga@v0.9.1
+- uses: belalik/erga@v0.9.2
   with:
-    version: "0.9.1"                 # pin explicitly; no default
+    version: "0.9.2"                 # pin explicitly; no default
     config: _data/erga.yml
     api-key: ${{ secrets.OPENALEX_API_KEY }}   # optional
 ```
@@ -176,9 +176,9 @@ permissions:
 
 steps:
   - uses: actions/checkout@v5
-  - uses: belalik/erga@v0.9.1
+  - uses: belalik/erga@v0.9.2
     with:
-      version: "0.9.1"
+      version: "0.9.2"
       config: _data/erga.yml
       api-key: ${{ secrets.OPENALEX_API_KEY }}
   - run: |
@@ -204,9 +204,9 @@ permissions:
 
 steps:
   - uses: actions/checkout@v5
-  - uses: belalik/erga@v0.9.1
+  - uses: belalik/erga@v0.9.2
     with:
-      version: "0.9.1"
+      version: "0.9.2"
       config: _data/erga.yml
       api-key: ${{ secrets.OPENALEX_API_KEY }}
       summary: ${{ runner.temp }}/publications-summary.md
