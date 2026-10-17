@@ -1,16 +1,6 @@
 # TODO
 
 ## High
-- Unescape HTML entities in venues (dpsd-new inbox, 2026-10-17): three
-  venues reached the site as `&amp;`, which a renderer that escapes shows
-  literally. Two routes, so fix both or the point where the venue is
-  final: OpenAlex's source `display_name` (`W4319978610`) and Crossref's
-  `container-title` (`W1571010850`, no source; `10.1109/vsmm.2014.7136650`
-  reads `&amp;` there too). Lift `reconstruct_abstract`'s
-  unescape-until-stable loop into a helper; apply it to titles as well if
-  a scratch build on both consumers shows no surprise (dpsd-new's 702 had
-  none in titles or names). Synthetic fixture per route; dpsd-new's two
-  overrides then report redundant
 
 ## Normal
 - Preprint/published pairs defeat DOI excludes (dpsd-new inbox,

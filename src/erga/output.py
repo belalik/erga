@@ -111,12 +111,13 @@ def previous_venues(records: list[dict[str, Any]] | None) -> dict[str, str]:
     the last-known-good backfill ratchet."""
     venues: dict[str, str] = {}
     for record in records or []:
-        if not record.get("venue"):
+        venue = record.get("venue")
+        if not venue or not isinstance(venue, str):
             continue
         if record.get("doi"):
-            venues[doi_key(str(record["doi"]))] = record["venue"]
+            venues[doi_key(str(record["doi"]))] = venue
         if record.get("id"):
-            venues[str(record["id"])] = record["venue"]
+            venues[str(record["id"])] = venue
     return venues
 
 

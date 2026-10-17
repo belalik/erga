@@ -215,11 +215,11 @@ Per work, all keys always present:
 | field | type | notes |
 |---|---|---|
 | `id` | string | OpenAlex work id without host (`"W4406028178"`), or `"manual-<slug>"` |
-| `title` | string | |
+| `title` | string | plain text, HTML entities decoded |
 | `authors` | array | `{ "name": str, "orcid": str\|null, "tracked": bool, "tracked_as": str\|null }`; `tracked` = matches a configured author by resolved OpenAlex id, ORCID, or name/alias; `tracked_as` = that author's canonical configured name (null when untracked), so consumers can filter per author without re-implementing alias matching |
 | `year` | int \| null | |
 | `date` | string \| null | ISO publication date `"2026-01-15"` |
-| `venue` | string \| null | null when unknown (origin pipeline used `""`) |
+| `venue` | string \| null | null when unknown (origin pipeline used `""`); plain text, HTML entities decoded |
 | `type` | string | `journal`, `conference`, `book`, `book-chapter`, `thesis`, `preprint`, `dataset`, `software`, `other` |
 | `doi` | string \| null | full `https://doi.org/...` URL |
 | `cited_by_count` | int | |
@@ -388,7 +388,12 @@ Ported from the production origin pipeline with generalization deltas noted.
    location's `raw_source_name`, the book's own title (v0.9.1). The type
    decides, never the name, and a source-less location gets no venue
    from its raw name: on consumer #2 that string was a PDF URL nine times
-   in eleven. The raw works are also read for contamination
+   in eleven. Titles and venues are plain text, their HTML entities
+   decoded until stable as in abstracts, and so are the venues the
+   backfill supplies from Crossref and the previous output (v0.9.2):
+   OpenAlex and Crossref both serve some names escaped, and a site that
+   escapes on render printed `&amp;`. Curated values are left as
+   written. The raw works are also read for contamination
    (a homonym's works sitting inside a correctly-named profile, which
    `verify` cannot see because the names match): a work is a candidate
    only when it has affiliation data, falls outside the author's home

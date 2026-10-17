@@ -30,7 +30,13 @@ from erga.dedup import cluster_by_title, dedup_by_doi
 from erga.delta import Delta, compute_delta
 from erga.errors import ConfigError, FetchError
 from erga.model import Work
-from erga.normalize import malformed_dois, normalize_work, platform_names, unmapped_types
+from erga.normalize import (
+    malformed_dois,
+    normalize_work,
+    platform_names,
+    unescape_html,
+    unmapped_types,
+)
 from erga.openalex import OpenAlexClient
 from erga.output import document, dump, previous_venues, read_output, write_atomic
 
@@ -158,7 +164,7 @@ def backfill_venues(
             stats.warnings.append(f"Crossref backfill stopped: {exc}")
             return
         if venue:
-            work.venue = venue
+            work.venue = unescape_html(venue)
             stats.backfilled_crossref += 1
 
 
@@ -171,12 +177,13 @@ def ratchet_venues(
     venue of every chapter OpenAlex filed under it. That is the one value
     worse than none, since a missing venue goes on to Crossref, so a
     previous venue naming a platform this fetch carries is treated as
-    absent.
+    absent. An erga before 0.9.2 also wrote venues with their HTML
+    entities; decoded here, they ride along clean and compare with the
+    fetch's names in one form.
     """
     platforms = platform_names(raw_works)
-    return {
-        key: venue for key, venue in previous_venues(previous).items() if venue not in platforms
-    }
+    venues = {key: unescape_html(venue) for key, venue in previous_venues(previous).items()}
+    return {key: venue for key, venue in venues.items() if venue not in platforms}
 
 
 def build(

@@ -10,9 +10,17 @@ from erga.normalize import (
     open_access_url,
     platform_names,
     reconstruct_abstract,
+    unescape_html,
     unmapped_types,
     venue,
 )
+
+
+def test_unescape_html_decodes_until_stable() -> None:
+    assert unescape_html("Systems &amp; Multimedia") == "Systems & Multimedia"
+    assert unescape_html("Bob&amp;#039;s") == "Bob's"
+    assert unescape_html("Plain & simple") == "Plain & simple"
+    assert unescape_html("") == ""
 
 
 def test_reconstruct_abstract() -> None:
@@ -267,6 +275,25 @@ def test_venue_keeps_the_source_name_off_platforms() -> None:
     assert venue({"primary_location": {"source": None}}) is None
 
 
+def test_venue_and_title_arrive_decoded() -> None:
+    # OpenAlex serves some source names escaped (W4319978610's IEEE joint
+    # conference), and a site that escapes on render printed `&amp;`.
+    location = {
+        "source": {"display_name": "ICE/ITMC &amp; IAMOT Joint Conference", "type": "conference"}
+    }
+    assert venue({"primary_location": location}) == "ICE/ITMC & IAMOT Joint Conference"
+    escaped_book = platform_location(raw_source_name="Theory &amp; Practice")
+    assert venue({"primary_location": escaped_book}) == "Theory & Practice"
+    work = normalize_work(
+        raw_work(title="Cups &amp;amp; Saucers", primary_location=location),
+        tracked_ids={},
+        tracked_orcids={},
+        tracked_names={},
+    )
+    assert work.title == "Cups & Saucers"
+    assert work.venue == "ICE/ITMC & IAMOT Joint Conference"
+
+
 def test_venue_without_a_source_stays_unknown() -> None:
     # The raw name of a source-less location is the depositor's text, a PDF
     # URL as often as not; unknown goes on to the ratchet and Crossref.
@@ -288,3 +315,5 @@ def test_platform_names_collects_only_platform_sources() -> None:
     ]
     assert platform_names(raw_works) == frozenset({"Springer eBooks", "Routledge eBooks"})
     assert platform_names([]) == frozenset()
+    escaped = {"source": {"display_name": "Taylor &amp; Francis eBooks", "type": "ebook platform"}}
+    assert platform_names([{"primary_location": escaped}]) == frozenset({"Taylor & Francis eBooks"})

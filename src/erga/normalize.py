@@ -77,13 +77,27 @@ def malformed_dois(raw_works: list[dict[str, Any]]) -> list[str]:
 _HTML_TAG = re.compile(r"<[^>]+>")
 
 
+def unescape_html(text: str) -> str:
+    """Text with its HTML entities decoded, until stable.
+
+    Upstream strings carry entities, sometimes double-encoded (&amp;#039;
+    exists in the wild): abstracts, and venue names from OpenAlex and
+    Crossref alike ("Virtual Systems &amp; Multimedia", 2026-10). Output is
+    plain text, so a site that escapes on render would print them.
+    """
+    prev = None
+    while text != prev:
+        prev = text
+        text = html.unescape(text)
+    return text
+
+
 def reconstruct_abstract(inverted_index: dict[str, list[int]] | None) -> str | None:
     """Plaintext from OpenAlex's abstract_inverted_index (word -> positions).
 
-    Publisher-supplied abstracts carry HTML entities — sometimes
-    double-encoded (&amp;#039; exists in the wild), so unescape until
-    stable — and markup tags (<br>, and entity-encoded ones that only
-    appear after unescaping), which are stripped.
+    Publisher-supplied abstracts carry HTML entities, decoded until stable,
+    and markup tags (<br>, and entity-encoded ones that only appear after
+    unescaping), which are stripped.
     """
     if not inverted_index:
         return None
@@ -91,11 +105,7 @@ def reconstruct_abstract(inverted_index: dict[str, list[int]] | None) -> str | N
     for word, places in inverted_index.items():
         for place in places:
             positions[place] = word
-    text = " ".join(positions[i] for i in sorted(positions))
-    prev = None
-    while text != prev:
-        prev = text
-        text = html.unescape(text)
+    text = unescape_html(" ".join(positions[i] for i in sorted(positions)))
     return _HTML_TAG.sub("", text).strip() or None
 
 
@@ -139,18 +149,21 @@ def venue(raw: dict[str, Any]) -> str | None:
     location = raw.get("primary_location") or {}
     source = location.get("source") or {}
     if source.get("type") in PLATFORM_SOURCE_TYPES:
-        return location.get("raw_source_name") or source.get("display_name") or None
-    return source.get("display_name") or None
+        name = location.get("raw_source_name") or source.get("display_name")
+    else:
+        name = source.get("display_name")
+    return unescape_html(name) if name else None
 
 
 def platform_names(raw_works: list[dict[str, Any]]) -> frozenset[str]:
     """Display names of the corpus's platform sources: an earlier erga
-    wrote them as venues, so the ratchet must not carry them forward."""
+    wrote them as venues, so the ratchet must not carry them forward.
+    Decoded as venue() decodes them, the form the ratchet compares in."""
     names = set()
     for raw in raw_works:
         source = (raw.get("primary_location") or {}).get("source") or {}
         if source.get("type") in PLATFORM_SOURCE_TYPES and source.get("display_name"):
-            names.add(str(source["display_name"]))
+            names.add(unescape_html(str(source["display_name"])))
     return frozenset(names)
 
 
@@ -199,7 +212,7 @@ def normalize_work(
 
     return Work(
         id=strip_openalex_host(raw["id"]),
-        title=raw.get("title") or "",
+        title=unescape_html(raw.get("title") or ""),
         authors=authors,
         year=raw.get("publication_year"),
         date=raw.get("publication_date"),
