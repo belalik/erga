@@ -1,6 +1,16 @@
 # TODO
 
 ## High
+- Unescape HTML entities in venues (dpsd-new inbox, 2026-10-17): three
+  venues reached the site as `&amp;`, which a renderer that escapes shows
+  literally. Two routes, so fix both or the point where the venue is
+  final: OpenAlex's source `display_name` (`W4319978610`) and Crossref's
+  `container-title` (`W1571010850`, no source; `10.1109/vsmm.2014.7136650`
+  reads `&amp;` there too). Lift `reconstruct_abstract`'s
+  unescape-until-stable loop into a helper; apply it to titles as well if
+  a scratch build on both consumers shows no surprise (dpsd-new's 702 had
+  none in titles or names). Synthetic fixture per route; dpsd-new's two
+  overrides then report redundant
 
 ## Normal
 - Preprint/published pairs defeat DOI excludes (dpsd-new inbox,
@@ -85,7 +95,13 @@
   `_same_name_lines` searches the configured name only, not aliases),
   and the confirmation that a same-name entity's works are the member's:
   put that on `verify`'s same-name line (`A5135377975` was listed and read
-  as a homonym). Advisory: an outage, a 503 or a spent quota skips it with
+  as a homonym). Sharper case (dpsd-new, 2026-10-17): a member's works
+  drifting onto a real homonym's ORCID-linked entity, so the answer is per
+  work, never per entity. `A5103188414` (iD `0000-0002-6957-3494`, the
+  decoy dpsd-new's config records; 32 works) now mixes Zissis's maritime
+  papers (MDM 2024 `W4400728518`, 2026 AIS and vessel-trajectory papers)
+  with the homonym's electricity and water pricing, though the pilot
+  (2026-08-17) recorded the two as cleanly separated. Advisory: an outage, a 503 or a spent quota skips it with
   a warning. Token optional from an env var, anonymous without; README and
   `docs/action.md` gain the registration steps when the code ships, not
   before. Later, DOI-less entries by title: `filter=title.search:`
@@ -128,8 +144,21 @@
   DOI): 4 of dpsd-new's 9 same-name profiles were only that, and a reader
   had to open each to learn it (dpsd-new inbox, 2026-09-29). Not checked:
   whether a `title.search` count per profile finds the marker, which would
-  keep this a count query, or whether JST's source id is a steadier signal
-  than the title suffix. Ids: `A5058798701`, `A5040504023`, `A5030134532`
+  keep this a count query (a global one counts about 195,000, 2026-10-17).
+  There is no JST source id to key on: translations sit under the original
+  venue (`W2744884731` on "IEEE Conference Proceedings", landing page on
+  jglobal.jst.go.jp), so the suffix is the signal, one check shared with
+  the build-side item below. Ids: `A5058798701`, `A5040504023`, `A5030134532`
+- Exclude NICT machine translations in `build` by default (dpsd-new
+  inbox, 2026-10-17): `W2744884731`, a Japanese title ending in
+  `【Powered by NICT】`, no DOI, arrived on two members' real profiles
+  beside the English original (`10.1109/vs-games.2016.7590334`), which
+  dedup cannot cluster it with. Never a listing a consumer wants: with
+  the original present it duplicates it, without it the remedy is a
+  manual entry for the original. One informational line per excluded work
+  (id and title) saying so. Match the exact suffix only: the first
+  exclusion erga makes from title text, justified because NICT appends
+  the tag itself, so it must not widen into wording heuristics
 - A repository as `primary_location` sets both venue and type.
   `normalize` reads the venue and the source-type refinement from the
   primary location's source alone; when that source is a repository and
@@ -162,6 +191,21 @@
   the IFIP volumes; 5 of dpsd-new's 52 restored venues), where `venue()`
   in `normalize` now prints the series; the same Crossref rule applies,
   keyed on the raw name rather than the source type
+- One conference source named after one edition holds a whole series
+  (dpsd-new inbox, 2026-10-17): five MED papers, 2007 to 2016
+  (`W2036128436`, `W2150394945`, `W2098248572`, `W2513624788`,
+  `W2516825044`), all on `S4363608186`, "2006 14th Mediterranean
+  Conference on Control and Automation", so each lists the 2006 edition;
+  each `raw_source_name` carries its own (dpsd-new overrides them). Start
+  as an advisory build warning: a year in the source's `display_name`
+  differing from the work's year. Keyed on the source, not the final
+  venue, it catches all five and skips their one legitimate mismatch
+  (`W4229064834`, 2022 paper at "The 2021 Summit ...", no source, venue
+  from Crossref). Measure on both consumers before choosing a fix: a
+  name-free signal (one conference source whose works span several
+  years) and taking `raw_source_name` there (depositor text: one lacks a
+  year, one carries `&amp;`). Static sibling of the delta item's venue
+  collapse
 - Author names: render the byline when the entity name carries a script
   the byline lacks. `normalize` takes `author.display_name` first and
   `raw_author_name` only when it is missing, so every upstream rename of
@@ -230,7 +274,8 @@
   table only. One refresh observed; how often such flips recur is unknown.
   A third shape (dpsd-new inbox, 2026-10-16): one new venue value
   absorbing 36 previously distinct ones, a collapse a count cannot show
-  and a line naming the value could. Changes the frozen golden summary
+  and a line naming the value could (the static case, one source named
+  after one edition, is its own item above). Changes the frozen golden summary
   (`tests/fixtures/golden/expected-summary.md`); regenerate and read by eye
 - Docs from the smartmove-site inbox (2026-09-23): README, one sentence
   that an undeclared check reads a profile holding mostly someone else's
