@@ -137,18 +137,9 @@
   keep this a count query (a global one counts about 195,000, 2026-10-17).
   There is no JST source id to key on: translations sit under the original
   venue (`W2744884731` on "IEEE Conference Proceedings", landing page on
-  jglobal.jst.go.jp), so the suffix is the signal, one check shared with
-  the build-side item below. Ids: `A5058798701`, `A5040504023`, `A5030134532`
-- Exclude NICT machine translations in `build` by default (dpsd-new
-  inbox, 2026-10-17): `W2744884731`, a Japanese title ending in
-  `【Powered by NICT】`, no DOI, arrived on two members' real profiles
-  beside the English original (`10.1109/vs-games.2016.7590334`), which
-  dedup cannot cluster it with. Never a listing a consumer wants: with
-  the original present it duplicates it, without it the remedy is a
-  manual entry for the original. One informational line per excluded work
-  (id and title) saying so. Match the exact suffix only: the first
-  exclusion erga makes from title text, justified because NICT appends
-  the tag itself, so it must not widen into wording heuristics
+  jglobal.jst.go.jp), so the suffix is the signal: reuse
+  `normalize.is_machine_translation`, which the build's exclusion uses
+  (both JST tags). Ids: `A5058798701`, `A5040504023`, `A5030134532`
 - A repository as `primary_location` sets both venue and type.
   `normalize` reads the venue and the source-type refinement from the
   primary location's source alone; when that source is a repository and

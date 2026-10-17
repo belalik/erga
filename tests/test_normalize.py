@@ -4,6 +4,7 @@ from typing import Any
 
 from erga.dedup import dedup_by_doi
 from erga.normalize import (
+    is_machine_translation,
     malformed_dois,
     map_type,
     normalize_work,
@@ -39,6 +40,16 @@ def test_reconstruct_abstract_decodes_entities_and_strips_tags() -> None:
     assert reconstruct_abstract({"&lt;p&gt;Intro": [0], "text&lt;/p&gt;": [1]}) == "Intro text"
     # An abstract that is nothing but markup collapses to None, not "".
     assert reconstruct_abstract({"&lt;p&gt;&lt;/p&gt;": [0]}) is None
+
+
+def test_machine_translations_are_known_by_the_exact_tag() -> None:
+    assert is_machine_translation("Leap Motionを用いたアプローチ【Powered by NICT】")
+    assert is_machine_translation("骨粗鬆症【JST・京大機械翻訳】 ")
+    # The tag mid-title, a damaged tag, or the bare name are not the mark.
+    assert not is_machine_translation("【Powered by NICT】 a survey of translation engines")
+    assert not is_machine_translation("Leap Motionを用いたアプローチ【Powered by NICT???")
+    assert not is_machine_translation("Powered by NICT")
+    assert not is_machine_translation("")
 
 
 def test_map_type_vocabulary() -> None:

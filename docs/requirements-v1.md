@@ -621,7 +621,14 @@ Ported from the production origin pipeline with generalization deltas noted.
 
    All of the above argue for the output staying advisory, which it is.
 5. Merge manual entries; their DOIs seed the dedup set so manual always
-   wins.
+   wins. Fetched machine translations of other papers are dropped here,
+   one build line each (v0.9.3): a title ending in a tag JST appends
+   itself (`【Powered by NICT】`, `【JST・京大機械翻訳】`), matched exactly,
+   never by wording. Beside its original such a record is a duplicate
+   dedup cannot see; without it the remedy is a manual entry for the
+   original. Before dedup because a few carry the original's DOI and
+   could win that merge, so neither an override nor `exclude: false`
+   reaches them. Manual entries stay.
 6. DOI-level dedup, case-insensitive.
 7. Title-cluster dedup. Normalize (NFKD, lowercase, fold dash variants,
    strip non-alphanumerics, collapse whitespace); group by

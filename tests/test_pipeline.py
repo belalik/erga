@@ -5,7 +5,14 @@ from typing import Any
 from conftest import FakeTransport, no_sleep
 from erga.crossref import CrossrefClient
 from erga.model import Work
-from erga.pipeline import BuildStats, backfill_venues, exclude_by_type, ratchet_venues
+from erga.pipeline import (
+    BuildStats,
+    backfill_venues,
+    curate,
+    exclude_by_type,
+    exclude_machine_translations,
+    ratchet_venues,
+)
 
 
 def test_ratchet_venues_drops_platform_names_this_fetch_carries() -> None:
@@ -69,6 +76,34 @@ def test_backfill_decodes_the_crossref_container_title() -> None:
     backfill_venues([work], {}, crossref, stats)
     assert work.venue == "Virtual Systems & Multimedia (VSMM)"
     assert stats.backfilled_crossref == 1
+
+
+def test_machine_translations_are_excluded_and_named() -> None:
+    works = [
+        Work(id="W1", title="Kinematic approach to digital heritage"),
+        Work(id="W2", title="ディジタル遺産への運動学的アプローチ【Powered by NICT】"),
+        # The maintainer's own entry stays, whatever its title.
+        Work(id="manual-x", title="翻訳【JST・京大機械翻訳】", source="manual", keep=True),
+    ]
+    stats = BuildStats()
+    kept = exclude_machine_translations(works, stats)
+    assert [w.id for w in kept] == ["W1", "manual-x"]
+    assert len(stats.warnings) == 1
+    assert stats.warnings[0].startswith("machine translation excluded: W2 ")
+
+
+def test_a_translation_carrying_its_originals_doi_cannot_win_the_merge() -> None:
+    # Seven NICT records carry the DOI of the paper they translate; ranked
+    # in dedup, the more-cited translation would take the original's place.
+    original = Work(id="W1", title="Neurosurgery training", doi="https://doi.org/10.5555/cma")
+    translation = Work(
+        id="W2",
+        title="神経外科の学科建設【Powered by NICT】",
+        doi="https://doi.org/10.5555/cma",
+        cited_by_count=9,
+    )
+    kept = curate([translation, original], [], frozenset(), BuildStats())
+    assert [(w.id, w.title) for w in kept] == [("W1", "Neurosurgery training")]
 
 
 def test_exclude_by_type_filters_fetched_records() -> None:

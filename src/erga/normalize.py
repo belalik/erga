@@ -109,6 +109,17 @@ def reconstruct_abstract(inverted_index: dict[str, list[int]] | None) -> str | N
     return _HTML_TAG.sub("", text).strip() or None
 
 
+# Tags JST appends to the titles of its machine translations of other papers
+# (NICT's engine, and the Kyoto University one before it); about 195,000
+# and 317,000 OpenAlex works, 2026-10. Matched exactly as a title suffix:
+# the translator's own provenance mark, never a wording heuristic.
+MACHINE_TRANSLATION_TAGS = ("【Powered by NICT】", "【JST・京大機械翻訳】")
+
+
+def is_machine_translation(title: str) -> bool:
+    return title.rstrip().endswith(MACHINE_TRANSLATION_TAGS)
+
+
 def map_type(raw: dict[str, Any]) -> str:
     """Canonical type, refined by the venue's source type.
 

@@ -31,6 +31,7 @@ from erga.delta import Delta, compute_delta
 from erga.errors import ConfigError, FetchError
 from erga.model import Work
 from erga.normalize import (
+    is_machine_translation,
     malformed_dois,
     normalize_work,
     platform_names,
@@ -122,15 +123,38 @@ def exclude_by_type(works: list[Work], types: frozenset[str]) -> tuple[list[Work
     return kept, len(works) - len(kept)
 
 
+def exclude_machine_translations(works: list[Work], stats: BuildStats) -> list[Work]:
+    """Drop fetched machine translations of other papers, naming each.
+
+    No consumer wants one listed: beside its original it is a duplicate
+    dedup cannot see (another language, usually no DOI), and without it the
+    remedy is a manual entry for the original. Runs before dedup because a
+    few carry their original's DOI and could win that merge. Manual entries
+    are the maintainer's word and stay.
+    """
+    kept = []
+    for work in works:
+        if work.source == "openalex" and is_machine_translation(work.title):
+            stats.warnings.append(
+                f"machine translation excluded: {work.id} {work.title!r} "
+                "(list the original; a manual entry if the fetch lacks it)"
+            )
+        else:
+            kept.append(work)
+    return kept
+
+
 def curate(
     works: list[Work], overrides: list[Override], types: frozenset[str], stats: BuildStats
 ) -> list[Work]:
-    """Merge versions, apply overrides, drop unwanted types, in the build's order.
+    """Drop machine translations, merge versions, apply overrides, drop
+    unwanted types, in the build's order.
 
     `verify` runs its byline finds through this too, so they meet the
     published list as a build would have kept them.
     """
     mark_keep_distinct(works, overrides)
+    works = exclude_machine_translations(works, stats)
     merged = cluster_by_title(dedup_by_doi(works))
     stats.deduplicated = len(works) - len(merged)
     kept, stats.excluded = apply_overrides(merged, overrides)
