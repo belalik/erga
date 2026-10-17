@@ -854,6 +854,9 @@ scheduling, the `v1` tag policy, how CI exercises it) lives in
 - **v0.9.2** (released 2026-10-17): titles and venues are plain text,
   HTML entities decoded on every route a venue arrives by, OpenAlex,
   Crossref and the ratchet (stage 4).
+- **v0.9.3** (released 2026-10-17): fetched machine translations of
+  other papers, known by the tag JST appends to their titles, are dropped
+  before dedup, one build line each (stage 5).
 - **CSL-JSON and BibTeX emitters** slot in after v0.1 as demand warrants,
   before the v1.0 promotion push.
 - **v1.0**: strong README (before/after dedup story, head-on "why not
