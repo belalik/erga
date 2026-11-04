@@ -32,12 +32,18 @@ carries `X.Y.Z.dev0` between releases.
    the version.
 6. Set `__version__` to `X.Y.(Z+1).dev0`. Commit as "Back to dev version
    after vX.Y.Z", push.
-7. Route each consumer the release: an append to its `docs/inbox.md` (no
-   git there) naming the pin to move, every place it sits, and what
-   changed for that site. Consumers: smartmove-site (`uvx erga==X.Y.Z` in
-   its deploy workflow, docs and CLAUDE.md) and dpsd-new (the Action's
-   `uses:` and `version:`). If an earlier entry is still untriaged, send
-   an amending entry that says so.
+7. Route each consumer the release: an entry for its `docs/inbox.md`,
+   sent with `~/projects/claude-code-config/tools/route-inbox.sh` (no git
+   there), naming the pin to move, every place it sits, and what changed
+   for that site. Consumers: smartmove-site (`uvx erga==X.Y.Z` in its
+   deploy workflow, docs and CLAUDE.md) and dpsd-new (the Action's `uses:`
+   and `version:`). If an earlier entry is still untriaged, send an
+   amending entry that says so. Any local check the entry suggests runs
+   `uvx --refresh-package erga erga==X.Y.Z`: a machine that resolved the
+   previous version earlier that day holds a cached index without the new
+   one, the build fails, and the old `publications.json` left in place
+   diffs as "no changes" (smartmove-site, 2026-10-17). CI starts with a
+   fresh index and is immune.
 
 Release notes: one sentence on what the release is for, one bullet per
 user-visible change, the install line last. The Releases page is the

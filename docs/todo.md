@@ -1,6 +1,26 @@
 # TODO
 
 ## High
+- A name-only tracked authorship publishes a foreign ORCID
+  (smartmove-site inbox, 2026-10-30). `normalize_work` takes the entity's
+  `orcid` whichever path tracked it, so five lab works carry Zissis's
+  homonym's iD (`0000-0002-6957-3494`, profile `A5103188414`) beside
+  `tracked_as`. Paths run id, ORCID, name, so a name-only match means the
+  entity's iD matches no configured one: a stranger's or the member's own
+  on an unresolved split, undecidable here. Rule: on a name-only match,
+  emit the configured author's `orcid` (or none); warn once per author and
+  foreign iD with the profile and work count, so a consumer whose member
+  owns it adds it to the config. Synthetic fixture; may move the golden
+- An `authors` override drops every ORCID on its record (smartmove-site
+  inbox, 2026-10-30). `curation._parse_authors` resolves names at load,
+  before seeing the record, and sets `orcid` only from a matched config
+  entry's `orcid`, so an `openalex_id`-only member and every co-author
+  lose theirs, silently. Rule: at apply time, an override author without a
+  configured iD takes the upstream iD of the author it matches, a tracked
+  one by `tracked_as` (survives the rename), an untracked one by exact
+  name; warn on any upstream iD left unclaimed, naming record and authors.
+  Build with the item above, which must run first (normalize precedes
+  curation, so the carry-over cannot reintroduce a foreign iD)
 
 ## Normal
 - Preprint/published pairs defeat DOI excludes (dpsd-new inbox,
@@ -187,6 +207,22 @@
   years) and taking `raw_source_name` there (depositor text: one lacks a
   year, one carries `&amp;`). Static sibling of the delta item's venue
   collapse
+- Source names glued or with a `...` placeholder reach the page verbatim
+  (dpsd-new inbox, 2026-11-03; 17 records on its main, erga 0.9.3).
+  `venue()` takes the source's `display_name` as given, and some carry two
+  variants of one name joined by a bare `/` ("Proceedings - IEEE
+  International Conference on Robotics and Automation/Proceedings",
+  `S4210217939`, 7 works) or a literal `...` for an edition number
+  ("Proceedings of the ... International Conference on Engineering
+  Design"; `S4210212887` has both). An advisory build warning listing the
+  works, never a rewrite: the name is the only signal, a misfiring rewrite
+  corrupts a correct venue silently, and upstream cleared 15 such names in
+  one refresh (series sources replacing per-edition ones). The glued shape
+  is two multi-word phrases around a bare `/`; negative fixtures from the
+  entry: "MTS/IEEE", "IEEE/RSJ", "ICE/ITMC", "NSS/MIC", "IDETC/CIE",
+  "(DASC/PiCom/CBDCom/CyberSciTech)", which a naive `[a-z]/[A-Z]` test
+  flags. Sibling of the item above; both source ids are upstream-report
+  candidates
 - Author names: render the byline when the entity name carries a script
   the byline lacks. `normalize` takes `author.display_name` first and
   `raw_author_name` only when it is missing, so every upstream rename of
@@ -195,7 +231,13 @@
   authorships; «Αναστάσιος Θεοδωρόπουλος» on a Sensors 2025 byline that
   prints "Anastasios Theodoropoulos"), and three carry a lone Greek
   capital homoglyph inside a Latin name ("Eleni Κ. Efthimiadou", Κ U+039A),
-  stable across fetches. One rule covers both, in both directions and
+  stable across fetches. Second homoglyph case (dpsd-new inbox,
+  2026-11-03): entity "Manolis Μaragoudakis" (Μ U+039C) over the clean
+  byline "Manolis Maragoudakis" (checked on `W2486155531`, 2026-11-04;
+  also `W2004993665`, `W2231550015`, `W2160567242`). A separate corpus
+  check for mixed-script words was declined at that triage: this rule
+  fixes the bylines, and the other hits were depositor abstracts; reopen
+  if a homoglyph turns up in a raw byline too. One rule covers both, in both directions and
   without a homoglyph table: if the entity name contains letters of a
   script absent from the byline, use the byline. Count the fallbacks and
   print one informational line per build. Trap: tracked-by-name matching
@@ -315,7 +357,9 @@
 - Report confirmed upstream problems to OpenAlex, which is also how erga
   becomes known there. Candidates: preprint/published pairs flapping
   between merged and separate (the Malisova pairs), IEEE back-catalogue
-  DOIs dated by Crossref registration (the Low DOI-year item), and the
+  DOIs dated by Crossref registration (the Low DOI-year item), source
+  names glued from two variants or carrying `...` (`S4210217939`,
+  `S4210212887`), and the
   author-filtered listing lag if the probe confirms it. Check OpenAlex's
   current support channel first
 ## Low
@@ -410,7 +454,11 @@
   first whether `report` (technical reports, working papers, deliverables;
   declared `other` 2026-09-30, no consumer author carried one) earns a
   canonical type: adding one after v1.0 breaks renderers that switch
-  exhaustively. Reopen at once if a consumer's authors carry reports
+  exhaustively. Reopen at once if a consumer's authors carry reports.
+  Decide at the same time whether the file carries the erga version that
+  wrote it: a failed local build leaves the old file in place, which then
+  diffs as "no changes" (smartmove-site inbox, 2026-10-17); a stamp makes
+  stale and fresh distinguishable, at the cost of a top-level field
 - CSL-JSON emitter (before the v1.0 promotion push; BibTeX is in Normal)
 - Per-author review export (markdown per tracked author) so the maintainer
   can send each person their list for confirmation before publishing. A
