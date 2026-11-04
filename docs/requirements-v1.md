@@ -216,7 +216,7 @@ Per work, all keys always present:
 |---|---|---|
 | `id` | string | OpenAlex work id without host (`"W4406028178"`), or `"manual-<slug>"` |
 | `title` | string | plain text, HTML entities decoded |
-| `authors` | array | `{ "name": str, "orcid": str\|null, "tracked": bool, "tracked_as": str\|null }`; `tracked` = matches a configured author by resolved OpenAlex id, ORCID, or name/alias; `tracked_as` = that author's canonical configured name (null when untracked), so consumers can filter per author without re-implementing alias matching |
+| `authors` | array | `{ "name": str, "orcid": str\|null, "tracked": bool, "tracked_as": str\|null }`; `tracked` = matches a configured author by resolved OpenAlex id, ORCID, or name/alias; `tracked_as` = that author's canonical configured name (null when untracked), so consumers can filter per author without re-implementing alias matching; `orcid` = the profile's iD, except on a name-only match, which carries null (a homonym's profile would otherwise publish a stranger's iD; 0.9.4); an `authors` override gives each listed author its configured iD, or else the upstream iD of the author it unambiguously matches, and the build names any upstream iD the patched record no longer carries |
 | `year` | int \| null | |
 | `date` | string \| null | ISO publication date `"2026-01-15"` |
 | `venue` | string \| null | null when unknown (origin pipeline used `""`); plain text, HTML entities decoded |

@@ -1,18 +1,102 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
-from conftest import FakeTransport, no_sleep
+from conftest import HOMONYM, FakeTransport, no_sleep
+from erga.config import load_config
 from erga.crossref import CrossrefClient
 from erga.model import Work
+from erga.openalex import OpenAlexClient
 from erga.pipeline import (
     BuildStats,
     backfill_venues,
+    build,
     curate,
     exclude_by_type,
     exclude_machine_translations,
     ratchet_venues,
 )
+
+HOMONYM_AUTHORSHIP = {"author": HOMONYM}
+
+
+def _build_one(
+    tmp_path: Path, authorships: list[dict[str, Any]], overrides: str | None = None
+) -> BuildStats:
+    """One fetched work W1 through a real build, both members by openalex_id."""
+    (tmp_path / "erga.yml").write_text(
+        "mailto: you@example.org\n"
+        "authors:\n"
+        "  - name: Josiah Carberry\n    openalex_id: A5000000001\n"
+        "  - name: Ann Colleague\n    openalex_id: A5000000002\n"
+        "output:\n  path: publications.json\n",
+        encoding="utf-8",
+    )
+    if overrides is not None:
+        (tmp_path / "overrides.yml").write_text(overrides, encoding="utf-8")
+    raw = {
+        "id": "https://openalex.org/W1",
+        "title": "Reached through a co-author",
+        "publication_year": 2026,
+        "type": "article",
+        "primary_location": {"source": {"display_name": "Journal of Psychoceramics"}},
+        "authorships": [
+            {"author": {"id": "https://openalex.org/A5000000002", "display_name": "Ann Colleague"}},
+            *authorships,
+        ],
+    }
+    transport = FakeTransport()
+    for openalex_id, name in (("A5000000001", "Josiah Carberry"), ("A5000000002", "Ann Colleague")):
+        transport.add(
+            f"api.openalex.org/authors/{openalex_id}",
+            {},
+            {"id": f"https://openalex.org/{openalex_id}", "display_name": name, "works_count": 1},
+        )
+    transport.add(
+        "api.openalex.org/works", {"cursor": "*"}, {"meta": {"next_cursor": None}, "results": [raw]}
+    )
+    config = load_config(tmp_path / "erga.yml")
+    return build(
+        config,
+        OpenAlexClient(transport, mailto=config.mailto, delay=0.0, sleep=no_sleep),
+        CrossrefClient(transport, mailto=config.mailto, delay=0.0, sleep=no_sleep),
+    )
+
+
+def test_build_names_each_withheld_orcid(tmp_path: Path) -> None:
+    """The wiring: a name-only match's iD reaches the maintainer, not the file."""
+    stats = _build_one(tmp_path, [HOMONYM_AUTHORSHIP])
+    assert (
+        "Josiah Carberry: ORCID 9999-0000-0000-0077 on A5000000077, matched by name only, "
+        "not published on 1 work(s): a homonym's, or theirs on a profile the config does "
+        "not resolve"
+    ) in stats.warnings
+    written = (tmp_path / "publications.json").read_text(encoding="utf-8")
+    assert "9999-0000-0000-0077" not in written
+    assert '"tracked_as": "Josiah Carberry"' in written
+
+
+def test_build_says_nothing_of_an_excluded_works_orcid(tmp_path: Path) -> None:
+    stats = _build_one(tmp_path, [HOMONYM_AUTHORSHIP], overrides="- id: W1\n  exclude: true\n")
+    assert not [w for w in stats.warnings if "9999-0000-0000-0077" in w]
+
+
+def test_build_names_an_orcid_an_authors_patch_drops(tmp_path: Path) -> None:
+    # The homonym's iD was withheld before curation ran, so the patch's
+    # carry-over cannot bring it back; only the outsider's goes unclaimed.
+    outsider = {
+        "author": {"display_name": "Bo Outsider", "orcid": "https://orcid.org/9999-0000-0000-0004"}
+    }
+    stats = _build_one(
+        tmp_path,
+        [HOMONYM_AUTHORSHIP, outsider],
+        overrides='- id: W1\n  authors: ["Ann Colleague", "Josiah Carberry"]\n',
+    )
+    assert (
+        f"override drops upstream ORCIDs: {tmp_path / 'overrides.yml'}: entry 1, W1: Bo Outsider"
+    ) in stats.warnings
+    assert "9999-0000-0000-0077" not in (tmp_path / "publications.json").read_text(encoding="utf-8")
 
 
 def test_ratchet_venues_drops_platform_names_this_fetch_carries() -> None:

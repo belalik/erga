@@ -14,6 +14,14 @@ from erga.http import Response
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
+# A configured member's name on a stranger's profile, the stranger's iD
+# attached: the shape that must never publish the iD beside the member.
+HOMONYM = {
+    "id": "https://openalex.org/A5000000077",
+    "display_name": "Josiah Carberry",
+    "orcid": "https://orcid.org/9999-0000-0000-0077",
+}
+
 
 def load_fixture(*parts: str) -> Any:
     return json.loads(FIXTURES.joinpath(*parts).read_text(encoding="utf-8"))

@@ -187,6 +187,95 @@ def open_access_url(raw: dict[str, Any]) -> str | None:
     return str(url) if url else None
 
 
+def _work_author(
+    authorship: dict[str, Any],
+    tracked_ids: dict[str, str],
+    tracked_orcids: dict[str, str],
+    tracked_names: dict[str, str],
+) -> tuple[WorkAuthor, tuple[str, str, str | None] | None]:
+    """One authorship as published, and what it withholds: (configured
+    author, the profile's bare iD, the profile or None when unlinked), or
+    None.
+
+    A name-only match carries no iD. The paths run id, ORCID, name, so the
+    profile's iD matches no configured one: a homonym's, or the member's own
+    on a split profile the config never resolved, and nothing here tells
+    which. Nor does the configured iD stand in: the name is the weakest of
+    the three matches, and the member's own iD beside a homonym's byline
+    would make the guess look verified. A wrong iD misattributes a person, a
+    missing one costs a link; foreign_orcids reports each withheld iD, so a
+    consumer whose member owns one can configure it. (A manual entry's
+    names do carry the configured iD: there the maintainer named the
+    person, erga did not guess.)
+    """
+    author = authorship.get("author") or {}
+    name = author.get("display_name") or authorship.get("raw_author_name") or "Unknown"
+    orcid = author.get("orcid")
+    author_id = strip_openalex_host(author["id"]) if author.get("id") else None
+    tracked_as = (
+        (author_id and tracked_ids.get(author_id))
+        or (orcid and tracked_orcids.get(normalize_orcid(orcid)))
+        or None
+    )
+    withheld = None
+    if tracked_as is None and (tracked_as := tracked_names.get(name.casefold().strip())):
+        if orcid:
+            withheld = (tracked_as, normalize_orcid(orcid), author_id)
+        orcid = None
+    published = WorkAuthor(
+        name=name, orcid=orcid, tracked=tracked_as is not None, tracked_as=tracked_as
+    )
+    return published, withheld
+
+
+def foreign_orcids(
+    raw_works: list[dict[str, Any]],
+    tracked_ids: dict[str, str],
+    tracked_orcids: dict[str, str],
+    tracked_names: dict[str, str],
+    published: list[Work],
+) -> list[str]:
+    """A line per configured author and iD that normalize_work withheld on
+    a published work, naming the profiles that carry it.
+
+    Counted against the records the output keeps, after curation: an
+    excluded work raises nothing, a merged twin is not counted twice, and a
+    work whose final authors still show the iD beside that member (a split
+    profile, resolved on one authorship and name-matched on another) is not
+    one it was "not published" on. No advice: the iD may be a homonym's,
+    which nothing silences, or the member's own, which only the consumer
+    can tell and configure.
+    """
+    shown = {
+        work.id: {(a.tracked_as, normalize_orcid(a.orcid)) for a in work.authors if a.orcid}
+        for work in published
+    }
+    found: dict[tuple[str, str], tuple[set[str], set[str], int]] = {}
+    for raw in raw_works:
+        if (work_id := strip_openalex_host(raw["id"])) not in shown:
+            continue
+        for authorship in raw.get("authorships") or []:
+            _, withheld = _work_author(authorship, tracked_ids, tracked_orcids, tracked_names)
+            if withheld and withheld[:2] not in shown[work_id]:
+                tracked_as, orcid, profile = withheld
+                profiles, works, unlinked = found.get((tracked_as, orcid), (set(), set(), 0))
+                if profile:
+                    profiles.add(profile)
+                works.add(work_id)
+                found[(tracked_as, orcid)] = (profiles, works, unlinked + (profile is None))
+    lines = []
+    for (tracked_as, orcid), (profiles, works, unlinked) in sorted(found.items()):
+        carriers = sorted(profiles) + (
+            [f"{unlinked} byline(s) with no profile"] if unlinked else []
+        )
+        lines.append(
+            f"{tracked_as}: ORCID {orcid} on {', '.join(carriers)}, matched by name only, "
+            f"not published on {len(works)} work(s): a homonym's, or theirs on a profile "
+            f"the config does not resolve"
+        )
+    return lines
+
+
 def normalize_work(
     raw: dict[str, Any],
     tracked_ids: dict[str, str],
@@ -201,25 +290,12 @@ def normalize_work(
     alone insufficient), or their name matches a configured name/alias —
     OpenAlex misassigns some authorships to conflated homonym profiles whose
     ids can never be configured, and the flag's consumer renders the name
-    anyway.
+    anyway. Which iD a tracked author carries: _work_author.
     """
-    authors = []
-    for authorship in raw.get("authorships") or []:
-        author = authorship.get("author") or {}
-        name = author.get("display_name") or authorship.get("raw_author_name") or "Unknown"
-        orcid = author.get("orcid")
-        author_id = strip_openalex_host(author["id"]) if author.get("id") else None
-        tracked_as = (
-            (author_id and tracked_ids.get(author_id))
-            or (orcid and tracked_orcids.get(normalize_orcid(orcid)))
-            or tracked_names.get(name.casefold().strip())
-            or None
-        )
-        authors.append(
-            WorkAuthor(
-                name=name, orcid=orcid, tracked=tracked_as is not None, tracked_as=tracked_as
-            )
-        )
+    authors = [
+        _work_author(authorship, tracked_ids, tracked_orcids, tracked_names)[0]
+        for authorship in raw.get("authorships") or []
+    ]
 
     return Work(
         id=strip_openalex_host(raw["id"]),

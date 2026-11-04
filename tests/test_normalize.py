@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from conftest import HOMONYM
 from erga.dedup import dedup_by_doi
 from erga.normalize import (
+    foreign_orcids,
     is_machine_translation,
     malformed_dois,
     map_type,
@@ -229,6 +231,88 @@ def test_normalize_work_tracked_by_name_despite_unknown_id_and_orcid() -> None:
     )
     assert [a.tracked for a in work.authors] == [True, False, False]
     assert work.authors[0].tracked_as == "J. Carberry"
+
+
+NAMES = {"josiah carberry": "J. Carberry"}
+
+
+def test_a_name_only_match_carries_no_orcid() -> None:
+    # The member's name on a homonym's profile (smartmove-site, 2026-10-30):
+    # its iD would publish a stranger beside tracked_as.
+    co_author = {"display_name": "Ann Colleague", "orcid": "https://orcid.org/9999-0000-0000-0002"}
+    bare = {"id": "https://openalex.org/A5000000078", "display_name": "Josiah Carberry"}
+    raw = raw_work(authorships=[{"author": HOMONYM}, {"author": co_author}, {"author": bare}])
+    configured = {"9999-0000-0000-0001": "J. Carberry"}
+    for tracked_orcids in ({}, configured):
+        work = normalize_work(raw, {}, tracked_orcids, NAMES)
+        assert [a.tracked_as for a in work.authors] == ["J. Carberry", None, "J. Carberry"]
+        # Neither the profile's iD nor the configured one: the configured iD
+        # beside a homonym's byline would make the guess look verified.
+        assert work.authors[0].orcid is None
+        assert work.authors[2].orcid is None
+        # An untracked co-author's iD is upstream's to give.
+        assert work.authors[1].orcid == "https://orcid.org/9999-0000-0000-0002"
+
+
+def test_id_and_orcid_matches_keep_the_profiles_orcid() -> None:
+    # The name matches too; the id path wins and the profile is the member's.
+    own = {**HOMONYM, "id": "https://openalex.org/A5000000001"}
+    raw = raw_work(authorships=[{"author": own}])
+    by_id = normalize_work(raw, {"A5000000001": "J. Carberry"}, {}, NAMES)
+    by_orcid = normalize_work(raw, {}, {"9999-0000-0000-0077": "J. Carberry"}, NAMES)
+    expected = "https://orcid.org/9999-0000-0000-0077"
+    assert by_id.authors[0].orcid == by_orcid.authors[0].orcid == expected
+    # When the id and the ORCID point at different members, the id decides.
+    both = normalize_work(
+        raw, {"A5000000001": "J. Carberry"}, {"9999-0000-0000-0077": "A. Other"}, NAMES
+    )
+    assert both.authors[0].tracked_as == "J. Carberry"
+
+
+def test_foreign_orcids_counts_published_works_per_author_and_id() -> None:
+    own = {**HOMONYM, "id": "https://openalex.org/A5000000001"}
+    unlinked = {"display_name": "Josiah Carberry", "orcid": HOMONYM["orcid"]}
+    second_id = {
+        "id": "https://openalex.org/A5000000078",
+        "display_name": "Josiah Carberry",
+        "orcid": "https://orcid.org/9999-0000-0000-0088",
+    }
+    other_member = {**HOMONYM, "id": "https://openalex.org/A5000000079", "display_name": "A. Other"}
+    names = {**NAMES, "a. other": "A. Other"}
+    raws = [
+        raw_work(id="https://openalex.org/W1", authorships=[{"author": HOMONYM}]),
+        # Twice on one work still counts the work once.
+        raw_work(id="https://openalex.org/W2", authorships=[{"author": HOMONYM}] * 2),
+        # Tracked by id: the profile is configured, its iD is not foreign.
+        raw_work(id="https://openalex.org/W3", authorships=[{"author": own}]),
+        # A name-only match without an iD withholds nothing.
+        raw_work(
+            id="https://openalex.org/W4",
+            authorships=[{"author": {"display_name": "Josiah Carberry"}}],
+        ),
+        # The same iD on a byline with no profile is counted, not listed as one.
+        raw_work(id="https://openalex.org/W5", authorships=[{"author": unlinked}]),
+        # Excluded or merged away: not in the output, not counted.
+        raw_work(id="https://openalex.org/W6", authorships=[{"author": HOMONYM}]),
+        # A split profile: the same iD is published beside the member on
+        # their resolved authorship, so this work is not one it was withheld on.
+        raw_work(id="https://openalex.org/W7", authorships=[{"author": HOMONYM}, {"author": own}]),
+        # Grouped per member and iD, and sorted, whatever the fetch order.
+        raw_work(id="https://openalex.org/W8", authorships=[{"author": second_id}]),
+        raw_work(id="https://openalex.org/W9", authorships=[{"author": other_member}]),
+    ]
+    ids = {"A5000000001": "J. Carberry"}
+    published = [normalize_work(raw, ids, {}, names) for raw in raws if raw is not raws[5]]
+    assert foreign_orcids(raws, ids, {}, names, published) == [
+        "A. Other: ORCID 9999-0000-0000-0077 on A5000000079, matched by name only, not "
+        "published on 1 work(s): a homonym's, or theirs on a profile the config does not resolve",
+        "J. Carberry: ORCID 9999-0000-0000-0077 on A5000000077, 1 byline(s) with no profile, "
+        "matched by name only, not published on 3 work(s): a homonym's, or theirs on a "
+        "profile the config does not resolve",
+        "J. Carberry: ORCID 9999-0000-0000-0088 on A5000000078, matched by name only, not "
+        "published on 1 work(s): a homonym's, or theirs on a profile the config does not resolve",
+    ]
+    assert foreign_orcids(raws, ids, {}, names, published[2:4]) == []
 
 
 def test_normalize_work_null_venue_and_defaults() -> None:

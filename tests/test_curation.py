@@ -14,13 +14,14 @@ from erga.curation import (
     load_overrides,
     load_tags,
     mark_keep_distinct,
+    orcid_drops,
     redundant_overrides,
     shared_dois,
     unmatched_overrides,
 )
 from erga.dedup import cluster_by_title, dedup_by_doi
 from erga.errors import ConfigError
-from erga.model import Work
+from erga.model import Work, WorkAuthor
 
 CARBERRY = AuthorConfig(
     name="Josiah Carberry", orcid="0000-0002-1825-0097", aliases=["J. S. Carberry"]
@@ -325,6 +326,108 @@ def test_apply_overrides_open_access_and_authors(tmp_path: Path) -> None:
     assert kept[0].open_access_url == "https://oa.example/pdf"
     assert kept[0].authors[0].tracked
     assert kept[1].open_access_url is None
+
+
+MEMBER = AuthorConfig(name="Ann Member", openalex_id="A5000000003", aliases=["Annie Member"])
+
+
+def _id(n: int) -> str:
+    return f"https://orcid.org/9999-0000-0000-000{n}"
+
+
+def test_an_authors_patch_keeps_the_records_orcids(tmp_path: Path) -> None:
+    # smartmove-site (2026-10-30): a patch fixing one name stripped every
+    # iD on the record, an openalex_id-only member's and each co-author's.
+    overrides = overrides_from(
+        tmp_path, '- id: W1\n  authors: ["Ann Member", "Bo Colleague", "Cy Re-Named"]\n', [MEMBER]
+    )
+    upstream = [
+        WorkAuthor("Annie Member", orcid=_id(3), tracked=True, tracked_as="Ann Member"),
+        WorkAuthor("Bo Colleague", orcid=_id(4)),
+        WorkAuthor("Cy Renamed", orcid=_id(5)),
+    ]
+    kept, _ = apply_overrides([Work(id="W1", title="A", authors=upstream)], overrides)
+    # The member by tracked_as across the rename, the co-author by name.
+    assert [a.orcid for a in kept[0].authors] == [_id(3), _id(4), None]
+    assert kept[0].authors[0].name == "Ann Member"
+    assert orcid_drops(overrides) == [f"{tmp_path / 'overrides.yml'}: entry 1, W1: Cy Renamed"]
+    # The patch's own authors are shared by every record it hits: untouched.
+    assert [a.orcid for a in overrides[0].patch["authors"]] == [None, None, None]
+
+
+def test_an_authors_patch_upstream_agrees_with_is_redundant(tmp_path: Path) -> None:
+    # Dropping the iDs used to make every authors patch look load-bearing.
+    overrides = overrides_from(tmp_path, '- id: W1\n  authors: ["Bo Colleague"]\n')
+    upstream = [WorkAuthor("Bo Colleague", orcid=_id(4))]
+    apply_overrides([Work(id="W1", title="A", authors=upstream)], overrides)
+    assert redundant_overrides(overrides) == [f"{tmp_path / 'overrides.yml'}: entry 1"]
+    assert orcid_drops(overrides) == []
+
+
+def test_an_authors_patch_keeps_ids_across_accent_fixes_and_repeats(tmp_path: Path) -> None:
+    overrides = overrides_from(
+        tmp_path, '- id: W1\n  authors: ["Ann Member", "Bo Müller"]\n', [MEMBER]
+    )
+    member = WorkAuthor("Annie Member", orcid=_id(3), tracked=True, tracked_as="Ann Member")
+    # OpenAlex repeats the member's authorship; the patch names them once.
+    upstream = [member, member, WorkAuthor("Bo Muller", orcid=_id(4))]
+    kept, _ = apply_overrides([Work(id="W1", title="A", authors=upstream)], overrides)
+    assert [a.orcid for a in kept[0].authors] == [_id(3), _id(4)]
+    # The repeat's iD is still on the record: nothing was dropped.
+    assert orcid_drops(overrides) == []
+
+
+def _apply(
+    tmp_path: Path,
+    names: list[str],
+    upstream: list[WorkAuthor],
+    authors_cfg: list[AuthorConfig] | None = None,
+) -> tuple[list[str | None], list[str]]:
+    """One `authors` patch on one record: the published iDs, and the drops."""
+    listed = ", ".join(f'"{name}"' for name in names)
+    overrides = overrides_from(tmp_path, f"- id: W1\n  authors: [{listed}]\n", authors_cfg)
+    kept, _ = apply_overrides([Work(id="W1", title="A", authors=upstream)], overrides)
+    drops = [drop.split(", W1: ", 1)[1] for drop in orcid_drops(overrides)]
+    return [a.orcid for a in kept[0].authors], drops
+
+
+def test_two_people_folding_alike_never_trade_ids(tmp_path: Path) -> None:
+    upstream = [WorkAuthor("Bo Müller", orcid=_id(1)), WorkAuthor("Bo Muller", orcid=_id(2))]
+    # Reordered: each keeps their own, by exact name.
+    assert _apply(tmp_path, ["Bo Muller", "Bo Müller"], upstream) == ([_id(2), _id(1)], [])
+    # One removed: the other keeps theirs, the removed one's is reported.
+    assert _apply(tmp_path, ["Bo Muller"], upstream) == ([_id(2)], ["Bo Müller"])
+    # Spelled as neither: the folded name fits both, so no iD moves.
+    assert _apply(tmp_path, ["Bo  Muller."], upstream) == ([None], ["Bo Müller, Bo Muller"])
+
+
+def test_an_authors_patch_carry_edge_cases(tmp_path: Path) -> None:
+    # Punctuation folds to spaces, so a hyphen fix keeps the iD.
+    assert _apply(tmp_path, ["Bo Muller"], [WorkAuthor("Bo-Muller", orcid=_id(4))]) == (
+        [_id(4)],
+        [],
+    )
+    # Two people of one name, listed twice: each entry takes its own iD.
+    same = [WorkAuthor("Cy Same", orcid=_id(5)), WorkAuthor("Cy Same", orcid=_id(6))]
+    assert _apply(tmp_path, ["Cy Same", "Cy Same"], same) == ([_id(5), _id(6)], [])
+    # A removed author repeated upstream is named once.
+    gone = [WorkAuthor("Bo Colleague", orcid=_id(4)), *[WorkAuthor("Cy Gone", orcid=_id(5))] * 2]
+    assert _apply(tmp_path, ["Bo Colleague"], gone) == ([_id(4)], ["Cy Gone"])
+    # The configured iD in URL form and the same iD bare upstream are one iD.
+    configured = AuthorConfig(name="Ann Member", orcid="9999-0000-0000-0003")
+    bare = [
+        WorkAuthor("Ann Member", orcid="9999-0000-0000-0003", tracked=True, tracked_as="Ann Member")
+    ]
+    assert _apply(tmp_path, ["Ann Member"], bare, [configured]) == ([_id(3)], [])
+
+
+def test_a_configured_id_replacing_an_upstream_one_is_a_drop(tmp_path: Path) -> None:
+    configured = AuthorConfig(name="Ann Member", orcid="9999-0000-0000-0001")
+    overrides = overrides_from(tmp_path, '- id: W1\n  authors: ["Ann Member"]\n', [configured])
+    upstream = [WorkAuthor("Annie Member", orcid=_id(3), tracked=True, tracked_as="Ann Member")]
+    kept, _ = apply_overrides([Work(id="W1", title="A", authors=upstream)], overrides)
+    assert kept[0].authors[0].orcid == _id(1)
+    assert orcid_drops(overrides) == [f"{tmp_path / 'overrides.yml'}: entry 1, W1: Annie Member"]
 
 
 @pytest.mark.parametrize(

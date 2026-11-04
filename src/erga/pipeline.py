@@ -22,6 +22,7 @@ from erga.curation import (
     load_overrides,
     load_tags,
     mark_keep_distinct,
+    orcid_drops,
     redundant_overrides,
     shared_dois,
     unmatched_overrides,
@@ -31,6 +32,7 @@ from erga.delta import Delta, compute_delta
 from erga.errors import ConfigError, FetchError
 from erga.model import Work
 from erga.normalize import (
+    foreign_orcids,
     is_machine_translation,
     malformed_dois,
     normalize_work,
@@ -275,7 +277,11 @@ def build(
     stats.warnings.extend(contamination_warnings(find_contamination(raw_works, tracked_ids, homes)))
 
     works = curate(works, overrides, config.exclude_types, stats)
+    stats.warnings.extend(
+        foreign_orcids(raw_works, tracked_ids, tracked_orcids, tracked_names, works)
+    )
     stats.warnings.extend(f"override matched nothing: {w}" for w in unmatched_overrides(overrides))
+    stats.warnings.extend(f"override drops upstream ORCIDs: {w}" for w in orcid_drops(overrides))
     stats.warnings.extend(
         f"override redundant (upstream now agrees; kept as-is): {w}"
         for w in redundant_overrides(overrides)

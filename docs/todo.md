@@ -1,26 +1,6 @@
 # TODO
 
 ## High
-- A name-only tracked authorship publishes a foreign ORCID
-  (smartmove-site inbox, 2026-10-30). `normalize_work` takes the entity's
-  `orcid` whichever path tracked it, so five lab works carry Zissis's
-  homonym's iD (`0000-0002-6957-3494`, profile `A5103188414`) beside
-  `tracked_as`. Paths run id, ORCID, name, so a name-only match means the
-  entity's iD matches no configured one: a stranger's or the member's own
-  on an unresolved split, undecidable here. Rule: on a name-only match,
-  emit the configured author's `orcid` (or none); warn once per author and
-  foreign iD with the profile and work count, so a consumer whose member
-  owns it adds it to the config. Synthetic fixture; may move the golden
-- An `authors` override drops every ORCID on its record (smartmove-site
-  inbox, 2026-10-30). `curation._parse_authors` resolves names at load,
-  before seeing the record, and sets `orcid` only from a matched config
-  entry's `orcid`, so an `openalex_id`-only member and every co-author
-  lose theirs, silently. Rule: at apply time, an override author without a
-  configured iD takes the upstream iD of the author it matches, a tracked
-  one by `tracked_as` (survives the rename), an untracked one by exact
-  name; warn on any upstream iD left unclaimed, naming record and authors.
-  Build with the item above, which must run first (normalize precedes
-  curation, so the carry-over cannot reintroduce a foreign iD)
 
 ## Normal
 - Preprint/published pairs defeat DOI excludes (dpsd-new inbox,
@@ -406,6 +386,21 @@
   Neither the code nor section 5 defines that as the rule, so no test
   freezes it (Codex, `local/codex-test-gaps/notes.md`). Define it, or
   reject the overlap at config time with a message naming both entries
+- A name or alias shared by two configured entries is accepted, and the
+  two matchers resolve it to different people: curation's `_parse_authors`
+  takes the first entry, the pipeline's `tracked_names` dict the last. A
+  manual entry and a fetched work with that byline then get different
+  `tracked_as` and, since 0.9.4, different iDs; an `authors` patch's
+  carry-over misses the match and reports a false drop (/simplify altitude
+  review, 2026-11-04). Reject it in `config` with both entries named,
+  checking first that neither consumer's file has one. The deeper fix, one
+  matcher built from `config.authors` that both modules call, belongs to
+  the names-module work in the untracked-byline item under Normal
+- An `authors` patch renaming an untracked co-author beyond accents and
+  punctuation ("Ilias" to "Elias") drops their iD, reported each build
+  with no way to keep it: override authors are plain strings. Let an
+  entry be `{name, orcid}`, checked like a config iD (/code-review high,
+  2026-11-04). Reopen when a consumer meets the warning
 - Mint the moving `v1` tag with the 1.0 release; policy in docs/action.md
 - Consumer recipes doc, unblocked now that a second consumer exists. Open it
   with the consumer contract: what erga asks of a consumer site (ORCID iDs,

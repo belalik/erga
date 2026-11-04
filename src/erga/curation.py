@@ -11,13 +11,22 @@ import copy
 import datetime
 import re
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
 from erga.config import AuthorConfig, expect_str_list, load_yaml, reject_unknown_keys
+from erga.dedup import normalize_title
 from erga.errors import ConfigError
-from erga.model import Work, WorkAuthor, doi_key, doi_url, slugify, validate_work_type
+from erga.model import (
+    Work,
+    WorkAuthor,
+    doi_key,
+    doi_url,
+    normalize_orcid,
+    slugify,
+    validate_work_type,
+)
 
 MANUAL_KEYS = {"title", "authors", "venue", "year", "date", "doi", "type", "tags", "abstract"}
 PATCH_KEYS = {
@@ -198,6 +207,8 @@ class Override:
     patch: dict[str, Any] = field(default_factory=dict)
     matched: bool = False
     changed: bool = False
+    # (work id, authors whose iD the `authors` patch dropped), per record.
+    dropped_orcids: list[tuple[str, list[str]]] = field(default_factory=list)
 
 
 def load_overrides(path: Path, authors_cfg: list[AuthorConfig]) -> list[Override]:
@@ -340,11 +351,84 @@ def _field_value(key: str, value: Any, authors_cfg: list[AuthorConfig], where: s
     return value
 
 
-def _patch_work(work: Work, patch: dict[str, Any], where: str) -> None:
+def _exact_key(author: WorkAuthor) -> tuple[str, str]:
+    if author.tracked_as is not None:
+        return ("tracked", author.tracked_as)
+    return ("name", author.name.casefold().strip())
+
+
+def _folded_key(author: WorkAuthor) -> str | None:
+    """An untracked author's name with accents folded and punctuation as
+    spaces ("Bo Müller" = "Bo Muller", "J.S. Smith" = "J S Smith"; not
+    "O'Neil" = "ONeil"). A tracked author's exact key already survives a
+    rename."""
+    return None if author.tracked_as is not None else normalize_title(author.name)
+
+
+def _carry_orcids(
+    upstream: list[WorkAuthor], patched: list[WorkAuthor]
+) -> tuple[list[WorkAuthor], list[str]]:
+    """An `authors` patch keeps the record's iDs, and names the ones it drops.
+
+    The patch's names were resolved when the file loaded, before any record
+    was seen, so they carry only configured iDs: fixing one name would
+    otherwise strip every co-author's, and an `openalex_id`-only member's
+    (smartmove-site, 2026-10-30). Each patched author without one takes the
+    iD of the upstream author it matches. Runs after normalize, so a tracked
+    author's upstream iD is already one normalize let stand, never a
+    homonym's.
+
+    Matching runs exact first, a tracked author by `tracked_as` (which
+    survives the rename the patch exists for) and an untracked one by name,
+    then by the folded name for what is left, and only where exactly one
+    upstream and one patched author share it: two people can fold alike
+    ("Bo Müller", "Bo Muller"), and a guess between them would swap their
+    iDs with nothing reported. An author gaining an iD is copied; the
+    patch's own authors, shared by every record it hits, are never modified.
+
+    Dropped means an upstream iD no author of the patched record carries: a
+    repeated authorship claimed once loses nothing, and a configured iD
+    replacing a different upstream one is a drop like any other.
+    """
+    match: dict[int, int] = {}  # patched index -> upstream index
+    unclaimed = list(range(len(upstream)))
+    for p, author in enumerate(patched):
+        key = _exact_key(author)
+        u = next((i for i in unclaimed if _exact_key(upstream[i]) == key), None)
+        if u is not None:
+            match[p] = u
+            unclaimed.remove(u)
+    folded_upstream: dict[str, list[int]] = {}
+    for i in unclaimed:
+        if (folded := _folded_key(upstream[i])) is not None:
+            folded_upstream.setdefault(folded, []).append(i)
+    folded_patched: dict[str, list[int]] = {}
+    for p, author in enumerate(patched):
+        if p not in match and (folded := _folded_key(author)) is not None:
+            folded_patched.setdefault(folded, []).append(p)
+    for folded, ps in folded_patched.items():
+        if len(ps) == 1 and len(us := folded_upstream.get(folded, [])) == 1:
+            match[ps[0]] = us[0]
+    carried = []
+    for p, author in enumerate(patched):
+        u = match.get(p)
+        if u is not None and author.orcid is None and upstream[u].orcid:
+            author = replace(author, orcid=upstream[u].orcid)
+        carried.append(author)
+    kept = {normalize_orcid(a.orcid) for a in carried if a.orcid}
+    dropped = [a.name for a in upstream if a.orcid and normalize_orcid(a.orcid) not in kept]
+    return carried, list(dict.fromkeys(dropped))
+
+
+def _patch_work(work: Work, patch: dict[str, Any], where: str) -> list[str]:
+    """Apply one patch; returns the authors whose iD an `authors` patch dropped."""
+    dropped: list[str] = []
     for key, value in patch.items():
         # Lists are copied: the record's own list gets appended to later
         # (tags), and the override must keep what the file said.
         copied = list(value) if isinstance(value, list) else value
+        if key == "authors":
+            copied, dropped = _carry_orcids(work.authors, copied)
         setattr(work, _PATCH_ATTRS.get(key, key), copied)
     # The one check that needs the record: a patched year against the date
     # the record keeps, so no output carries a year beside a date that
@@ -356,6 +440,7 @@ def _patch_work(work: Work, patch: dict[str, Any], where: str) -> None:
             where,
             hint=" (patch 'date' too, or 'date: null' when only the year is known)",
         )
+    return dropped
 
 
 def apply_overrides(works: list[Work], overrides: list[Override]) -> tuple[list[Work], int]:
@@ -374,10 +459,20 @@ def apply_overrides(works: list[Work], overrides: list[Override]) -> tuple[list[
             # Deep copy so the check stays honest even if a value is ever
             # mutated in place instead of reassigned.
             before = copy.deepcopy(work)
-            _patch_work(work, override.patch, override.where)
+            if dropped := _patch_work(work, override.patch, override.where):
+                override.dropped_orcids.append((work.id, dropped))
             if work != before:
                 override.changed = True
     return [w for w in works if id(w) not in excluded], len(excluded)
+
+
+def orcid_drops(overrides: list[Override]) -> list[str]:
+    """Where an `authors` patch left an upstream iD with no author to take it."""
+    return [
+        f"{o.where}, {work_id}: {', '.join(names)}"
+        for o in overrides
+        for work_id, names in o.dropped_orcids
+    ]
 
 
 def unmatched_overrides(overrides: list[Override]) -> list[str]:
