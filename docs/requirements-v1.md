@@ -857,6 +857,10 @@ scheduling, the `v1` tag policy, how CI exercises it) lives in
 - **v0.9.3** (released 2026-10-17): fetched machine translations of
   other papers, known by the tag JST appends to their titles, are dropped
   before dedup, one build line each (stage 5).
+- **v0.9.4** (released 2026-11-07): an author matched by name only
+  publishes no iD, since a homonym's profile would otherwise show a
+  stranger's beside a member, and an `authors` override keeps the
+  upstream iDs of the authors it lists (section 4, the `authors` field).
 - **CSL-JSON and BibTeX emitters** slot in after v0.1 as demand warrants,
   before the v1.0 promotion push.
 - **v1.0**: strong README (before/after dedup story, head-on "why not
