@@ -665,7 +665,7 @@ Ported from the production origin pipeline with generalization deltas noted.
    volume (v0.9.5): the previous output's venue unless that is itself a
    book series of this fetch, else Crossref's second container title when
    the record is a chapter with exactly two, which read [series, volume]
-   on 118 of 118 such records across both consumers (2026-11-07).
+   on 104 of 104 such records across both consumers (2026-11-07).
    Position decides, never the name: OpenAlex appends "book series" to
    some names Crossref prints without it, so a name match picks the series
    again. A record lacking a venue takes the volume from such a Crossref

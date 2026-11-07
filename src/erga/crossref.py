@@ -23,7 +23,7 @@ class Container:
     title: str
     # True when Crossref also names a series the title belongs to. A
     # chapter's container-title then reads [series, book], in that order,
-    # whether the book is a monograph or a proceedings volume (118 of 118
+    # whether the book is a monograph or a proceedings volume (104 of 104
     # two-title chapter records on two consumers, 2026-11-07). Position
     # decides, never the name: OpenAlex's name for the same series can
     # differ ("... book series" appended), so matching names picks the

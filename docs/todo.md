@@ -3,12 +3,16 @@
 ## Next steps (07-11-2026)
 
 In order:
-1. Session: release 0.9.5, the series venues on main, once `/code-review` and a Codex review of the diff are through; its live control is done (95 and 13 venues, nothing else).
-2. Session: route it. dpsd-new's two venue overrides on `W3005804176` and `W3006289525` become unneeded but cannot be reported redundant; its three IFIP platform works and five ICST ones (two on smartmove-site) still need an override each.
+1. Session: Codex Sol review of the series-venue commit `5ba5827` (`/code-review medium` is through), then release 0.9.5 with a fresh live control.
+2. Session: route 0.9.5 to both consumers: about 95 and 13 venues change; name the overrides it makes unneeded and the IFIP and ICST works still owed one.
+
+Any order:
+- Session: the listing probe, step (1) of the preprint-pair item, from the reproducible Ro-Boat case.
 
 ## High
 
 ## Normal
+- Reshape this list to the convention's ~2 lines an item: each action as one line, its measurements and cases moved into the docs they belong to (its own session; `~/projects/claude-code-config/docs/todo-convention.md`)
 - Preprint/published pairs defeat DOI excludes (dpsd-new inbox,
   2026-09-29, three entries). A homonym's pairs merge one week and split
   the next. Merged, the record keeps the winner's DOI only (`merge_group`
