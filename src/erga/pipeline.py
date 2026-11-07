@@ -32,11 +32,13 @@ from erga.delta import Delta, compute_delta
 from erga.errors import ConfigError, FetchError
 from erga.model import Work
 from erga.normalize import (
+    book_series_names,
     foreign_orcids,
     is_machine_translation,
     malformed_dois,
     normalize_work,
     platform_names,
+    series_key,
     unescape_html,
     unmapped_types,
 )
@@ -93,6 +95,9 @@ class BuildStats:
     excluded_types: int = 0
     backfilled_previous: int = 0
     backfilled_crossref: int = 0
+    # Where this build's venues came from, like the two above: a series the
+    # previous output already resolved counts again on every build.
+    series_resolved: int = 0
     total: int = 0
     written: bool = False
     warnings: list[str] = field(default_factory=list)
@@ -107,6 +112,7 @@ class BuildStats:
             f"backfilled {self.backfilled_previous + self.backfilled_crossref} "
             f"({self.backfilled_previous} from previous output, "
             f"{self.backfilled_crossref} from Crossref), "
+            f"series resolved to their volume {self.series_resolved}, "
             f"total {self.total}"
         )
 
@@ -165,33 +171,66 @@ def curate(
 
 
 def backfill_venues(
-    works: list[Work], previous: dict[str, str], crossref: CrossrefClient, stats: BuildStats
+    works: list[Work],
+    previous: dict[str, str],
+    crossref: CrossrefClient,
+    stats: BuildStats,
+    series_names: frozenset[str] = frozenset(),
 ) -> None:
-    """Fill missing venues: previous output first, then Crossref.
+    """Fill missing venues: previous output first, then Crossref, then the
+    series a work's fetched venue named (`Work.series`), the fallback when
+    neither knows the volume, so the build never prints less than before.
 
-    A persistent Crossref failure stops the backfill with a warning instead
-    of aborting the run; the ratchet means already-known venues survived, and
-    the next run retries the rest.
+    A work with a series takes only a Crossref container that names the
+    series beside the volume: a lone title may be the series spelled
+    another way. `series_names` are the fetch's book-series names, by
+    series_key; a previous venue among them is a series an earlier erga
+    wrote, so it becomes a fallback, never the venue outright. One written
+    from Crossref's first container title is caught only where OpenAlex
+    spells the series alike; otherwise it rides along as the venue (none
+    on either consumer, 2026-11-07). A persistent Crossref
+    failure stops the lookups with a warning instead of aborting the run;
+    the ratchet means already-known venues survived, and the next run
+    retries the rest.
     """
+    series_from_previous: set[int] = set()
     for work in works:
         if work.venue is not None:
             continue
         key = work.doi_key
         known = (key and previous.get(key)) or previous.get(work.id)
-        if known:
-            work.venue = known
+        if not known:
+            continue
+        if series_key(known) in series_names:
+            if work.series is None:
+                work.series = known
+                series_from_previous.add(id(work))
+            continue
+        work.venue = known
+        if work.series is not None:
+            stats.series_resolved += 1
+        else:
             stats.backfilled_previous += 1
     for work in works:
         if work.venue is not None or not work.doi_key:
             continue
         try:
-            venue = crossref.venue_for_doi(work.doi_key)
+            container = crossref.container_for_doi(work.doi_key)
         except FetchError as exc:
             stats.warnings.append(f"Crossref backfill stopped: {exc}")
-            return
-        if venue:
-            work.venue = unescape_html(venue)
+            break
+        if container is None or (work.series is not None and not container.in_series):
+            continue
+        work.venue = unescape_html(container.title)
+        if work.series is not None:
+            stats.series_resolved += 1
+        else:
             stats.backfilled_crossref += 1
+    for work in works:
+        if work.venue is None and work.series is not None:
+            work.venue = work.series
+            if id(work) in series_from_previous:
+                stats.backfilled_previous += 1
 
 
 def ratchet_venues(
@@ -205,7 +244,8 @@ def ratchet_venues(
     previous venue naming a platform this fetch carries is treated as
     absent. An erga before 0.9.2 also wrote venues with their HTML
     entities; decoded here, they ride along clean and compare with the
-    fetch's names in one form.
+    fetch's names in one form. A series an earlier erga wrote stays: it
+    beats no venue, and the backfill treats it as replaceable.
     """
     platforms = platform_names(raw_works)
     venues = {key: unescape_html(venue) for key, venue in previous_venues(previous).items()}
@@ -257,8 +297,10 @@ def build(
     raw_works = openalex.fetch_works(sorted(tracked_ids), include_xpac=config.include_xpac)
     stats.fetched = len(raw_works)
 
+    series_names = book_series_names(raw_works)
     works = manual + [
-        normalize_work(raw, tracked_ids, tracked_orcids, tracked_names) for raw in raw_works
+        normalize_work(raw, tracked_ids, tracked_orcids, tracked_names, series_names)
+        for raw in raw_works
     ]
     stats.manual = len(manual)
     stats.warnings.extend(
@@ -298,7 +340,7 @@ def build(
             f"{config.output_path}: not a publications.json erga can read; "
             "treated as a first build, so nothing was compared or ratcheted"
         )
-    backfill_venues(works, ratchet_venues(previous, raw_works), crossref, stats)
+    backfill_venues(works, ratchet_venues(previous, raw_works), crossref, stats, series_names)
 
     stats.warnings.extend(f"tag matched nothing: {w}" for w in apply_tags(works, tags))
 

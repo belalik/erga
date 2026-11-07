@@ -144,6 +144,15 @@ def map_type(raw: dict[str, Any]) -> str:
 # there in one week, 2026-10) and keeps the book's own title only in the
 # location's raw_source_name. The type decides, never the name.
 PLATFORM_SOURCE_TYPES = frozenset({"ebook platform"})
+# Source types that name a series, never the book or proceedings volume a
+# work appeared in; the backfill looks for the volume.
+SERIES_SOURCE_TYPES = frozenset({"book series"})
+
+
+def series_key(name: str) -> str:
+    """The form a series name is compared in: OpenAlex has served one
+    series both title-cased and in sentence case."""
+    return name.casefold()
 
 
 def venue(raw: dict[str, Any]) -> str | None:
@@ -166,16 +175,46 @@ def venue(raw: dict[str, Any]) -> str | None:
     return unescape_html(name) if name else None
 
 
-def platform_names(raw_works: list[dict[str, Any]]) -> frozenset[str]:
-    """Display names of the corpus's platform sources: an earlier erga
-    wrote them as venues, so the ratchet must not carry them forward.
-    Decoded as venue() decodes them, the form the ratchet compares in."""
+def _source_names(raw_works: list[dict[str, Any]], types: frozenset[str]) -> frozenset[str]:
+    """Display names of the corpus's primary sources of these types, decoded
+    as venue() decodes them, the form every comparison is made in."""
     names = set()
     for raw in raw_works:
         source = (raw.get("primary_location") or {}).get("source") or {}
-        if source.get("type") in PLATFORM_SOURCE_TYPES and source.get("display_name"):
+        if source.get("type") in types and source.get("display_name"):
             names.add(unescape_html(str(source["display_name"])))
     return frozenset(names)
+
+
+def book_series_names(raw_works: list[dict[str, Any]]) -> frozenset[str]:
+    """The corpus's book-series names, by series_key: a series is never the
+    venue, and a name in this set marks it wherever it turns up (a
+    platform's raw source name, the previous output)."""
+    return frozenset(series_key(n) for n in _source_names(raw_works, SERIES_SOURCE_TYPES))
+
+
+def names_a_series(raw: dict[str, Any], name: str | None, series_names: frozenset[str]) -> bool:
+    """Whether venue()'s name for this work is a series, not the book or
+    proceedings volume the work appeared in.
+
+    True on a source typed `book series`, and on a platform whose raw
+    source name is a book-series source elsewhere in the fetch (LNCS papers
+    filed under "Springer eBooks"). A platform series with no such twin in
+    the corpus goes unseen and stays the venue: no name rule tells a series
+    from a book's title.
+    """
+    if name is None:
+        return False
+    source_type = ((raw.get("primary_location") or {}).get("source") or {}).get("type")
+    if source_type in SERIES_SOURCE_TYPES:
+        return True
+    return source_type in PLATFORM_SOURCE_TYPES and series_key(name) in series_names
+
+
+def platform_names(raw_works: list[dict[str, Any]]) -> frozenset[str]:
+    """Display names of the corpus's platform sources: an earlier erga
+    wrote them as venues, so the ratchet must not carry them forward."""
+    return _source_names(raw_works, PLATFORM_SOURCE_TYPES)
 
 
 def open_access_url(raw: dict[str, Any]) -> str | None:
@@ -281,6 +320,7 @@ def normalize_work(
     tracked_ids: dict[str, str],
     tracked_orcids: dict[str, str],
     tracked_names: dict[str, str],
+    series_names: frozenset[str] = frozenset(),
 ) -> Work:
     """Map one raw OpenAlex work to a canonical record.
 
@@ -296,6 +336,9 @@ def normalize_work(
         _work_author(authorship, tracked_ids, tracked_orcids, tracked_names)[0]
         for authorship in raw.get("authorships") or []
     ]
+    name = venue(raw)
+    # A series waits for the backfill to find the volume, as a fallback.
+    series = name if names_a_series(raw, name, series_names) else None
 
     return Work(
         id=strip_openalex_host(raw["id"]),
@@ -303,7 +346,8 @@ def normalize_work(
         authors=authors,
         year=raw.get("publication_year"),
         date=raw.get("publication_date"),
-        venue=venue(raw),
+        venue=None if series else name,
+        series=series,
         type=map_type(raw),
         doi=clean_doi(raw["doi"]) if raw.get("doi") else None,
         cited_by_count=raw.get("cited_by_count") or 0,

@@ -388,7 +388,13 @@ Ported from the production origin pipeline with generalization deltas noted.
    location's `raw_source_name`, the book's own title (v0.9.1). The type
    decides, never the name, and a source-less location gets no venue
    from its raw name: on consumer #2 that string was a PDF URL nine times
-   in eleven. Titles and venues are plain text, their HTML entities
+   in eleven. A source typed `book series`, and a platform whose raw name
+   is a book-series source elsewhere in the fetch (LNCS papers filed under
+   "Springer eBooks"), name the series, never the volume a work appeared
+   in: there the venue is provisional until stage 9 finds the book or
+   proceedings title (v0.9.5). This holds for every work type, since
+   OpenAlex types one series' volumes as chapters and another's as
+   conference papers. Titles and venues are plain text, their HTML entities
    decoded until stable as in abstracts, and so are the venues the
    backfill supplies from Crossref and the previous output (v0.9.2):
    OpenAlex and Crossref both serve some names escaped, and a site that
@@ -655,6 +661,25 @@ Ported from the production origin pipeline with generalization deltas noted.
    not last-known-good and is treated as absent; a platform that has since
    vanished from the corpus leaves no such signal, so its name can ride
    along (one record on consumer #2, 2026-10-16, an override's job).
+   The same stage replaces a provisional series venue (stage 4) with the
+   volume (v0.9.5): the previous output's venue unless that is itself a
+   book series of this fetch, else Crossref's second container title when
+   the record is a chapter with exactly two, which read [series, volume]
+   on 118 of 118 such records across both consumers (2026-11-07).
+   Position decides, never the name: OpenAlex appends "book series" to
+   some names Crossref prints without it, so a name match picks the series
+   again. A record lacking a venue takes the volume from such a Crossref
+   record too, and a series an earlier erga wrote still fills a gap, as
+   provisional. A series with no volume known stays the venue and is
+   asked about again on the next build, since the output keeps no record
+   of the attempt (none such on either consumer, 2026-11-07); an override
+   on `venue` is final, even one naming the series. Measured on
+   both consumers the same day: 95 and 13 venues changed, nothing else,
+   and a second build changed none. Unseen by design, each an override's
+   job: a platform series with no book-series twin in the fetch (three
+   IFIP volumes on consumer #2; asking Crossref about every platform
+   chapter on every build was the alternative), and a series OpenAlex
+   types as a journal (ICST's Lecture Notes, seven works across both).
 10. Apply tags.
 11. Sort deterministically and write.
 12. Build delta (after v0.5.0; decided 2026-09-21 on consumer #2's

@@ -5,6 +5,7 @@ from typing import Any
 from conftest import HOMONYM
 from erga.dedup import dedup_by_doi
 from erga.normalize import (
+    book_series_names,
     foreign_orcids,
     is_machine_translation,
     malformed_dois,
@@ -395,6 +396,48 @@ def test_venue_without_a_source_stays_unknown() -> None:
     location = {"source": None, "raw_source_name": "http://example.org/papers/2009.pdf"}
     assert venue({"primary_location": location}) is None
     assert venue({"primary_location": {"raw_source_name": "EDULEARN15 Proceedings"}}) is None
+
+
+SERIES_LOCATION = {
+    "source": {"display_name": "Lecture notes in computer science", "type": "book series"},
+    "raw_source_name": "Lecture Notes in Computer Science",
+}
+
+
+def test_book_series_names_collects_casefolded_series_sources() -> None:
+    raw_works: list[dict[str, Any]] = [
+        {"primary_location": SERIES_LOCATION},
+        {"primary_location": platform_location()},
+        {
+            "primary_location": {
+                "source": {"display_name": "Series &amp; Co", "type": "book series"}
+            }
+        },
+        {"primary_location": None},
+    ]
+    assert book_series_names(raw_works) == frozenset(
+        {"lecture notes in computer science", "series & co"}
+    )
+
+
+def test_a_series_venue_waits_for_the_backfill() -> None:
+    series = book_series_names([{"primary_location": SERIES_LOCATION}])
+
+    def fetched(location: dict[str, Any], names: frozenset[str] = series) -> tuple[Any, Any]:
+        work = normalize_work(raw_work(primary_location=location), {}, {}, {}, names)
+        return work.venue, work.series
+
+    # No venue yet, the series held back as the fallback.
+    assert fetched(SERIES_LOCATION) == (None, "Lecture notes in computer science")
+    # LNCS filed under a platform: the raw name is a series source elsewhere in the fetch.
+    lncs = platform_location(raw_source_name="Lecture Notes in Computer Science")
+    assert fetched(lncs) == (None, "Lecture Notes in Computer Science")
+    # Without that twin nothing tells a platform's series from its book.
+    assert fetched(lncs, frozenset()) == ("Lecture Notes in Computer Science", None)
+    assert fetched(platform_location()) == ("Problems of Fracture Mechanics", None)
+    journal = {"source": {"display_name": "Lecture notes in computer science", "type": "journal"}}
+    assert fetched(journal) == ("Lecture notes in computer science", None)
+    assert fetched({"source": None}) == (None, None)
 
 
 def test_platform_names_collects_only_platform_sources() -> None:

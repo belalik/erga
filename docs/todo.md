@@ -2,8 +2,9 @@
 
 ## Next steps (07-11-2026)
 
-Any order:
-- Session: book-series venues from Crossref, specified and ready to build.
+In order:
+1. Session: release 0.9.5, the series venues on main, once `/code-review` and a Codex review of the diff are through; its live control is done (95 and 13 venues, nothing else).
+2. Session: route it. dpsd-new's two venue overrides on `W3005804176` and `W3006289525` become unneeded but cannot be reported redundant; its three IFIP platform works and five ICST ones (two on smartmove-site) still need an override each.
 
 ## High
 
@@ -154,29 +155,6 @@ Any order:
   `book-chapter`; the second location is the IASTED CSN 2006 conference).
   Prefer the first non-repository location for venue and source type when
   the raw type is not `preprint`; the public record is a permitted fixture
-- A chapter in a book series gets the series as its venue, not the book
-  (dpsd-new inbox, 2026-09-30, from a member's reply). Measured on
-  dpsd-new's list (minis copy, 2026-09-30): 17 of 66 `book-chapter`
-  records have a primary source typed `book series`, 15 of them show the
-  series (two already carry the book, by override); Crossref's
-  `container-title` was `[series, book]` on all 9 checked (e.g.
-  `10.4018/978-1-7998-2871-6.ch006`: "Advances in Religious and Cultural
-  Studies", then "Applying Innovative Technologies in Heritage Science").
-  Rule: when the source type is `book series`, take the venue from
-  Crossref's `container-title` entry that is not the series name; keep
-  the series without a DOI or a second title. Traps: the venue ratchet
-  would carry the series name forward from the previous output, so a
-  previous venue equal to it counts as absent; and `venue_for_doi` takes
-  `container-title[0]`, the series in that shape, so the plain backfill
-  shares the flaw. Changes `venue` once on about 15 dpsd-new records,
-  visible in the delta. Structural signal, no name regex: `series|lecture
-  notes|advances in` caught 9 of the 15 and two false positives (a 1999
-  book titled "Advances in Intelligent Systems"). Second shape since
-  v0.9.1 (2026-10-16): a chapter on an `ebook platform` source whose
-  `raw_source_name` is the series ("Lecture Notes in Computer Science",
-  the IFIP volumes; 5 of dpsd-new's 52 restored venues), where `venue()`
-  in `normalize` now prints the series; the same Crossref rule applies,
-  keyed on the raw name rather than the source type
 - One conference source named after one edition holds a whole series
   (dpsd-new inbox, 2026-10-17): five MED papers, 2007 to 2016
   (`W2036128436`, `W2150394945`, `W2098248572`, `W2513624788`,

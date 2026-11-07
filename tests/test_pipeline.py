@@ -6,6 +6,7 @@ from typing import Any
 from conftest import HOMONYM, FakeTransport, no_sleep
 from erga.config import load_config
 from erga.crossref import CrossrefClient
+from erga.http import Response
 from erga.model import Work
 from erga.openalex import OpenAlexClient
 from erga.pipeline import (
@@ -159,6 +160,110 @@ def test_backfill_decodes_the_crossref_container_title() -> None:
     stats = BuildStats()
     backfill_venues([work], {}, crossref, stats)
     assert work.venue == "Virtual Systems & Multimedia (VSMM)"
+    assert stats.backfilled_crossref == 1
+
+
+LNCS = "Lecture notes in computer science"
+SERIES_NAMES = frozenset({LNCS.casefold()})
+
+
+def series_crossref(*routes: tuple[str, dict[str, Any]]) -> tuple[CrossrefClient, FakeTransport]:
+    """A Crossref client answering each bare DOI with its message; any
+    other request fails the test, so a lookup that should not happen shows."""
+    transport = FakeTransport()
+    for doi, message in routes:
+        transport.add("/works/" + doi.replace("/", "%2F"), {}, {"message": message})
+    return CrossrefClient(transport, mailto="m@example.org", delay=0.0, sleep=no_sleep), transport
+
+
+def in_series(book: str) -> dict[str, Any]:
+    return {"type": "book-chapter", "container-title": ["Lecture Notes in Computer Science", book]}
+
+
+def series_work(work_id: str, doi: str | None = None) -> Work:
+    """A fetched work whose venue named LNCS, as normalize leaves it."""
+    return Work(
+        id=work_id, title="A paper", series=LNCS, doi=f"https://doi.org/{doi}" if doi else None
+    )
+
+
+def test_backfill_replaces_a_series_with_the_volume() -> None:
+    crossref, transport = series_crossref(
+        ("10.5555/ch1", in_series("Semantic Multimedia")),
+        ("10.5555/ch2", {"type": "book-chapter", "container-title": ["Lecture Notes in CS"]}),
+    )
+    works = [
+        series_work("W1", "10.5555/ch1"),
+        # Crossref names no volume: the series stays, the build prints no less.
+        series_work("W2", "10.5555/ch2"),
+        series_work("W3"),
+        # Known from the previous build: no lookup.
+        series_work("W4", "10.5555/ch4"),
+        # A series in the previous output is no replacement.
+        series_work("W5", "10.5555/ch1"),
+    ]
+    previous = {"10.5555/ch4": "Human-Computer Interaction", "W5": LNCS.upper()}
+    stats = BuildStats()
+    backfill_venues(works, previous, crossref, stats, SERIES_NAMES)
+    assert [w.venue for w in works] == [
+        "Semantic Multimedia",
+        LNCS,
+        LNCS,
+        "Human-Computer Interaction",
+        "Semantic Multimedia",
+    ]
+    assert stats.series_resolved == 3
+    assert stats.backfilled_previous == stats.backfilled_crossref == 0
+    assert len(transport.calls) == 3
+
+
+def test_backfill_leaves_a_curated_or_settled_venue() -> None:
+    # No routes: any Crossref lookup fails the test.
+    crossref, _ = series_crossref()
+    # A `venue` patch is final, even one naming the series: the maintainer chose it.
+    curated = series_work("W1", "10.5555/ch1")
+    curated.venue = "Lecture Notes in Computer Science"
+    journal = Work(id="W2", title="P", venue="Journal A", doi="https://doi.org/10.5555/j")
+    stats = BuildStats()
+    backfill_venues([curated, journal], {"10.5555/ch1": "Other"}, crossref, stats, SERIES_NAMES)
+    assert (curated.venue, journal.venue) == ("Lecture Notes in Computer Science", "Journal A")
+    assert stats.series_resolved == 0
+
+
+def test_a_crossref_failure_still_prints_the_series() -> None:
+    def down(url: str, params: dict[str, str]) -> Response:
+        return Response(503, None)
+
+    crossref = CrossrefClient(down, mailto="m@example.org", delay=0.0, sleep=no_sleep)
+    works = [series_work("W1", "10.5555/ch1"), series_work("W2", "10.5555/ch2")]
+    stats = BuildStats()
+    backfill_venues(works, {}, crossref, stats, SERIES_NAMES)
+    assert [w.venue for w in works] == [LNCS, LNCS]
+    assert [w for w in stats.warnings if w.startswith("Crossref backfill stopped")]
+
+
+def test_a_previous_series_fills_a_gap_as_replaceable() -> None:
+    """A source-less work's venue reaches the build only through the ratchet;
+    a series an earlier erga wrote there still beats none, and Crossref may
+    still name the volume."""
+    crossref, _ = series_crossref(("10.5555/ch1", in_series("Semantic Multimedia")))
+    found = Work(id="W1", title="P", doi="https://doi.org/10.5555/ch1")
+    kept = Work(id="W2", title="P")
+    stats = BuildStats()
+    backfill_venues([found, kept], {"10.5555/ch1": LNCS, "W2": LNCS}, crossref, stats, SERIES_NAMES)
+    assert (found.venue, kept.venue) == ("Semantic Multimedia", LNCS)
+    # Each venue counted once, by where it finally came from.
+    assert stats.backfilled_previous == 1
+    assert stats.series_resolved == 1
+
+
+def test_the_plain_backfill_takes_the_volume_not_the_series() -> None:
+    # Before 0.9.5 a venue-less chapter took Crossref's first title, the series.
+    crossref, _ = series_crossref(("10.5555/ch1", in_series("Semantic Multimedia")))
+    work = Work(id="W1", title="P", doi="https://doi.org/10.5555/ch1")
+    stats = BuildStats()
+    backfill_venues([work], {}, crossref, stats)
+    assert work.venue == "Semantic Multimedia"
     assert stats.backfilled_crossref == 1
 
 

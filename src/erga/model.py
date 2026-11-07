@@ -116,6 +116,12 @@ class Work:
     tags: list[str] = field(default_factory=list)
     is_retracted: bool = False
     source: str = "openalex"
+    # Internal only: the series a fetched venue named, held back while
+    # `venue` stays None so the backfill can find the book or proceedings
+    # volume; the venue only when it cannot. A `venue` override with a name
+    # is final, since the backfill fills nothing already set; `venue: null`
+    # means unknown, which the backfill fills, this fallback included.
+    series: str | None = None
     # Internal only, set from overrides; never serialized.
     keep_distinct: bool = False
     # Internal only: exempts the record from the exclude_types filter. Set
