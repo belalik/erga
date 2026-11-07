@@ -23,11 +23,29 @@ In order:
   whose records carry `A5045528045` were absent from that build
   (`W4410541693`, `W4415664258`, `W4393357993`; dedup folding them is the
   other explanation, neither tested); if it lags, the fetch itself is
-  sometimes incomplete, beyond excludes. (2) Let an exclude bind across a
+  sometimes incomplete, beyond excludes. Start from the reproducible case
+  (smartmove-site inbox, 2026-11-07): `W6949021637`, the Ro-Boat Race 2023
+  dataset (`10.5281/zenodo.13318421`), comes back from `GET /works/<doi
+  URL>` with five tracked members on their configured ids, yet every list
+  query returns count 0: `filter=doi:`, `filter=openalex_id:`, a quoted
+  title `search`, `author.id` plus `doi` (a positive control on another
+  DOI returned 1). Missing from the list index itself, not only the author
+  filter, so no fetch sees it and nothing warns; smartmove-site carries a
+  manual entry meanwhile. (2) Let an exclude bind across a
   merge: the winner remembers absorbed DOIs and an exclude on either hits
   it, so "exclude both DOIs of a pair" is quiet in every state and becomes
   the documented recipe. Excludes only: a field patch aimed at a preprint
-  landing on its published record would surprise. (3) When an exclude
+  landing on its published record would surprise. The same gap, upstream
+  (smartmove-site inbox, 2026-11-07): OpenAlex merged `W4247865621` into
+  `W3026107496`, whose main DOI is `10.1504/ijbdi.2020.10029526`; the old
+  `10.1504/ijbdi.2020.107375` survives only in its `locations`, so the
+  site's `featured` tag on it matched nothing for three days, signalled
+  only by a CI warning nobody reads (fixed there by retagging). A DOI
+  among one OpenAlex record's own locations names that same work, so
+  there every matcher binds (tags, overrides, excludes); the excludes-only
+  limit holds for DOIs that dedup absorbed from another record. Needs the
+  location DOIs kept through normalize, which today keeps the main DOI
+  only. (3) When an exclude
   matches nothing, look its DOI up (one batched `doi:` filter) and warn by
   name if a fetched record title-clusters with it ("excluded X is absent,
   but its twin Y arrived"); advisory, skipped on failure
@@ -97,7 +115,12 @@ In order:
   decoy dpsd-new's config records; 32 works) now mixes Zissis's maritime
   papers (MDM 2024 `W4400728518`, 2026 AIS and vessel-trajectory papers)
   with the homonym's electricity and water pricing, though the pilot
-  (2026-08-17) recorded the two as cleanly separated. Advisory: an outage, a 503 or a spent quota skips it with
+  (2026-08-17) recorded the two as cleanly separated. Also the one
+  mechanism that would surface a work OpenAlex holds but never lists
+  (`W6949021637`, the listing probe under the preprint-pair item), if its
+  DOI is on a member's ORCID list; that DOI returns nothing from the
+  batched `doi:` filter, so an unresolved DOI is retried singly (`GET
+  /works/<doi URL>`) before it is reported as on no entity. Advisory: an outage, a 503 or a spent quota skips it with
   a warning. Token optional from an env var, anonymous without; README and
   `docs/action.md` gain the registration steps when the code ships, not
   before. Later, DOI-less entries by title: `filter=title.search:`
