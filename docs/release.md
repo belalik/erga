@@ -29,7 +29,9 @@ carries `X.Y.Z.dev0` between releases.
        gh release create vX.Y.Z --title "erga X.Y.Z" --notes-file <notes>
 
    Watch the run, then confirm `https://pypi.org/pypi/erga/json` reports
-   the version.
+   the version. Find the run with `gh run list --workflow release.yml`;
+   filtering with `--commit` takes the full 40-character SHA only, and a
+   short one matches nothing at exit 0, which reads as "no run triggered".
 6. Set `__version__` to `X.Y.(Z+1).dev0`. Commit as "Back to dev version
    after vX.Y.Z", push.
 7. Route each consumer the release: an entry for its `docs/inbox.md`,
