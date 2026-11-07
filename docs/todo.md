@@ -1,10 +1,6 @@
 # TODO
 
-## Next steps (04-11-2026)
-
-In order:
-1. Session: release 0.9.4, the two ORCID fixes on main, after the live control on both consumers.
-2. Session: route the release to both consumers; smartmove-site's Zissis works lose the homonym's iD.
+## Next steps (07-11-2026)
 
 Any order:
 - Session: book-series venues from Crossref, specified and ready to build.

@@ -19,7 +19,7 @@ a fallback, never solved inside erga.
 
 ## Status
 
-v0.9.3 released 2026-10-17 (PyPI via Trusted Publishing, GitHub
+v0.9.4 released 2026-11-07 (PyPI via Trusted Publishing, GitHub
 Releases; repo public since v0.1.0, 2026-08-05). The pipeline is
 implemented end-to-end (config, fetch, normalize, dedup, curation,
 Crossref backfill, deterministic output, `build`/`verify` CLI) with unit
@@ -73,7 +73,10 @@ rewrote 40 of a consumer's venues in a week. v0.9.2 decodes HTML
 entities in titles and venues on every route a venue arrives by
 (OpenAlex, Crossref, the ratchet), after a site printed `&amp;`; v0.9.3
 drops JST's machine translations of other papers before dedup, known
-only by the tag JST appends to the title. See `docs/requirements-v1.md`
+only by the tag JST appends to the title. v0.9.4 publishes no iD for an
+author matched by name only, after a homonym's profile put a stranger's
+ORCID beside a member, and keeps upstream iDs through an `authors`
+override. See `docs/requirements-v1.md`
 for the v1 design, `docs/action.md` for the Action, and `docs/todo.md`
 for open work.
 
