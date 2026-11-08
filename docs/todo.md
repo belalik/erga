@@ -3,10 +3,11 @@
 ## Next steps (08-11-2026)
 
 In order:
-1. Session: the listing probe, step (1) of the preprint-pair item, from the reproducible Ro-Boat case.
+1. Session: the listing probe, step (1) of the preprint-pair item, from the reproducible Ro-Boat case; its answer shapes the include entry (Normal).
 
 Any order:
 - Session: the merge measurement (Normal, a merge drops an absorbed copy's venue): a scratch build per consumer, no code change unless nonzero.
+- Thomas: claim and clean his own OpenAlex profile, the watch case for the profile-claiming item (Normal).
 
 ## High
 
@@ -370,7 +371,8 @@ Any order:
   recipes doc (a consumer can tell its faculty). Overrides stay the
   immediate fix, since adoption will be slow. First, watch one claimed
   and cleaned profile across a few builds: whether curations hold
-  against OpenAlex's re-disambiguation is not documented
+  against OpenAlex's re-disambiguation is not documented. Thomas's own
+  profile can be the watch case, needing no member
 - An include entry in the curation files: fetch one OpenAlex work by id
   or DOI and credit it to a configured member, for a work no profile
   fetch returns. Today the only way in is a hand-typed manual entry,
@@ -379,7 +381,7 @@ Any order:
   but by no list query, and works on a detached or namesake profile
   (`A5004005331`, `A5103188414`). Shape it after the listing probe
   (preprint-pair step 1) settles whether lists lag; the Scopus check
-  (Low) would generate these entries (2026-11-08)
+  (`docs/scopus.md`, stage 1) would generate these entries (2026-11-08)
 ## Low
 - Curated DOIs are not checked for shape: `_field_value` turns any value
   into `https://doi.org/<value>`, so a manual or override `doi: 5`, or a
@@ -461,67 +463,9 @@ Any order:
   ORCID carve-out (section 12) covers reading a given iD's works as a
   check, not finding the iD, which stays the consumer's step. Reopen if a third consumer hits the discovery wall,
   or when the sources non-goal is revisited after v1
-- Scopus, post-v1 only (a v1 non-goal, section 12; declined at triage
-  2026-09-30). Two dpsd-new members asked (Gavalas 2026-09-25, Vosinakis
-  2026-09-30): fewer works, better metadata. The reason worth keeping:
-  ΕΘΑΑΕ, the Greek higher-education quality authority, now assesses staff
-  research from Scopus data, so it is the record Greek departments are
-  measured by. Its place follows requirements section 12's source roles
-  (2026-11-08): a check, then perhaps enrichment, never a record source.
-  Authors can now claim and fix their own OpenAlex profiles (the Normal
-  item), but few members will (Thomas, 2026-11-08), so Scopus's curated
-  author identity keeps its value: it confirms attribution with no member
-  involved. Terms (dev.elsevier.com, read
-  2026-11-08; the API Service Agreement defers to the institution's
-  Scopus licence): the IR/CRIS/VIVO use case lets an application run by
-  or for a subscribing institution (a contractor needs its own agreement)
-  retrieve its researchers' works and show publicly their ids, DOI,
-  authors with Scopus author ids, affiliations, title, year, source,
-  type, volume and pages, and citation counts; never abstracts; stored in
-  perpetuity, even after cancellation; each record attributed to Scopus
-  with a link to its record and cited-by list; cited-by counts never
-  aggregated for external display. Unanswered: whether a public JSON in a
-  public repo counts as that display (ask Elsevier support before stage
-  2). The agreement's AI clause (2.4) allows AI tools only in a closed
-  enterprise environment that shares no Elsevier content with a third
-  party: keep real Scopus responses out of Claude and Codex sessions,
-  fixtures synthetic as always. Stages (revised 2026-11-08): (1) a check
-  the maintainer runs from a subscriber network, the consumer's key from
-  an env var, skipped without one; no token, CI never calls Scopus. It
-  compares each member's Scopus profile with the build and writes
-  proposed curation for review: an exclude for a listed work Scopus does
-  not credit to the member, only where Scopus indexes the venue (its
-  silence means nothing for datasets, many theses, Greek-language
-  venues); an include for a credited work the build lacks but OpenAlex
-  holds (on a detached or namesake profile, or never listed); a report
-  line for credited works OpenAlex lacks (manual-entry candidates). It
-  stands in for the member confirmation round (dpsd-new, three of six
-  replied, 2026-09-25): Scopus decides membership, OpenAlex still
-  supplies every record, and the curation files hold only OpenAlex ids
-  and DOIs, so attribution, the public-JSON question and the abstracts
-  rule never arise. The report shows OpenAlex titles and ids, never
-  Scopus records, which keeps review sessions clear of the AI clause.
-  Needs the include entry (Normal); its gate is v1. (2) Optional and
-  last: per-field enrichment of works already fetched, matched by DOI
-  (authors with Scopus ids, affiliations, type), never abstracts, with a
-  token holder for CI and Elsevier's answer on the public JSON.
-  Scopus-only works entering the list is section 12's multi-source
-  merging, only on consumer demand. Access is half met (dpsd-new inbox, 2026-11-08):
-  Vosinakis confirmed the Aegean's subscription is by network address,
-  campus or university VPN, no account; nobody holds a token yet, which
-  CI would need. Tested the same day on minis with a fresh key (`erga`,
-  kept outside the repo): the VPN carries Elsevier's traffic (IPv4, no
-  split), and scopus.com reads "Brought to you by University of the
-  Aegean". On the VPN, Author Search and Scopus Search's COMPLETE view
-  answer 200; off it, both 401, while the STANDARD view answers any key
-  identically. COMPLETE is what erga would need: every author with a
-  Scopus `authid`, `afid`, given name and surname (capped at 100 per
-  record), plus abstract, keywords, funding; at most 25 results per
-  request, 20,000 Scopus Search calls a week. The key's Authentication
-  API call is refused (403), harmless: it only resolves shared
-  addresses. Elsevier's key-settings page (read 2026-11-08) says new keys
-  get no data access until an entitlement is verified; on the Aegean's
-  address it was immediate
+- Scopus, post-v1: stage 1, a check the maintainer runs from a subscriber
+  network that proposes curation (Scopus decides membership, OpenAlex
+  supplies records). Reasons, terms, stages, access test: `docs/scopus.md`
 - Surface no consumer has exercised yet, so unproven in the field before
   v1.0: `keep_distinct` overrides, thesis/software types in templates,
   keyless runs
@@ -536,8 +480,8 @@ Any order:
   wrote it: a failed local build leaves the old file in place, which then
   diffs as "no changes" (smartmove-site inbox, 2026-10-17); a stamp makes
   stale and fresh distinguishable, at the cost of a top-level field.
-  And whether a second source fits without a breaking change (the Scopus
-  item's stages, 2026-11-08): `source` an open vocabulary, since a
+  And whether a second source fits without a breaking change
+  (`docs/scopus.md`, stage 2): `source` an open vocabulary, since a
   renderer switching on it would break on a new value; `cited_by_count`
   naming the index that counted it (Scopus's differ, and its terms bar
   aggregating them publicly); room for ids beyond OpenAlex and ORCID (a

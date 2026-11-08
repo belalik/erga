@@ -923,6 +923,5 @@ subscriber reaches from its own network, though CI needs a per-institution
 token and Elsevier's terms would govern whatever it supplies. Its place is
 a check whose output is proposed curation (Scopus decides which works
 belong, OpenAlex still supplies them), with enrichment optional and last;
-stages, terms and the 2026-11-08 access test are in the Scopus item of
-`docs/todo.md`.
+reasons, terms, stages and the 2026-11-08 access test: `docs/scopus.md`.
 
