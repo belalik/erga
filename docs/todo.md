@@ -1,13 +1,12 @@
 # TODO
 
-## Next steps (07-11-2026)
+## Next steps (08-11-2026)
 
 In order:
-1. Session: release 0.9.5 with a fresh live control (`/code-review medium` and the Codex Sol review are through, 2026-11-08).
-2. Session: route 0.9.5 to both consumers: about 95 and 13 venues change; name the overrides it makes unneeded and the IFIP and ICST works still owed one. Say the first refresh PR lists them as a `venue` row under "Metadata drift from OpenAlex. Nothing to action.", which this time is erga and Crossref: spot-check a few volumes.
+1. Session: the listing probe, step (1) of the preprint-pair item, from the reproducible Ro-Boat case.
 
 Any order:
-- Session: the listing probe, step (1) of the preprint-pair item, from the reproducible Ro-Boat case.
+- Session: the merge measurement (Normal, a merge drops an absorbed copy's venue): a scratch build per consumer, no code change unless nonzero.
 
 ## High
 
@@ -44,7 +43,9 @@ Any order:
   `W3026107496`, whose main DOI is `10.1504/ijbdi.2020.10029526`; the old
   `10.1504/ijbdi.2020.107375` survives only in its `locations`, so the
   site's `featured` tag on it matched nothing for three days, signalled
-  only by a CI warning nobody reads (fixed there by retagging). A DOI
+  only by a CI warning nobody reads (fixed there by retagging; by
+  2026-11-08 the main DOI was `107375` again, so the retag matched
+  nothing in turn, and the site was advised to tag both). A DOI
   among one OpenAlex record's own locations names that same work, so
   there every matcher binds (tags, overrides, excludes); the excludes-only
   limit holds for DOIs that dedup absorbed from another record. Needs the

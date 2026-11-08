@@ -19,7 +19,7 @@ a fallback, never solved inside erga.
 
 ## Status
 
-v0.9.4 released 2026-11-07 (PyPI via Trusted Publishing, GitHub
+v0.9.5 released 2026-11-08 (PyPI via Trusted Publishing, GitHub
 Releases; repo public since v0.1.0, 2026-08-05). The pipeline is
 implemented end-to-end (config, fetch, normalize, dedup, curation,
 Crossref backfill, deterministic output, `build`/`verify` CLI) with unit
@@ -76,7 +76,10 @@ drops JST's machine translations of other papers before dedup, known
 only by the tag JST appends to the title. v0.9.4 publishes no iD for an
 author matched by name only, after a homonym's profile put a stranger's
 ORCID beside a member, and keeps upstream iDs through an `authors`
-override. See `docs/requirements-v1.md`
+override. v0.9.5 prints the volume a work appeared in, not the book
+series OpenAlex files it under, from Crossref's [series, volume]
+container titles (95 and 13 venues on the two consumers, nothing else).
+See `docs/requirements-v1.md`
 for the v1 design, `docs/action.md` for the Action, and `docs/todo.md`
 for open work.
 
