@@ -457,7 +457,22 @@ Any order:
   either a check that reports works the build lacks, nothing entering the
   JSON (the ORCID carve-out's shape), or an optional per-institution
   source. Reopen when a consumer institution has access and someone there
-  to hold the token
+  to hold the token. Access is half met (dpsd-new inbox, 2026-11-08):
+  Vosinakis confirmed the Aegean's subscription is by network address,
+  campus or university VPN, no account; nobody holds a token yet, which
+  CI would need. Tested the same day on minis with a fresh key (`erga`,
+  kept outside the repo): the VPN carries Elsevier's traffic (IPv4, no
+  split), and scopus.com reads "Brought to you by University of the
+  Aegean". On the VPN, Author Search and Scopus Search's COMPLETE view
+  answer 200; off it, both 401, while the STANDARD view answers any key
+  identically. COMPLETE is what erga would need: every author with a
+  Scopus `authid`, `afid`, given name and surname (capped at 100 per
+  record), plus abstract, keywords, funding; at most 25 results per
+  request, 20,000 Scopus Search calls a week. The key's Authentication
+  API call is refused (403), harmless: it only resolves shared
+  addresses. Elsevier's key-settings page (read 2026-11-08) says new keys
+  get no data access until an entitlement is verified; on the Aegean's
+  address it was immediate
 - Surface no consumer has exercised yet, so unproven in the field before
   v1.0: `keep_distinct` overrides, thesis/software types in templates,
   keyless runs
