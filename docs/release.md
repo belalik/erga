@@ -37,7 +37,10 @@ carries `X.Y.Z.dev0` between releases.
 7. Route each consumer the release: an entry for its `docs/inbox.md`,
    sent with `~/projects/claude-code-config/tools/route-inbox.sh` (no git
    there), naming the pin to move, every place it sits, and what changed
-   for that site. Consumers: smartmove-site (`uvx erga==X.Y.Z` in its
+   for that site. An override the release makes unneeded is shown by a
+   build without it, from a copy of the previous file with that record's
+   patched fields blanked: left in place, the ratchet supplies the
+   override's own value and the check cannot fail (2026-11-08). Consumers: smartmove-site (`uvx erga==X.Y.Z` in its
    deploy workflow, docs and CLAUDE.md) and dpsd-new (the Action's `uses:`
    and `version:`). If an earlier entry is still untriaged, send an
    amending entry that says so. Any local check the entry suggests runs
