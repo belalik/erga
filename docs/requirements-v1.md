@@ -902,9 +902,27 @@ scheduling, the `v1` tag policy, how CI exercises it) lives in
 
 No rendering or UI components, no Google Scholar (scraping is the failure
 mode this tool exists to replace), no database, no hosted service, no
-sources beyond OpenAlex plus manual entries. Multi-source merging (PubMed,
-ADS, DBLP) stays a documented architectural possibility only. One carve-out
+record sources beyond OpenAlex plus manual entries (other sources only
+fill fields or check, below). Multi-source merging (PubMed, ADS, DBLP)
+stays a documented architectural possibility only. One carve-out
 (2026-09-26): a tracked author's ORCID works list may be read as a check
 that reports works the build lacks, never as a record source; nothing read
 from ORCID enters the JSON. Access terms and limits: section 3.
+
+Source roles (2026-11-08). A build with OpenAlex alone is complete; every
+other source is an optional layer whose absence changes nothing in it.
+Each source takes one of four roles: the record source (OpenAlex, the CC0
+base); enrichment, filling fields on records the base supplied (Crossref,
+venues); a check, which reports and supplies nothing (ORCID, the carve-out
+above); and the human authority over all three (the curation files). A new
+source enters as enrichment or a check. A second record source is the
+multi-source merging above, reopened only on consumer demand: two record
+sources make two products, each with its own dedup, contamination and
+`verify` rules. Scopus set this rule: a subscription index that a
+subscriber reaches from its own network, though CI needs a per-institution
+token and Elsevier's terms would govern whatever it supplies. Its place is
+a check whose output is proposed curation (Scopus decides which works
+belong, OpenAlex still supplies them), with enrichment optional and last;
+stages, terms and the 2026-11-08 access test are in the Scopus item of
+`docs/todo.md`.
 

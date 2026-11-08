@@ -360,6 +360,26 @@ Any order:
   first: on both consumers, merges whose winner ends with no venue or the
   series while an absorbed copy carried one. Build inheritance only if
   nonzero, and never from a repository deposit (arXiv, Zenodo)
+- Authors can claim and fix their own OpenAlex profiles
+  (help.openalex.org/how-to/fixing-authors, read 2026-11-08): a
+  university email approves the claim at once; works added or removed,
+  duplicates merged and the ORCID set go live in about two days, and
+  removed works re-home to their owner. Name it as the member's first,
+  upstream fix wherever erga meets a wrong or split profile: `verify`'s
+  contamination and split-profile advice, the README, the consumer
+  recipes doc (a consumer can tell its faculty). Overrides stay the
+  immediate fix, since adoption will be slow. First, watch one claimed
+  and cleaned profile across a few builds: whether curations hold
+  against OpenAlex's re-disambiguation is not documented
+- An include entry in the curation files: fetch one OpenAlex work by id
+  or DOI and credit it to a configured member, for a work no profile
+  fetch returns. Today the only way in is a hand-typed manual entry,
+  which goes stale and masks upstream (the manual-stopgap item). Cases:
+  the Ro-Boat dataset `W6949021637`, returned by `GET /works/<doi URL>`
+  but by no list query, and works on a detached or namesake profile
+  (`A5004005331`, `A5103188414`). Shape it after the listing probe
+  (preprint-pair step 1) settles whether lists lag; the Scopus check
+  (Low) would generate these entries (2026-11-08)
 ## Low
 - Curated DOIs are not checked for shape: `_field_value` turns any value
   into `https://doi.org/<value>`, so a manual or override `doi: 5`, or a
@@ -446,18 +466,47 @@ Any order:
   2026-09-30): fewer works, better metadata. The reason worth keeping:
   ΕΘΑΑΕ, the Greek higher-education quality authority, now assesses staff
   research from Scopus data, so it is the record Greek departments are
-  measured by. Access terms, read from dev.elsevier.com/ir_cris_vivo.html
-  on 2026-09-30 (recheck before any plan): an application run by or for a
-  subscribing institution may show its researchers' titles, years, source
-  titles, DOIs, authors, affiliations, types and citation counts publicly,
-  never abstracts; a contractor needs its own agreement with Elsevier; the
-  API key is free, entitlement comes from the campus IP range or an
-  institutional token kept server-side, so CI needs the token; stored
-  metadata may be kept after the subscription ends. So never a default:
-  either a check that reports works the build lacks, nothing entering the
-  JSON (the ORCID carve-out's shape), or an optional per-institution
-  source. Reopen when a consumer institution has access and someone there
-  to hold the token. Access is half met (dpsd-new inbox, 2026-11-08):
+  measured by. Its place follows requirements section 12's source roles
+  (2026-11-08): a check, then perhaps enrichment, never a record source.
+  Authors can now claim and fix their own OpenAlex profiles (the Normal
+  item), but few members will (Thomas, 2026-11-08), so Scopus's curated
+  author identity keeps its value: it confirms attribution with no member
+  involved. Terms (dev.elsevier.com, read
+  2026-11-08; the API Service Agreement defers to the institution's
+  Scopus licence): the IR/CRIS/VIVO use case lets an application run by
+  or for a subscribing institution (a contractor needs its own agreement)
+  retrieve its researchers' works and show publicly their ids, DOI,
+  authors with Scopus author ids, affiliations, title, year, source,
+  type, volume and pages, and citation counts; never abstracts; stored in
+  perpetuity, even after cancellation; each record attributed to Scopus
+  with a link to its record and cited-by list; cited-by counts never
+  aggregated for external display. Unanswered: whether a public JSON in a
+  public repo counts as that display (ask Elsevier support before stage
+  2). The agreement's AI clause (2.4) allows AI tools only in a closed
+  enterprise environment that shares no Elsevier content with a third
+  party: keep real Scopus responses out of Claude and Codex sessions,
+  fixtures synthetic as always. Stages (revised 2026-11-08): (1) a check
+  the maintainer runs from a subscriber network, the consumer's key from
+  an env var, skipped without one; no token, CI never calls Scopus. It
+  compares each member's Scopus profile with the build and writes
+  proposed curation for review: an exclude for a listed work Scopus does
+  not credit to the member, only where Scopus indexes the venue (its
+  silence means nothing for datasets, many theses, Greek-language
+  venues); an include for a credited work the build lacks but OpenAlex
+  holds (on a detached or namesake profile, or never listed); a report
+  line for credited works OpenAlex lacks (manual-entry candidates). It
+  stands in for the member confirmation round (dpsd-new, three of six
+  replied, 2026-09-25): Scopus decides membership, OpenAlex still
+  supplies every record, and the curation files hold only OpenAlex ids
+  and DOIs, so attribution, the public-JSON question and the abstracts
+  rule never arise. The report shows OpenAlex titles and ids, never
+  Scopus records, which keeps review sessions clear of the AI clause.
+  Needs the include entry (Normal); its gate is v1. (2) Optional and
+  last: per-field enrichment of works already fetched, matched by DOI
+  (authors with Scopus ids, affiliations, type), never abstracts, with a
+  token holder for CI and Elsevier's answer on the public JSON.
+  Scopus-only works entering the list is section 12's multi-source
+  merging, only on consumer demand. Access is half met (dpsd-new inbox, 2026-11-08):
   Vosinakis confirmed the Aegean's subscription is by network address,
   campus or university VPN, no account; nobody holds a token yet, which
   CI would need. Tested the same day on minis with a fresh key (`erga`,
@@ -486,7 +535,14 @@ Any order:
   Decide at the same time whether the file carries the erga version that
   wrote it: a failed local build leaves the old file in place, which then
   diffs as "no changes" (smartmove-site inbox, 2026-10-17); a stamp makes
-  stale and fresh distinguishable, at the cost of a top-level field
+  stale and fresh distinguishable, at the cost of a top-level field.
+  And whether a second source fits without a breaking change (the Scopus
+  item's stages, 2026-11-08): `source` an open vocabulary, since a
+  renderer switching on it would break on a new value; `cited_by_count`
+  naming the index that counted it (Scopus's differ, and its terms bar
+  aggregating them publicly); room for ids beyond OpenAlex and ORCID (a
+  Scopus record id, author ids); and a per-record link for Scopus's
+  required attribution
 - CSL-JSON emitter (before the v1.0 promotion push; BibTeX is in Normal)
 - Per-author review export (markdown per tracked author) so the maintainer
   can send each person their list for confirmation before publishing. A
