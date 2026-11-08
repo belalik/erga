@@ -3,8 +3,8 @@
 ## Next steps (07-11-2026)
 
 In order:
-1. Session: Codex Sol review of the series-venue commit `5ba5827` (`/code-review medium` is through), then release 0.9.5 with a fresh live control.
-2. Session: route 0.9.5 to both consumers: about 95 and 13 venues change; name the overrides it makes unneeded and the IFIP and ICST works still owed one.
+1. Session: release 0.9.5 with a fresh live control (`/code-review medium` and the Codex Sol review are through, 2026-11-08).
+2. Session: route 0.9.5 to both consumers: about 95 and 13 venues change; name the overrides it makes unneeded and the IFIP and ICST works still owed one. Say the first refresh PR lists them as a `venue` row under "Metadata drift from OpenAlex. Nothing to action.", which this time is erga and Crossref: spot-check a few volumes.
 
 Any order:
 - Session: the listing probe, step (1) of the preprint-pair item, from the reproducible Ro-Boat case.
@@ -352,6 +352,13 @@ Any order:
   `S4210212887`), and the
   author-filtered listing lag if the probe confirms it. Check OpenAlex's
   current support channel first
+- A merge drops an absorbed copy's venue: `merge_group` inherits only the
+  abstract and the open-access URL, so a winner with no venue or only a
+  held-back series loses the volume a twin named (Codex review of the
+  series change, 2026-11-08; not a regression, 0.9.4 lost it too). Measure
+  first: on both consumers, merges whose winner ends with no venue or the
+  series while an absorbed copy carried one. Build inheritance only if
+  nonzero, and never from a repository deposit (arXiv, Zenodo)
 ## Low
 - Curated DOIs are not checked for shape: `_field_value` turns any value
   into `https://doi.org/<value>`, so a manual or override `doi: 5`, or a

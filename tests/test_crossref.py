@@ -50,16 +50,27 @@ def test_a_chapter_in_a_series_names_the_book_second() -> None:
     )
 
 
+def test_container_titles_are_stripped() -> None:
+    padded = {"type": "book-chapter", "container-title": [" Series ", "  A Book "]}
+    assert container_of(padded) == Container("A Book", in_series=True)
+    assert container_of({"container-title": ["  A Journal "]}) == Container("A Journal")
+
+
 def test_two_titles_read_as_a_series_on_chapters_only() -> None:
-    # Positions decide, so the rule stays on the one record type measured.
-    for message in (
-        {"type": "journal-article", "container-title": ["Journal A", "Journal A Online"]},
-        {"container-title": ["Journal A", "Journal A Online"]},
-        {"type": "book-chapter", "container-title": ["Series", "Book", "Third"]},
-        {"type": "book-chapter", "container-title": ["Series", " "]},
+    # Positions decide, so the rule stays on the one record type measured;
+    # anything else keeps the first title, as before 0.9.5.
+    for message, first in (
+        (
+            {"type": "journal-article", "container-title": ["Journal A", "Journal A Online"]},
+            "Journal A",
+        ),
+        ({"container-title": ["Journal A", "Journal A Online"]}, "Journal A"),
+        ({"type": "book-chapter", "container-title": ["Series", "Book", "Third"]}, "Series"),
+        ({"type": "book-chapter", "container-title": ["Series", " "]}, "Series"),
+        # Two usable titles out of three entries is not the measured shape.
+        ({"type": "book-chapter", "container-title": ["Series", 5, "Book"]}, "Series"),
     ):
-        found = container_of(message)
-        assert found is not None and not found.in_series, message
+        assert container_of(message) == Container(first), message
 
 
 def test_datacite_404_skipped_silently() -> None:

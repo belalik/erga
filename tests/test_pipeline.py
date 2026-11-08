@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,7 @@ from erga.crossref import CrossrefClient
 from erga.http import Response
 from erga.model import Work
 from erga.openalex import OpenAlexClient
+from erga.output import document, dump
 from erga.pipeline import (
     BuildStats,
     backfill_venues,
@@ -22,10 +24,32 @@ from erga.pipeline import (
 HOMONYM_AUTHORSHIP = {"author": HOMONYM}
 
 
+COLLEAGUE = {"author": {"id": "https://openalex.org/A5000000002", "display_name": "Ann Colleague"}}
+
+
 def _build_one(
     tmp_path: Path, authorships: list[dict[str, Any]], overrides: str | None = None
 ) -> BuildStats:
-    """One fetched work W1 through a real build, both members by openalex_id."""
+    """One fetched work W1 through a real build."""
+    raw = {
+        "id": "https://openalex.org/W1",
+        "title": "Reached through a co-author",
+        "publication_year": 2026,
+        "type": "article",
+        "primary_location": {"source": {"display_name": "Journal of Psychoceramics"}},
+        "authorships": [COLLEAGUE, *authorships],
+    }
+    return _build(tmp_path, [raw], overrides)
+
+
+def _build(
+    tmp_path: Path,
+    raws: list[dict[str, Any]],
+    overrides: str | None = None,
+    crossref: tuple[tuple[str, dict[str, Any]], ...] = (),
+) -> BuildStats:
+    """Fetched works through a real build, both members by openalex_id;
+    `crossref` answers each bare DOI with its message."""
     (tmp_path / "erga.yml").write_text(
         "mailto: you@example.org\n"
         "authors:\n"
@@ -36,18 +60,9 @@ def _build_one(
     )
     if overrides is not None:
         (tmp_path / "overrides.yml").write_text(overrides, encoding="utf-8")
-    raw = {
-        "id": "https://openalex.org/W1",
-        "title": "Reached through a co-author",
-        "publication_year": 2026,
-        "type": "article",
-        "primary_location": {"source": {"display_name": "Journal of Psychoceramics"}},
-        "authorships": [
-            {"author": {"id": "https://openalex.org/A5000000002", "display_name": "Ann Colleague"}},
-            *authorships,
-        ],
-    }
     transport = FakeTransport()
+    for doi, message in crossref:
+        transport.add("api.crossref.org/works/" + doi.replace("/", "%2F"), {}, {"message": message})
     for openalex_id, name in (("A5000000001", "Josiah Carberry"), ("A5000000002", "Ann Colleague")):
         transport.add(
             f"api.openalex.org/authors/{openalex_id}",
@@ -55,7 +70,7 @@ def _build_one(
             {"id": f"https://openalex.org/{openalex_id}", "display_name": name, "works_count": 1},
         )
     transport.add(
-        "api.openalex.org/works", {"cursor": "*"}, {"meta": {"next_cursor": None}, "results": [raw]}
+        "api.openalex.org/works", {"cursor": "*"}, {"meta": {"next_cursor": None}, "results": raws}
     )
     config = load_config(tmp_path / "erga.yml")
     return build(
@@ -194,7 +209,8 @@ def test_backfill_replaces_a_series_with_the_volume() -> None:
     )
     works = [
         series_work("W1", "10.5555/ch1"),
-        # Crossref names no volume: the series stays, the build prints no less.
+        # Crossref names no volume: the series stays, the build prints no less,
+        # in the fetch's spelling, not the previous output's.
         series_work("W2", "10.5555/ch2"),
         series_work("W3"),
         # Known from the previous build: no lookup.
@@ -202,7 +218,7 @@ def test_backfill_replaces_a_series_with_the_volume() -> None:
         # A series in the previous output is no replacement.
         series_work("W5", "10.5555/ch1"),
     ]
-    previous = {"10.5555/ch4": "Human-Computer Interaction", "W5": LNCS.upper()}
+    previous = {"10.5555/ch4": "Human-Computer Interaction", "W2": LNCS.upper(), "W5": LNCS.upper()}
     stats = BuildStats()
     backfill_venues(works, previous, crossref, stats, SERIES_NAMES)
     assert [w.venue for w in works] == [
@@ -231,7 +247,10 @@ def test_backfill_leaves_a_curated_or_settled_venue() -> None:
 
 
 def test_a_crossref_failure_still_prints_the_series() -> None:
+    asked: list[str] = []
+
     def down(url: str, params: dict[str, str]) -> Response:
+        asked.append(url)
         return Response(503, None)
 
     crossref = CrossrefClient(down, mailto="m@example.org", delay=0.0, sleep=no_sleep)
@@ -239,7 +258,9 @@ def test_a_crossref_failure_still_prints_the_series() -> None:
     stats = BuildStats()
     backfill_venues(works, {}, crossref, stats, SERIES_NAMES)
     assert [w.venue for w in works] == [LNCS, LNCS]
-    assert [w for w in stats.warnings if w.startswith("Crossref backfill stopped")]
+    assert len([w for w in stats.warnings if w.startswith("Crossref backfill stopped")]) == 1
+    # A persistent failure stops the lookups: the second DOI is never asked.
+    assert asked and not [url for url in asked if "ch2" in url]
 
 
 def test_a_previous_series_fills_a_gap_as_replaceable() -> None:
@@ -265,6 +286,59 @@ def test_the_plain_backfill_takes_the_volume_not_the_series() -> None:
     backfill_venues([work], {}, crossref, stats)
     assert work.venue == "Semantic Multimedia"
     assert stats.backfilled_crossref == 1
+
+
+def test_the_first_build_after_0_9_4_resolves_series_end_to_end(tmp_path: Path) -> None:
+    """The wiring: the fetch's series names reach normalize and the backfill.
+    W2's platform names LNCS only through W1's book-series source, and the
+    previous output holds the series 0.9.4 printed for both."""
+
+    def chapter(work_id: str, doi: str, location: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "id": f"https://openalex.org/{work_id}",
+            "title": f"Chapter {work_id}",
+            "publication_year": 2020,
+            "type": "book-chapter",
+            "doi": f"https://doi.org/{doi}",
+            "primary_location": location,
+            "authorships": [COLLEAGUE],
+        }
+
+    raws = [
+        chapter("W1", "10.5555/ch1", {"source": {"display_name": LNCS, "type": "book series"}}),
+        chapter(
+            "W2",
+            "10.5555/ch2",
+            {
+                "source": {"display_name": "Springer eBooks", "type": "ebook platform"},
+                "raw_source_name": "Lecture Notes in Computer Science",
+            },
+        ),
+    ]
+    printed = [
+        Work(id="W1", title="Chapter W1", venue=LNCS, doi="https://doi.org/10.5555/ch1"),
+        Work(
+            id="W2",
+            title="Chapter W2",
+            venue="Lecture Notes in Computer Science",
+            doi="https://doi.org/10.5555/ch2",
+        ),
+    ]
+    (tmp_path / "publications.json").write_text(dump(document(printed)), encoding="utf-8")
+    stats = _build(
+        tmp_path,
+        raws,
+        crossref=(
+            ("10.5555/ch1", in_series("Semantic Multimedia")),
+            ("10.5555/ch2", in_series("Human-Computer Interaction")),
+        ),
+    )
+    written = json.loads((tmp_path / "publications.json").read_text(encoding="utf-8"))
+    assert {w["id"]: w["venue"] for w in written["works"]} == {
+        "W1": "Semantic Multimedia",
+        "W2": "Human-Computer Interaction",
+    }
+    assert "series resolved to their volume 2," in stats.summary()
 
 
 def test_machine_translations_are_excluded_and_named() -> None:
