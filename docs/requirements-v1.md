@@ -886,6 +886,11 @@ scheduling, the `v1` tag policy, how CI exercises it) lives in
   publishes no iD, since a homonym's profile would otherwise show a
   stranger's beside a member, and an `authors` override keeps the
   upstream iDs of the authors it lists (section 4, the `authors` field).
+- **v0.9.5** (released 2026-11-08): a book series is no longer printed as
+  a work's venue: the backfill takes the book or proceedings volume from
+  the previous output or from Crossref's [series, volume] container
+  titles, and the series stays only when no volume is known (stages 4
+  and 9).
 - **CSL-JSON and BibTeX emitters** slot in after v0.1 as demand warrants,
   before the v1.0 promotion push.
 - **v1.0**: strong README (before/after dedup story, head-on "why not
