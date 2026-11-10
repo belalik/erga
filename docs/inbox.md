@@ -18,3 +18,5 @@ Routed proposals awaiting triage. See `~/projects/claude-code-config/docs/routin
 Also, as a data point for 0.9.5: the first live run on dpsd-new (#16) matched the release's control exactly. 95 venues from erga plus 8 from the overrides added for the series it keeps, 97 series resolved (the two IGI chapters whose overrides were dropped included), nothing else.
 
 No tier or breadth verdict: triage there decides.
+
+- Routed from dpsd-new (2026-11-10, minis): a member's own English spelling and her one published byline differ in a digraph. Βιλελμίνη Καλαμπρατσίδου writes "Vilelmini Kalabratsidou" on her own website (Thomas checked) and on the department's old English page, while her one candidate work in the corpus is bylined "Vilelmini Kalampratsidou" (μπ as `mp` there, `b` in her own use). She is not tracked yet (`docs/staff-bylines.md`, Candidate table). Possibly relevant to how erga matches or suggests aliases: a byline search seeded from the person's preferred spelling alone would miss this work; a μπ↔b / ντ↔d variant may need to be an alias rather than a typo.
