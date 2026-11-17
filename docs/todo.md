@@ -3,7 +3,7 @@
 ## Next steps (17-11-2026)
 
 In order:
-1. Session: release the removal reasons as 0.9.6 (`docs/release.md`), so dpsd-new's weekly PR says why a work left. Reviewed and fixed 2026-11-17: Codex's five findings are in, the XPAC reason is confirmed live on dpsd-new's five removals.
+1. Session: release 0.9.6 (`docs/release.md`), the removal reasons, reviewed and fixed, so dpsd-new's weekly PR says why a work left.
 
 Any order:
 - Session: step (2) of the preprint-pair item, an exclude that binds across a merge (Normal).
@@ -14,7 +14,7 @@ Any order:
 ## High
 
 ## Normal
-- A listing page without a results list ends the main fetch quietly (`OpenAlexClient.fetch_works` reads `data.get("results", [])`, and `_walk` stops on an empty page), so a garbled 200 mid-walk reads as a smaller corpus; only the shrink warning would catch it. Read the page as strictly as `in_listing` does (`FetchError` when `results` is not a list of works with ids), so the build aborts and keeps the old output; `_pages`, used by `resolve_author`, has the same lenient read (found by the Codex review of 2026-11-17).
+- The main fetch reads a listing page leniently (`fetch_works`, `data.get("results", [])`), so a garbled 200 mid-walk ends the walk as a smaller corpus that only the shrink warning flags. Read it as strictly as `in_listing` (`FetchError` unless `results` is a list of works with ids), so the build aborts and keeps the old output; `_pages` (`resolve_author`) reads the same way.
 - Reshape this list to the convention's ~2 lines an item: each action as one line, its measurements and cases moved into the docs they belong to (its own session; `~/projects/claude-code-config/docs/todo-convention.md`)
 - Preprint/published pairs defeat DOI excludes (dpsd-new inbox,
   2026-09-29, three entries). A homonym's pairs merge one week and split

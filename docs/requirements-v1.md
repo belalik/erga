@@ -727,7 +727,8 @@ Ported from the production origin pipeline with generalization deltas noted.
     is written, and `build` turns any error in them into a warning, so
     they never cost the output or fail the build. They are not batched,
     deliberately (2026-11-17): a removal costs one or two single lookups,
-    which OpenAlex does not charge, so 150 removals add about a minute of
+    which OpenAlex does not charge (a list costs one credit; its "Get
+    single entities" page, checked 2026-11-17), so 150 removals add about a minute of
     pacing to that week's run, a case the shrink warning below already
     flags; a batch would still need single lookups for merged and deleted
     ids.
