@@ -51,6 +51,13 @@ def test_a_removal_whose_doi_is_listed_under_a_new_id_says_so() -> None:
     assert "  https://doi.org/10.5555/W2\n  Why: now listed as W3, same DOI\n" in page
 
 
+def test_a_removal_folded_into_a_twin_already_listed_names_the_twin() -> None:
+    twin = "https://doi.org/10.5555/pair"
+    previous = [record("W1", doi=twin), record("W2", doi=twin)]
+    delta = compute_delta(previous, [record("W2", doi=twin)])
+    assert delta.removal_notes == {"W1": "now listed as W2, same DOI"}
+
+
 def test_identical_documents_are_unchanged() -> None:
     delta = compute_delta([record("W1"), record("W2")], [record("W1"), record("W2")])
     assert delta.unchanged

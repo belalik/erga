@@ -51,7 +51,7 @@ def read_output(path: Path) -> list[dict[str, Any]] | None:
         return None
     records: list[Any] = data["works"]
     # Only the shapes the readers touch are checked: a work that is not a
-    # mapping, a byline that is not a list of mappings, or a title, open
+    # mapping, a byline that is not a list of mappings, or a title, DOI, open
     # access or tags field work_from_record cannot read back is not a file
     # erga wrote, and dropping the odd entry would let a hand-edited or
     # truncated file pass as a real, smaller output.
@@ -65,6 +65,7 @@ def read_output(path: Path) -> list[dict[str, Any]] | None:
             return None
         if not (
             isinstance(record.get("title") or "", str)
+            and isinstance(record.get("doi") or "", str)
             and isinstance(record.get("open_access") or {}, dict)
             and isinstance(record.get("tags") or [], list)
         ):

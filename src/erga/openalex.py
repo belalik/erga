@@ -8,7 +8,7 @@ import unicodedata
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from itertools import chain
-from typing import Any
+from typing import Any, TypeGuard
 from urllib.parse import quote
 
 from erga.config import AuthorConfig
@@ -75,6 +75,21 @@ def _batches(ids: list[str]) -> Iterator[list[str]]:
     """OR-pipe-sized slices of an id list."""
     for start in range(0, len(ids), OR_BATCH_SIZE):
         yield ids[start : start + OR_BATCH_SIZE]
+
+
+def _is_trace_record(data: Any) -> TypeGuard[dict[str, Any]]:
+    """A single-work answer tracing can read: an id, and authorships in the
+    shape `identified_authorships` reads (each a mapping whose author, if
+    any, is a mapping with a string id or none)."""
+    if not (isinstance(data, dict) and isinstance(data.get("id"), str) and data["id"]):
+        return False
+    authorships = data.get("authorships")
+    return isinstance(authorships, list) and all(
+        isinstance(entry, dict)
+        and isinstance(author := entry.get("author") or {}, dict)
+        and isinstance(author.get("id") or "", str)
+        for entry in authorships
+    )
 
 
 def _works_params(filters: str, select: str, include_xpac: bool) -> dict[str, str]:
@@ -152,6 +167,10 @@ class OpenAlexClient:
             return None
         if response.status_code != 200:
             raise FetchError(f"{url}: HTTP {response.status_code}")
+        if not isinstance(response.data, dict):
+            # Every OpenAlex answer is a JSON object. Only a 404 says a thing
+            # is missing; a 200 that is not one says nothing.
+            raise FetchError(f"{url}: HTTP 200 without a JSON object")
         return response.data
 
     def _walk(self, path: str, params: dict[str, str]) -> Iterator[Any]:
@@ -231,51 +250,68 @@ class OpenAlexClient:
     def fetch_works(
         self, author_ids: list[str], *, include_xpac: bool = False
     ) -> list[dict[str, Any]]:
-        """All works by the given authors, deduplicated by work id."""
-        return list(self._list_works("author.id", author_ids, WORKS_SELECT, include_xpac).values())
+        """All works by the given authors, deduplicated by work id.
 
-    def _list_works(
-        self, key: str, ids: list[str], select: str, include_xpac: bool
-    ) -> dict[str, dict[str, Any]]:
-        """Works matching any of the ids under one filter key, by work id.
-
-        The ids are batched with the OR-pipe filter, each batch walked to its
-        end. A work matching two batches (co-authors) arrives twice and is
-        kept once.
+        Authors are batched with the OR-pipe filter; each batch is walked to
+        its end. Co-authored works arrive once per matching batch; the id
+        dedup here collapses them.
         """
         works: dict[str, dict[str, Any]] = {}
+        for data in self._works_listing("author.id", author_ids, WORKS_SELECT, include_xpac):
+            for raw in data.get("results", []):
+                works.setdefault(strip_openalex_host(raw["id"]), raw)
+        return list(works.values())
+
+    def _works_listing(
+        self, key: str, ids: list[str], select: str, include_xpac: bool
+    ) -> Iterator[dict[str, Any]]:
+        """Every response of the works listing for any of the ids under one
+        filter key: batched with the OR-pipe filter, each batch walked to its
+        end. Callers read the pages, each as strictly as it needs."""
         for batch in _batches(ids):
-            params = _works_params(f"{key}:" + "|".join(batch), select, include_xpac)
-            for page in self._pages("/works", params):
-                for raw in page:
-                    works.setdefault(strip_openalex_host(raw["id"]), raw)
-        return works
+            yield from self._walk(
+                "/works", _works_params(f"{key}:" + "|".join(batch), select, include_xpac)
+            )
 
     def work(self, work_id: str) -> dict[str, Any] | None:
-        """One work by OpenAlex id, or None if it names nothing.
+        """One work by OpenAlex id, or None if OpenAlex answers 404.
 
         A merged id answers with the surviving record, and an XPAC record
         answers like any other (both verified live 2026-11-17), so this sees
-        what the default listing hides.
+        what the default listing hides. Any other answer than a record with
+        an id and readable authorships raises FetchError: a malformed reply
+        is no evidence that a work is gone or changed hands.
         """
-        data: dict[str, Any] | None = self._get(
-            f"/works/{work_id}", {"select": TRACE_SELECT}, ok_missing=True
-        )
+        data = self._get(f"/works/{work_id}", {"select": TRACE_SELECT}, ok_missing=True)
+        if data is None:
+            return None
+        if not _is_trace_record(data):
+            raise FetchError(f"{OPENALEX_BASE}/works/{work_id}: not a work record")
         return data
 
     def work_by_doi(self, doi: str) -> dict[str, Any] | None:
         """One work by bare DOI, as `work` answers by id."""
         return self.work("doi:" + quote(doi, safe="/"))
 
-    def listed_by_default(self, work_ids: list[str]) -> set[str]:
-        """Which of these works the default listing, without `include_xpac`,
-        returns.
+    def in_listing(self, work_ids: list[str], *, include_xpac: bool) -> set[str]:
+        """Which of these works the works listing returns, with or without
+        `include_xpac`.
 
         Asked of the listing rather than read from each record's `is_xpac`,
         because the two disagree: a reference entry whose record read
         `is_xpac: false` was listed only with `include_xpac` (2026-11-17).
+        A page that is not a list of ids raises FetchError, since an empty
+        answer here reads as "not listed".
         """
-        return set(self._list_works("openalex_id", work_ids, "id", include_xpac=False))
+        found: set[str] = set()
+        for data in self._works_listing("openalex_id", work_ids, "id", include_xpac):
+            rows = data.get("results")
+            if not isinstance(rows, list) or not all(
+                isinstance(row, dict) and isinstance(row.get("id"), str) for row in rows
+            ):
+                raise FetchError(f"{OPENALEX_BASE}/works: a listing page without work ids")
+            found.update(strip_openalex_host(row["id"]) for row in rows)
+        return found
 
     def works_by_byline(
         self, name: str, *, exclude_ids: list[str], limit: int, include_xpac: bool = False

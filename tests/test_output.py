@@ -103,6 +103,8 @@ def test_read_output_returns_the_records_of_a_file_erga_wrote(tmp_path: Path) ->
         b'{"works": [{"id": "W1", "open_access": "https://example.org/w1"}]}',
         b'{"works": [{"id": "W1", "title": ["t"]}]}',
         b'{"works": [{"id": "W1", "tags": 3}]}',
+        # A DOI the delta's same-DOI note could not compare.
+        b'{"works": [{"id": "W1", "doi": 123}]}',
     ],
 )
 def test_read_output_rejects_files_erga_did_not_write(tmp_path: Path, content: bytes) -> None:

@@ -73,9 +73,10 @@ Then:
   writing the JSON. Every build says in one line what changed since the
   output it found in place; `--summary` also writes that as a Markdown page
   for a reviewer, with additions and removals listed and metadata drift
-  counted. Each removal says why it left: folded into another record, merged
-  or re-attributed upstream, or still in OpenAlex but returned only with
-  `include_xpac`. Only a build with `--summary` looks these up.
+  counted. A removal says why it left when OpenAlex can tell: folded into
+  another record, merged or re-attributed upstream, or still in OpenAlex but
+  returned only with `include_xpac`. Only a build with `--summary` looks
+  these up, and a failed lookup is a warning, never a failed build.
 - `erga diff OLD NEW` prints the same page for any two output files. It
   works offline, so of the removal reasons it gives only "now listed as …,
   same DOI".

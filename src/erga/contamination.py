@@ -148,7 +148,11 @@ _Labels = dict[str, tuple[str, str | None]]
 
 
 def identified_authorships(raw: dict[str, Any]) -> _Authorships:
-    """(bare author id, authorship) for authors OpenAlex could identify."""
+    """(bare author id, authorship) for authors OpenAlex could identify.
+
+    `openalex._is_trace_record` checks this shape on a traced work before
+    it gets here; a change to what this reads changes that check too.
+    """
     pairs = []
     for entry in raw.get("authorships") or []:
         author = entry.get("author") or {}

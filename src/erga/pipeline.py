@@ -267,13 +267,17 @@ def trace_removals(
     `compute_delta` has already named the removals whose DOI a listed
     record carries. A work this fetch still returned was folded or dropped
     by the build itself. The rest are looked up one by one, by id and then
-    DOI, which follows upstream merges and answers for XPAC records too;
-    the ids found are then asked of the default listing, the one the fetch
-    walks, since a record's own `is_xpac` does not say whether that
-    listing returns it. Report only, never a re-add: a survivor's byline
-    can match a namesake's name too. Manual entries are the maintainer's
-    file and get no lookup. Advisory: a failed lookup stops the rest with a
-    warning, keeping the notes already found, and never fails the build.
+    DOI, which follows upstream merges and answers for XPAC records too.
+    The ids found are then asked of the listing the fetch walks, and those
+    it misses of the XPAC listing as well: neither a record's own `is_xpac`
+    nor an absence alone says why the fetch missed it. Report only, never a
+    re-add: a survivor's byline can match a namesake's name too. Manual
+    entries are the maintainer's file and get no lookup.
+
+    Advisory: a failed lookup stops the rest with a warning, and a failed
+    listing leaves out only the reasons that needed it; every note already
+    established is kept. A malformed answer counts as a failure, never as
+    evidence. `build` catches anything else.
     """
     notes = delta.removal_notes
     fetched_ids = {strip_openalex_host(raw["id"]) for raw in raw_works}
@@ -289,25 +293,38 @@ def trace_removals(
         else:
             pending.append((work_id, doi_key(record["doi"]) if record.get("doi") else None))
 
-    # Per work: what OpenAlex answered (None: nothing, or a body without an
-    # id) and whether only the DOI found it, which shows no merge. A failure
-    # stops the lookups and keeps what they had found.
+    # Per work: what OpenAlex answered (None: a 404 by id and by DOI) and
+    # whether only the DOI found it, which shows no merge. A failure stops
+    # the lookups and keeps what they had found.
     found: dict[str, tuple[dict[str, Any], bool] | None] = {}
     warnings: list[str] = []
     try:
         for work_id, doi in pending:
             hit, by_doi = openalex.work(work_id), False
-            if not (hit and hit.get("id")) and doi:
+            if hit is None and doi:
                 hit, by_doi = openalex.work_by_doi(doi), True
-            found[work_id] = (hit, by_doi) if hit and hit.get("id") else None
+            found[work_id] = None if hit is None else (hit, by_doi)
     except FetchError as exc:
         warnings.append(f"removed works not all traced in OpenAlex: {exc}")
     survivors = {w: strip_openalex_host(entry[0]["id"]) for w, entry in found.items() if entry}
-    unfetched = set(survivors.values()) - fetched_ids
+    unfetched = sorted(set(survivors.values()) - fetched_ids)
+    # `walked`: those the fetch's own listing returns; `xpac_only`: those it
+    # misses that the XPAC listing returns. None where a listing could not
+    # be asked, so only the reasons resting on that one are left out.
+    unlisted = "removed works not checked against the OpenAlex listing"
+    walked: set[str] | None = None
+    xpac_only: set[str] | None = set()
     try:
-        visible = unfetched if include_xpac else openalex.listed_by_default(sorted(unfetched))
+        walked = openalex.in_listing(unfetched, include_xpac=include_xpac)
     except FetchError as exc:
-        return [*warnings, f"removed works not traced in OpenAlex: {exc}"]
+        warnings.append(f"{unlisted}: {exc}")
+    missed = [w for w in unfetched if walked is not None and w not in walked]
+    if missed and not include_xpac:
+        try:
+            xpac_only = openalex.in_listing(missed, include_xpac=True)
+        except FetchError as exc:
+            xpac_only = None
+            warnings.append(f"{unlisted} with `include_xpac`: {exc}")
 
     for work_id, entry in found.items():
         if entry is None:
@@ -327,11 +344,18 @@ def trace_removals(
         reasons = []
         if not any(author_id in tracked_ids for author_id, _ in identified_authorships(hit)):
             reasons.append("on no configured profile now")
-        if survivor not in visible:
-            reasons.append("listed only with `include_xpac`, which the config leaves off")
-        if not reasons:
-            reasons.append("on a configured profile and listed, yet not fetched: rerun first")
-        notes[work_id] = f"{where}, {'; '.join(reasons)}"
+        # With a listing's answer unknown, no reason may rest on it.
+        if walked is not None and survivor in walked:
+            if not reasons:
+                reasons.append("on a configured profile and listed, yet not fetched: rerun first")
+        elif walked is not None and xpac_only is not None:
+            reasons.append(
+                "listed only with `include_xpac`, which the config leaves off"
+                if survivor in xpac_only
+                else "not in the works listing, even with `include_xpac`"
+            )
+        if reasons:
+            notes[work_id] = f"{where}, {'; '.join(reasons)}"
     return warnings
 
 
@@ -437,9 +461,14 @@ def build(
     if not dry_run:
         write_atomic(config.output_path, dump(doc))
         stats.written = True
-    # Last, after the write: an advisory lookup must never cost the output.
+    # Last, after the write: an advisory lookup must never cost the output,
+    # nor fail the build. The client turns a failed or malformed answer into
+    # a FetchError the trace handles; this catches whatever that missed.
     if explain_removals:
-        stats.warnings.extend(
-            trace_removals(stats.delta, raw_works, tracked_ids, openalex, config.include_xpac)
-        )
+        try:
+            stats.warnings.extend(
+                trace_removals(stats.delta, raw_works, tracked_ids, openalex, config.include_xpac)
+            )
+        except Exception as exc:
+            stats.warnings.append(f"removed works not traced: {type(exc).__name__}: {exc}")
     return stats

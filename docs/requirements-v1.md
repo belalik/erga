@@ -709,18 +709,28 @@ Ported from the production origin pipeline with generalization deltas noted.
     work belongs on the site at all; each entry carries the audit tell
     (tracked person, co-authors, venue, DOI, a manual-entry mark),
     because a same-name researcher's works arrive as additions and
-    `verify` cannot see them. Each listed removal also says why it left,
-    report only, never a re-add. Read from the two files (`compute_delta`,
+    `verify` cannot see them. A listed removal also says why it left,
+    when that is known, report only, never a re-add. Read from the two files (`compute_delta`,
     so `erga diff` gives it too): its DOI now on another listed record.
     Looked up by a build that writes the page (`trace_removals` in
     `pipeline.py`): still in this fetch, so the build's own merge or
     exclusion; otherwise, fetched from OpenAlex by id and then DOI,
     merged upstream (found by DOI only, "its DOI is now on", since that
-    shows no merge), on no configured profile now, returned by the
-    default listing only with `include_xpac`, or on a configured profile
-    and listed yet missed by the fetch. Manual entries get no lookup; a
-    failed lookup stops the rest with a warning and keeps what it found;
-    the lookups run after the output is written, so they never cost it.
+    shows no merge), on no configured profile now, missing from the
+    listing the fetch walks and returned by the XPAC one (asked, never
+    inferred from the absence), missing from both, or on a configured
+    profile and listed yet missed by the fetch. Manual entries get no
+    lookup. Only a 404 counts as "gone": a malformed answer is a failure
+    with a warning, never a reason. A failed lookup stops the rest with a
+    warning; a failed listing drops only the reasons that needed it; every
+    reason already established is kept. The lookups run after the output
+    is written, and `build` turns any error in them into a warning, so
+    they never cost the output or fail the build. They are not batched,
+    deliberately (2026-11-17): a removal costs one or two single lookups,
+    which OpenAlex does not charge, so 150 removals add about a minute of
+    pacing to that week's run, a case the shrink warning below already
+    flags; a batch would still need single lookups for merged and deleted
+    ids.
     *Counted per field*: every other change
     OpenAlex makes (citations, abstract, open access, venue, dates,
     title, DOI, type, byline names and iDs), one table labelled as drift

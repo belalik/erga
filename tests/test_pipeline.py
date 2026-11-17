@@ -4,10 +4,13 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from conftest import HOMONYM, FakeTransport, no_sleep
+from erga import pipeline
 from erga.config import load_config
 from erga.crossref import CrossrefClient
-from erga.delta import Delta, render_markdown
+from erga.delta import LISTED_CAP, Delta, render_markdown
 from erga.http import Response
 from erga.model import Work
 from erga.openalex import OpenAlexClient
@@ -33,7 +36,10 @@ COLLEAGUE = {"author": {"id": "https://openalex.org/A5000000002", "display_name"
 
 
 def _build_one(
-    tmp_path: Path, authorships: list[dict[str, Any]], overrides: str | None = None
+    tmp_path: Path,
+    authorships: list[dict[str, Any]],
+    overrides: str | None = None,
+    explain_removals: bool = False,
 ) -> BuildStats:
     """One fetched work W1 through a real build."""
     raw = {
@@ -44,7 +50,7 @@ def _build_one(
         "primary_location": {"source": {"display_name": "Journal of Psychoceramics"}},
         "authorships": [COLLEAGUE, *authorships],
     }
-    return _build(tmp_path, [raw], overrides)
+    return _build(tmp_path, [raw], overrides, explain_removals=explain_removals)
 
 
 def _build(
@@ -433,16 +439,23 @@ def _hit(work_id: str, *author_ids: str) -> dict[str, Any]:
     }
 
 
+def _found(path: str, work_id: str, *author_ids: str) -> Route:
+    """The single-work answer at `works/{path}`: `_hit`'s record."""
+    return (f"api.openalex.org/works/{path}", {}, _hit(work_id, *author_ids))
+
+
 def _missing(url_part: str, status: int = 404) -> Route:
     return (url_part, {}, {}, status)
 
 
-def _listing(filter_value: str, *work_ids: str) -> Route:
-    """The default listing's answer to an `openalex_id:` filter."""
+def _listing(filter_value: str, *work_ids: str, xpac: bool = False) -> Route:
+    """The listing's answer to an `openalex_id:` filter: the default one, or
+    with `xpac` the one that includes XPAC. Each matches its own requests
+    only (a None in the subset matches an absent parameter)."""
     rows = [{"id": f"https://openalex.org/{w}"} for w in work_ids]
     return (
         "api.openalex.org/works",
-        {"filter": filter_value, "cursor": "*"},
+        {"filter": filter_value, "cursor": "*", "include_xpac": "true" if xpac else None},
         {"meta": {"next_cursor": None}, "results": rows},
     )
 
@@ -470,25 +483,32 @@ def _trace(
 def test_a_removal_the_default_listing_hides_is_named_xpac() -> None:
     """dpsd-new's refresh, 2026-11-17: a reference entry on a member's
     profile, whose record reads `is_xpac: false`, stopped being listed."""
+    single = _found("W51", "W51", MEMBER_ID)
     notes, warnings, transport = _trace(
         [_gone("W51", "10.5555/w51")],
-        [("api.openalex.org/works/W51", {}, _hit("W51", MEMBER_ID)), _listing("openalex_id:W51")],
+        [single, _listing("openalex_id:W51"), _listing("openalex_id:W51", "W51", xpac=True)],
     )
     assert notes == {"W51": f"still in OpenAlex, {XPAC_NOTE}"}
     assert warnings == []
-    # Positive control: the same work, listed, reads as a missed fetch instead.
+    # The single record without XPAC, then the default listing, then the XPAC
+    # one for what the default missed; each listing asks for ids only.
+    assert [params.get("include_xpac") for _, params in transport.calls] == [None, None, "true"]
+    assert [params["select"] for _, params in transport.calls[1:]] == ["id", "id"]
+    # Missing from the XPAC listing too: an absence alone names no cause.
     notes, _, _ = _trace(
         [_gone("W51", "10.5555/w51")],
-        [
-            ("api.openalex.org/works/W51", {}, _hit("W51", MEMBER_ID)),
-            _listing("openalex_id:W51", "W51"),
-        ],
+        [single, _listing("openalex_id:W51"), _listing("openalex_id:W51", xpac=True)],
+    )
+    assert notes == {"W51": "still in OpenAlex, not in the works listing, even with `include_xpac`"}
+    # Positive control: the same work, listed, reads as a missed fetch, and
+    # the XPAC listing is never asked.
+    notes, _, transport = _trace(
+        [_gone("W51", "10.5555/w51")], [single, _listing("openalex_id:W51", "W51")]
     )
     assert notes == {
         "W51": "still in OpenAlex, on a configured profile and listed, yet not fetched: rerun first"
     }
-    # Asked once of the single record, once of the listing, never with XPAC on.
-    assert [params.get("include_xpac") for _, params in transport.calls] == [None, None]
+    assert len(transport.calls) == 2
 
 
 def test_removals_the_build_made_itself_need_no_lookup() -> None:
@@ -513,7 +533,11 @@ def test_a_fetched_twin_sharing_the_doi_does_not_explain_a_removal() -> None:
     say), not the removed work, so the work itself is looked up."""
     notes, _, _ = _trace(
         [_gone("W62", "10.5555/twin")],
-        [("api.openalex.org/works/W62", {}, _hit("W62", MEMBER_ID)), _listing("openalex_id:W62")],
+        [
+            _found("W62", "W62", MEMBER_ID),
+            _listing("openalex_id:W62"),
+            _listing("openalex_id:W62", "W62", xpac=True),
+        ],
         raw=[{"id": "https://openalex.org/W63", "doi": "https://doi.org/10.5555/twin"}],
     )
     assert notes == {"W62": f"still in OpenAlex, {XPAC_NOTE}"}
@@ -524,8 +548,8 @@ def test_a_removal_merged_upstream_names_the_survivor() -> None:
         [_gone("W70"), _gone("W72")],
         [
             # Re-attributed: the member's authorship carries no configured id now.
-            ("api.openalex.org/works/W70", {}, _hit("W71", "A5000000099")),
-            ("api.openalex.org/works/W72", {}, _hit("W73", MEMBER_ID)),
+            _found("W70", "W71", "A5000000099"),
+            _found("W72", "W73", MEMBER_ID),
             _listing("openalex_id:W71", "W71"),
         ],
         raw=[{"id": "https://openalex.org/W73"}],
@@ -541,10 +565,11 @@ def test_a_removal_is_found_by_doi_when_its_id_is_gone() -> None:
         [_gone("W74", "10.5555/w74"), _gone("W75", "10.5555/w75")],
         [
             _missing("api.openalex.org/works/W74"),
-            ("api.openalex.org/works/doi:10.5555/w74", {}, _hit("W76", "A5000000099")),
+            _found("doi:10.5555/w74", "W76", "A5000000099"),
             _missing("api.openalex.org/works/W75"),
             _missing("api.openalex.org/works/doi:10.5555/w75"),
             _listing("openalex_id:W76"),
+            _listing("openalex_id:W76", "W76", xpac=True),
         ],
     )
     assert notes == {
@@ -554,24 +579,88 @@ def test_a_removal_is_found_by_doi_when_its_id_is_gone() -> None:
     }
 
 
-def test_with_xpac_included_the_listing_is_not_asked() -> None:
+def test_with_xpac_included_its_listing_is_the_one_asked() -> None:
+    single = _found("W80", "W80", MEMBER_ID)
     notes, _, transport = _trace(
-        [_gone("W80")],
-        [("api.openalex.org/works/W80", {}, _hit("W80", MEMBER_ID))],
-        include_xpac=True,
+        [_gone("W80")], [single, _listing("openalex_id:W80", "W80", xpac=True)], include_xpac=True
     )
-    assert notes["W80"].endswith("yet not fetched: rerun first")
-    assert len(transport.calls) == 1
+    assert notes == {
+        "W80": "still in OpenAlex, on a configured profile and listed, yet not fetched: rerun first"
+    }
+    assert [params.get("include_xpac") for _, params in transport.calls] == [None, "true"]
+    notes, _, transport = _trace(
+        [_gone("W80")], [single, _listing("openalex_id:W80", xpac=True)], include_xpac=True
+    )
+    assert notes == {"W80": "still in OpenAlex, not in the works listing, even with `include_xpac`"}
+    assert len(transport.calls) == 2  # the walked listing is the XPAC one: asked once
+
+
+def test_a_doi_is_quoted_once_into_the_lookup_path() -> None:
+    notes, _, transport = _trace(
+        [_gone("W77", "10.1002/(sici)1097-4571")],
+        [
+            _missing("api.openalex.org/works/W77"),
+            _missing("api.openalex.org/works/doi:10.1002/%28sici%291097-4571"),
+        ],
+    )
+    assert notes == {"W77": "gone from OpenAlex: neither its id nor its DOI finds a work"}
+    assert transport.calls[1][0] == "https://api.openalex.org/works/doi:10.1002/%28sici%291097-4571"
+
+
+def test_only_the_removals_the_page_lists_are_looked_up() -> None:
+    removed = [_gone(f"W{3000 + i}") for i in range(LISTED_CAP + 1)]
+    notes, _, transport = _trace(removed, [_missing("api.openalex.org/works/W3")])
+    assert len(notes) == len(transport.calls) == LISTED_CAP
+    assert f"W{3000 + LISTED_CAP}" not in notes
+
+
+def test_more_than_a_hundred_survivors_are_listed_in_batches() -> None:
+    ids = [f"W{4000 + i}" for i in range(101)]
+    routes = [_found(w, w, MEMBER_ID) for w in ids]
+    routes += [
+        _listing("openalex_id:" + "|".join(ids[:100]), *ids[:100]),
+        _listing(f"openalex_id:{ids[100]}", ids[100]),
+    ]
+    notes, _, transport = _trace([_gone(w) for w in ids], routes)
+    assert len(notes) == 101
+    assert set(notes.values()) == {
+        "still in OpenAlex, on a configured profile and listed, yet not fetched: rerun first"
+    }
+    assert len(transport.calls) == 101 + 2
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {},  # a 200 with no id
+        None,  # a 200 that is not JSON
+        ["https://openalex.org/W85"],
+        {"id": "https://openalex.org/W85"},  # no authorships
+        {"id": "https://openalex.org/W85", "authorships": [None]},
+        {"id": "https://openalex.org/W85", "authorships": [{"author": "A5000000001"}]},
+        {"id": 85, "authorships": []},
+    ],
+)
+def test_a_malformed_answer_is_a_failure_never_a_reason(body: Any) -> None:
+    """Neither "gone" nor "on no configured profile" may rest on an answer
+    that is not a work record."""
+    notes, warnings, _ = _trace(
+        [_gone("W85", "10.5555/w85")], [("api.openalex.org/works/W85", {}, body)]
+    )
+    assert notes == {}
+    assert len(warnings) == 1
+    assert warnings[0].startswith("removed works not all traced in OpenAlex: ")
 
 
 def test_a_failed_lookup_stops_the_rest_and_keeps_what_was_found() -> None:
     notes, warnings, transport = _trace(
         [_gone("W88"), _gone("W89"), _gone("W90"), _gone("W92"), _gone("W91")],
         [
-            ("api.openalex.org/works/W88", {}, {}),  # a 200 with no id: nothing found
-            ("api.openalex.org/works/W89", {}, _hit("W89", MEMBER_ID)),
+            _missing("api.openalex.org/works/W88"),
+            _found("W89", "W89", MEMBER_ID),
             _missing("api.openalex.org/works/W90", status=403),
             _listing("openalex_id:W89"),
+            _listing("openalex_id:W89", "W89", xpac=True),
         ],
         raw=[{"id": "https://openalex.org/W91"}],
     )
@@ -586,17 +675,88 @@ def test_a_failed_lookup_stops_the_rest_and_keeps_what_was_found() -> None:
     assert not any("W92" in url for url, _ in transport.calls)
 
 
-def test_a_failed_listing_warns_and_adds_no_upstream_note() -> None:
+@pytest.mark.parametrize(
+    ("body", "status"),
+    [({}, 403), ({"meta": {"next_cursor": None}}, 200)],  # a refusal; a page without results
+)
+def test_a_failed_listing_keeps_the_reasons_that_need_no_listing(
+    body: dict[str, Any], status: int
+) -> None:
     notes, warnings, _ = _trace(
-        [_gone("W93")],
+        [_gone("W93"), _gone("W94"), _gone("W95"), _gone("W97")],
         [
-            ("api.openalex.org/works/W93", {}, _hit("W93", MEMBER_ID)),
-            ("api.openalex.org/works", {"filter": "openalex_id:W93"}, {}, 403),
+            _found("W93", "W93", MEMBER_ID),
+            _missing("api.openalex.org/works/W94"),
+            _found("W95", "W96", MEMBER_ID),
+            _found("W97", "W97", "A5000000099"),
+            ("api.openalex.org/works", {"filter": "openalex_id:W93|W97"}, body, status),
+        ],
+        raw=[{"id": "https://openalex.org/W96"}],
+    )
+    assert notes == {
+        # W93 is on a member's profile: only the listing could say why it left.
+        "W94": "gone from OpenAlex: neither its id nor its DOI finds a work",
+        "W95": "merged upstream into W96, which this build fetched",
+        "W97": "still in OpenAlex, on no configured profile now",
+    }
+    assert len(warnings) == 1
+    assert warnings[0].startswith("removed works not checked against the OpenAlex listing: ")
+
+
+def test_a_failed_xpac_listing_keeps_what_the_default_listing_said() -> None:
+    notes, warnings, _ = _trace(
+        [_gone("W83"), _gone("W84")],
+        [
+            _found("W83", "W83", MEMBER_ID),
+            _found("W84", "W84", MEMBER_ID),
+            _listing("openalex_id:W83|W84", "W83"),
+            (
+                "api.openalex.org/works",
+                {"filter": "openalex_id:W84", "include_xpac": "true"},
+                {},
+                403,
+            ),
         ],
     )
-    assert notes == {}
+    # W84 is missing from the default listing, and only the XPAC one could say why.
+    assert notes == {
+        "W83": "still in OpenAlex, on a configured profile and listed, yet not fetched: rerun first"
+    }
     assert len(warnings) == 1
-    assert warnings[0].startswith("removed works not traced in OpenAlex: ")
+    assert warnings[0].startswith(
+        "removed works not checked against the OpenAlex listing with `include_xpac`: "
+    )
+
+
+def test_a_failed_lookup_and_a_failed_listing_are_both_reported() -> None:
+    _, warnings, _ = _trace(
+        [_gone("W81"), _gone("W82")],
+        [
+            _found("W81", "W81", MEMBER_ID),
+            _missing("api.openalex.org/works/W82", status=403),
+            ("api.openalex.org/works", {"filter": "openalex_id:W81"}, {}, 403),
+        ],
+    )
+    assert [w.split(":")[0] for w in warnings] == [
+        "removed works not all traced in OpenAlex",
+        "removed works not checked against the OpenAlex listing",
+    ]
+
+
+def test_a_trace_that_breaks_costs_neither_the_output_nor_the_build(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def broken(*args: object) -> list[str]:
+        raise RuntimeError("unforeseen")
+
+    monkeypatch.setattr(pipeline, "trace_removals", broken)
+    (tmp_path / "publications.json").write_text(
+        dump(document([Work(id="W99", title="A reference entry")])), encoding="utf-8"
+    )
+    stats = _build_one(tmp_path, [], explain_removals=True)
+    assert "removed works not traced: RuntimeError: unforeseen" in stats.warnings
+    assert stats.written
+    assert '"id": "W1"' in (tmp_path / "publications.json").read_text(encoding="utf-8")
 
 
 def test_a_build_prints_why_a_listed_work_was_removed(tmp_path: Path) -> None:
@@ -610,8 +770,9 @@ def test_a_build_prints_why_a_listed_work_was_removed(tmp_path: Path) -> None:
         "authorships": [COLLEAGUE],
     }
     routes: tuple[Route, ...] = (
-        ("api.openalex.org/works/W99", {}, _hit("W99", MEMBER_ID)),
+        _found("W99", "W99", MEMBER_ID),
         _listing("openalex_id:W99"),
+        _listing("openalex_id:W99", "W99", xpac=True),
     )
     stats = _build(tmp_path, [raw], openalex_routes=routes, explain_removals=True)
     page = render_markdown(stats.delta, stats.warnings)
