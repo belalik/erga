@@ -9,13 +9,14 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from itertools import chain
 from typing import Any
+from urllib.parse import quote
 
 from erga.config import AuthorConfig
 from erga.errors import FetchError
 from erga.http import Pacer, Transport, request_with_retry
 
 OPENALEX_BASE = "https://api.openalex.org"
-AUTHOR_BATCH_SIZE = 100  # OR-pipe filters accept at most 100 values
+OR_BATCH_SIZE = 100  # OR-pipe filters accept at most 100 values
 PER_PAGE = 100
 WORKS_SELECT = ",".join(
     [
@@ -37,6 +38,8 @@ WORKS_SELECT = ",".join(
 AUTHOR_SELECT = "id,display_name,display_name_alternatives,works_count"
 # What a byline search needs to judge, type and rank a work: no abstract.
 BYLINE_SELECT = "id,title,authorships,publication_year,primary_location,type,doi,cited_by_count"
+# What tracing a removed work needs: where it went and whose it is now.
+TRACE_SELECT = "id,authorships"
 
 
 def strip_openalex_host(value: str) -> str:
@@ -66,6 +69,12 @@ def byline_search_key(name: str) -> tuple[str, ...]:
     case and rotation ("Xanthi Papageorgiou", "Papageorgiou, Xanthi")."""
     words = [word.casefold() for word in _byline_words(name)]
     return min((tuple(words[i:] + words[:i]) for i in range(len(words))), default=())
+
+
+def _batches(ids: list[str]) -> Iterator[list[str]]:
+    """OR-pipe-sized slices of an id list."""
+    for start in range(0, len(ids), OR_BATCH_SIZE):
+        yield ids[start : start + OR_BATCH_SIZE]
 
 
 def _works_params(filters: str, select: str, include_xpac: bool) -> dict[str, str]:
@@ -222,20 +231,51 @@ class OpenAlexClient:
     def fetch_works(
         self, author_ids: list[str], *, include_xpac: bool = False
     ) -> list[dict[str, Any]]:
-        """All works by the given authors, deduplicated by work id.
+        """All works by the given authors, deduplicated by work id."""
+        return list(self._list_works("author.id", author_ids, WORKS_SELECT, include_xpac).values())
 
-        Authors are batched with the OR-pipe filter; each batch is walked to
-        its end. Co-authored works arrive once per matching batch; the id
-        dedup here collapses them.
+    def _list_works(
+        self, key: str, ids: list[str], select: str, include_xpac: bool
+    ) -> dict[str, dict[str, Any]]:
+        """Works matching any of the ids under one filter key, by work id.
+
+        The ids are batched with the OR-pipe filter, each batch walked to its
+        end. A work matching two batches (co-authors) arrives twice and is
+        kept once.
         """
         works: dict[str, dict[str, Any]] = {}
-        for start in range(0, len(author_ids), AUTHOR_BATCH_SIZE):
-            batch = author_ids[start : start + AUTHOR_BATCH_SIZE]
-            params = _works_params("author.id:" + "|".join(batch), WORKS_SELECT, include_xpac)
+        for batch in _batches(ids):
+            params = _works_params(f"{key}:" + "|".join(batch), select, include_xpac)
             for page in self._pages("/works", params):
                 for raw in page:
                     works.setdefault(strip_openalex_host(raw["id"]), raw)
-        return list(works.values())
+        return works
+
+    def work(self, work_id: str) -> dict[str, Any] | None:
+        """One work by OpenAlex id, or None if it names nothing.
+
+        A merged id answers with the surviving record, and an XPAC record
+        answers like any other (both verified live 2026-11-17), so this sees
+        what the default listing hides.
+        """
+        data: dict[str, Any] | None = self._get(
+            f"/works/{work_id}", {"select": TRACE_SELECT}, ok_missing=True
+        )
+        return data
+
+    def work_by_doi(self, doi: str) -> dict[str, Any] | None:
+        """One work by bare DOI, as `work` answers by id."""
+        return self.work("doi:" + quote(doi, safe="/"))
+
+    def listed_by_default(self, work_ids: list[str]) -> set[str]:
+        """Which of these works the default listing, without `include_xpac`,
+        returns.
+
+        Asked of the listing rather than read from each record's `is_xpac`,
+        because the two disagree: a reference entry whose record read
+        `is_xpac: false` was listed only with `include_xpac` (2026-11-17).
+        """
+        return set(self._list_works("openalex_id", work_ids, "id", include_xpac=False))
 
     def works_by_byline(
         self, name: str, *, exclude_ids: list[str], limit: int, include_xpac: bool = False
@@ -271,8 +311,7 @@ class OpenAlexClient:
         # a contaminated iD's hundred-plus profiles go in batches under the
         # value cap, which a longer list fails with HTTP 400 (all verified
         # live 2026-09-26).
-        for start in range(0, len(exclude_ids), AUTHOR_BATCH_SIZE):
-            batch = exclude_ids[start : start + AUTHOR_BATCH_SIZE]
+        for batch in _batches(exclude_ids):
             filters += ",author.id:!" + "|".join(batch)
         pages = self._walk("/works", _works_params(filters, BYLINE_SELECT, include_xpac))
         first = next(pages)

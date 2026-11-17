@@ -58,3 +58,22 @@ def test_build_writes_the_summary_even_on_dry_run(
     out = capsys.readouterr().out
     assert "since previous output: first build, 1 work, nothing to compare against" in out
     assert f"wrote {summary}" in out
+
+
+def test_build_looks_up_removals_only_for_the_summary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Only the page prints the reasons, so a build without it skips the lookups."""
+    shutil.copy(GOLDEN / "erga.yml", tmp_path / "erga.yml")
+    asked: list[bool] = []
+
+    def fake_build(*args: object, explain_removals: bool = False, **kwargs: object) -> BuildStats:
+        asked.append(explain_removals)
+        return BuildStats(total=1, delta=Delta(total=1))
+
+    monkeypatch.setattr(cli, "_clients", lambda config: (None, None))
+    monkeypatch.setattr(cli, "build", fake_build)
+    argv = ["build", "--config", str(tmp_path / "erga.yml"), "--dry-run"]
+    assert cli.main(argv) == 0
+    assert cli.main([*argv, "--summary", str(tmp_path / "summary.md")]) == 0
+    assert asked == [False, True]

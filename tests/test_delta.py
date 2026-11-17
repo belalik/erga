@@ -37,6 +37,20 @@ def test_first_build_has_nothing_to_compare() -> None:
     assert delta.headline() == "first build, 1 work, nothing to compare against"
 
 
+def test_a_removal_whose_doi_is_listed_under_a_new_id_says_so() -> None:
+    """Offline, so `erga diff` gives it too: the same work, a new id."""
+    previous = [record("W1"), record("W2"), record("manual-x", doi="https://doi.org/10.5555/W9")]
+    current = [record("W1"), record("W3", doi="https://doi.org/10.5555/w2"), record("W9")]
+    delta = compute_delta(previous, current)
+    assert [r["id"] for r in delta.removed] == ["W2", "manual-x"]
+    assert delta.removal_notes == {
+        "W2": "now listed as W3, same DOI",
+        "manual-x": "now listed as W9, same DOI",
+    }
+    page = render_markdown(delta, [])
+    assert "  https://doi.org/10.5555/W2\n  Why: now listed as W3, same DOI\n" in page
+
+
 def test_identical_documents_are_unchanged() -> None:
     delta = compute_delta([record("W1"), record("W2")], [record("W1"), record("W2")])
     assert delta.unchanged

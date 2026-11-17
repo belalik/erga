@@ -49,7 +49,7 @@ def _print_warnings(warnings: list[str]) -> None:
 
 def _run_build(config: Config, dry_run: bool, summary: Path | None) -> int:
     openalex, crossref = _clients(config)
-    stats = build(config, openalex, crossref, dry_run=dry_run)
+    stats = build(config, openalex, crossref, dry_run=dry_run, explain_removals=summary is not None)
     _print_warnings(stats.warnings)
     if dry_run:
         print(f"dry run: {stats.summary()}")

@@ -13,6 +13,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from erga.model import doi_key
+
 Record = dict[str, Any]
 
 # Per listed section. A listed entry costs about 320 characters against
@@ -24,6 +26,11 @@ MAX_COAUTHORS = 6
 # Share of the previous build above which removals draw a warning: a merge
 # wave removes a handful, a lost author batch removes dozens.
 SHRINK_FRACTION = 0.1
+
+
+def listed(items: list[Any]) -> list[Any]:
+    """The part of a listed section the page shows."""
+    return items[:LISTED_CAP]
 
 
 def _plural(count: int, noun: str) -> str:
@@ -55,6 +62,10 @@ class Delta:
     retracked: list[tuple[Record, list[str]]] = field(default_factory=list)
     field_counts: Counter[str] = field(default_factory=Counter)  # drift, by field
     tag_changes: int = 0
+    # Why a removed work left, by its id. A DOI now on another listed record
+    # is read from the two files; anything else needs a build's lookup
+    # upstream, which `erga diff`, offline, does not make.
+    removal_notes: dict[str, str] = field(default_factory=dict)
 
     @property
     def first_build(self) -> bool:
@@ -115,6 +126,14 @@ def compute_delta(previous: list[Record] | None, current: list[Record]) -> Delta
     delta.previous_total = len(old)
     delta.added = [new[i] for i in new if i not in old]
     delta.removed = [old[i] for i in old if i not in new]
+    # A removal whose DOI a listed record carries lives on in that record (a
+    # title cluster's winner switched, a stopgap retired, a fold into a twin
+    # already listed): still listed by id, as stage 12 rules, but said here,
+    # where no lookup is needed.
+    by_doi = {doi_key(r["doi"]): i for i, r in new.items() if r.get("doi")}
+    for record in delta.removed:
+        if record.get("doi") and (now := by_doi.get(doi_key(record["doi"]))):
+            delta.removal_notes[str(record["id"])] = f"now listed as {now}, same DOI"
     for work_id, record in new.items():
         before = old.get(work_id)
         if before is None:
@@ -173,7 +192,7 @@ def _describe_retracking(item: tuple[Record, list[str]]) -> str:
 
 def _section(title: str, items: list[Any], describe: Callable[[Any], str]) -> list[str]:
     out = [f"#### {title} ({len(items)})", ""]
-    out.extend(describe(item) for item in items[:LISTED_CAP])
+    out.extend(describe(item) for item in listed(items))
     if len(items) > LISTED_CAP:
         out.append(f"\n_{len(items) - LISTED_CAP} more not listed; see the raw diff._")
     out.append("")
@@ -196,7 +215,12 @@ def render_markdown(delta: Delta, warnings: list[str]) -> str:
         ]
         lines += _section("Added", delta.added, _describe)
     if delta.removed:
-        lines += _section("Removed", delta.removed, _describe)
+
+        def describe_removal(record: Record) -> str:
+            note = delta.removal_notes.get(str(record.get("id")))
+            return _describe(record) + (f"\n  Why: {note}" if note else "")
+
+        lines += _section("Removed", delta.removed, describe_removal)
     if delta.retracted:
         lines += _section("Retracted", delta.retracted, _describe)
     if delta.retracked:

@@ -1,11 +1,13 @@
 # TODO
 
-## Next steps (08-11-2026)
+## Next steps (17-11-2026)
 
 In order:
-1. Session: the listing probe, step (1) of the preprint-pair item, from the reproducible Ro-Boat case; its answer shapes the include entry (Normal).
+1. Session: a Codex review of the removal reasons (commit of 2026-11-17, `trace_removals`), then release them as 0.9.6, so dpsd-new's weekly PR says why a work left.
 
 Any order:
+- Session: step (2) of the preprint-pair item, an exclude that binds across a merge (Normal).
+- Session, once dpsd-new's batch 5 lands (about 2026-11-24): the `include_xpac` measurement on both consumers (Normal).
 - Session: the merge measurement (Normal, a merge drops an absorbed copy's venue): a scratch build per consumer, no code change unless nonzero.
 - Thomas: claim and clean his own OpenAlex profile, the watch case for the profile-claiming item (Normal).
 
@@ -22,20 +24,9 @@ Any order:
   excluded `10.1186/s12889-024-18384-2`) into dpsd-new's refresh PR
   (run 36591757287), unflagged by the contamination check. dpsd-new now
   excludes both DOIs of every pair, so a "matched nothing" line recurs
-  weekly and trains the reader to skip it. In order: (1) probe whether
-  OpenAlex's author-filtered listing lags its work records: three works
-  whose records carry `A5045528045` were absent from that build
-  (`W4410541693`, `W4415664258`, `W4393357993`; dedup folding them is the
-  other explanation, neither tested); if it lags, the fetch itself is
-  sometimes incomplete, beyond excludes. Start from the reproducible case
-  (smartmove-site inbox, 2026-11-07): `W6949021637`, the Ro-Boat Race 2023
-  dataset (`10.5281/zenodo.13318421`), comes back from `GET /works/<doi
-  URL>` with five tracked members on their configured ids, yet every list
-  query returns count 0: `filter=doi:`, `filter=openalex_id:`, a quoted
-  title `search`, `author.id` plus `doi` (a positive control on another
-  DOI returned 1). Missing from the list index itself, not only the author
-  filter, so no fetch sees it and nothing warns; smartmove-site carries a
-  manual entry meanwhile. (2) Let an exclude bind across a
+  weekly and trains the reader to skip it. In order: (1) done 2026-11-17:
+  no listing lag; what looked like one is XPAC (requirements, XPAC
+  paragraph; `local/listing-probe/`). (2) Let an exclude bind across a
   merge: the winner remembers absorbed DOIs and an exclude on either hits
   it, so "exclude both DOIs of a pair" is quiet in every state and becomes
   the documented recipe. Excludes only: a field patch aimed at a preprint
@@ -54,7 +45,8 @@ Any order:
   only. (3) When an exclude
   matches nothing, look its DOI up (one batched `doi:` filter) and warn by
   name if a fetched record title-clusters with it ("excluded X is absent,
-  but its twin Y arrived"); advisory, skipped on failure
+  but its twin Y arrived"); advisory, skipped on failure.
+  `OpenAlexClient.work` (the removal reasons) already answers by DOI
 - A manual stopgap is never reported once OpenAlex catches up: dedup
   merges the fetched record into it, the manual entry wins the rank
   (`_rank_key`), and the build says nothing, so it stays and masks
@@ -121,12 +113,11 @@ Any order:
   decoy dpsd-new's config records; 32 works) now mixes Zissis's maritime
   papers (MDM 2024 `W4400728518`, 2026 AIS and vessel-trajectory papers)
   with the homonym's electricity and water pricing, though the pilot
-  (2026-08-17) recorded the two as cleanly separated. Also the one
-  mechanism that would surface a work OpenAlex holds but never lists
-  (`W6949021637`, the listing probe under the preprint-pair item), if its
-  DOI is on a member's ORCID list; that DOI returns nothing from the
-  batched `doi:` filter, so an unresolved DOI is retried singly (`GET
-  /works/<doi URL>`) before it is reported as on no entity. Advisory: an outage, a 503 or a spent quota skips it with
+  (2026-08-17) recorded the two as cleanly separated. The batched `doi:`
+  filter passes `include_xpac=true` whatever the config says, or an XPAC
+  work on a member's ORCID list (the Ro-Boat dataset `W6949021637`,
+  probe 2026-11-17) reads as on no entity; the report then names it as
+  XPAC, the one reason the build skipped it. Advisory: an outage, a 503 or a spent quota skips it with
   a warning. Token optional from an env var, anonymous without; README and
   `docs/action.md` gain the registration steps when the code ships, not
   before. Later, DOI-less entries by title: `filter=title.search:`
@@ -292,20 +283,6 @@ Any order:
   and a line naming the value could (the static case, one source named
   after one edition, is its own item above). Changes the frozen golden summary
   (`tests/fixtures/golden/expected-summary.md`); regenerate and read by eye
-- Say where a removed work went (smartmove-site inbox, 2026-10-17). OpenAlex
-  merged the arXiv preprint `W4399252589` into the MDM 2024 record
-  `W4400728518`, whose Zissis authorship sits on the homonym's
-  `A5103188414`, so no configured profile fetches it and the delta said
-  only "1 removed" (erga's own v0.9.1 routing called it upstream noise).
-  The old id 404s with no redirect; the removed record's DOI
-  (`10.48550/arxiv.2405.19870`) resolves to the survivor through
-  `/works/doi:`. For each removed work with a DOI, one batched `doi:`
-  filter; a different W-id goes on the removed line ("merged into W…,
-  the member's authorship there credited to A…, not configured"), no DOI
-  reads "not traced". Report only, never re-add: the survivor's byline
-  matches the decoy's name too. Advisory, skipped on failure. Shares the
-  lookup with the preprint-exclude item's step (3) and the ORCID
-  reconciliation; may change the golden summary
 - Docs from the smartmove-site inbox (2026-09-23): README, one sentence
   that an undeclared check reads a profile holding mostly someone else's
   works backwards, listing the real person's few works as the strangers;
@@ -351,8 +328,9 @@ Any order:
   between merged and separate (the Malisova pairs), IEEE back-catalogue
   DOIs dated by Crossref registration (the Low DOI-year item), source
   names glued from two variants or carrying `...` (`S4210217939`,
-  `S4210212887`), and the
-  author-filtered listing lag if the probe confirms it. Check OpenAlex's
+  `S4210212887`), proceedings editors appended as authors (`W2991238467`:
+  nine authors, four on the paper's own PDF byline; dpsd-new inbox,
+  2026-11-09, excluded there by id). Check OpenAlex's
   current support channel first
 - A merge drops an absorbed copy's venue: `merge_group` inherits only the
   abstract and the open-access URL, so a winner with no venue or only a
@@ -361,6 +339,24 @@ Any order:
   first: on both consumers, merges whose winner ends with no venue or the
   series while an absorbed copy carried one. Build inheritance only if
   nonzero, and never from a repository deposit (arXiv, Zenodo)
+- A paper typed `dataset` never folds with its preprint (dpsd-new inbox,
+  2026-11-10): OpenProceedings registers EDBT papers at DataCite as
+  datasets, `title_key` keys on is-dataset, and a `type` override applies
+  after dedup, so it fixes the label only (`10.48786/edbt.2026.55` and
+  `10.48550/arxiv.2602.11890`; dpsd-new excludes the preprint). Measure
+  first: on both consumers, dataset-typed works sharing a title key with
+  a non-dataset, and how many are `10.48786`; then choose between a
+  prefix rule and a warning, or neither
+- Decide `include_xpac` (dpsd-new inbox, 2026-11-17). Measure when
+  dpsd-new's batch 5 lands (17 members, about 2026-11-24): a scratch
+  build with XPAC on and off on both consumers, each extra record classed
+  as absorbed by dedup, repository copy, or new work; then choose a
+  read-only `verify` listing or a per-author opt-in and record it in the
+  requirements' XPAC paragraph. Caveats for the verdict: the field spread
+  rests on two careers (Kyriakoulakos, Arnellos), and the boundary moves,
+  so the counts are a dated snapshot. Known real XPAC works, all manual
+  stopgaps: two Kallipos textbooks and five reference entries (dpsd-new),
+  the Ro-Boat dataset `W6949021637` (smartmove-site)
 - Authors can claim and fix their own OpenAlex profiles
   (help.openalex.org/how-to/fixing-authors, read 2026-11-08): a
   university email approves the claim at once; works added or removed,
@@ -377,10 +373,12 @@ Any order:
   or DOI and credit it to a configured member, for a work no profile
   fetch returns. Today the only way in is a hand-typed manual entry,
   which goes stale and masks upstream (the manual-stopgap item). Cases:
-  the Ro-Boat dataset `W6949021637`, returned by `GET /works/<doi URL>`
-  but by no list query, and works on a detached or namesake profile
-  (`A5004005331`, `A5103188414`). Shape it after the listing probe
-  (preprint-pair step 1) settles whether lists lag; the Scopus check
+  works on a detached or namesake profile (`A5004005331`, `A5103188414`),
+  works on no author entity at all (four of Zissis's, entered by hand on
+  dpsd-new 2026-11-10, such as `W7112954265`), and one XPAC work the
+  default fetch skips (the Ro-Boat dataset `W6949021637`, a manual entry
+  on smartmove-site). Shape it beside the `include_xpac` decision, since
+  a per-author opt-in covers part of what it is for; the Scopus check
   (`docs/scopus.md`, stage 1) would generate these entries (2026-11-08)
 ## Low
 - Curated DOIs are not checked for shape: `_field_value` turns any value
@@ -495,3 +493,6 @@ Any order:
 - Year-cutoff knob (global; maybe per-author) as an output convenience, post-
   v1. Decided with consumer #2: fetch stays full-career, period views are the
   renderer's job; this knob would only spare consumers that filter
+
+## Watching
+- A work missing from one run and back in the next with no config change (seen once, Koutsabasis, dpsd-new 2026-11-10): check whether the fetch paged through a bulk reindex (many unrelated records sharing one `updated_date`, as on 2026-11-16), and record it in the requirements' fetch notes

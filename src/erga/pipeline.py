@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -10,6 +11,7 @@ from erga.contamination import (
     DeclaredHome,
     contamination_warnings,
     find_contamination,
+    identified_authorships,
     institution_index,
 )
 from erga.crossref import CrossrefClient
@@ -28,9 +30,9 @@ from erga.curation import (
     unmatched_overrides,
 )
 from erga.dedup import cluster_by_title, dedup_by_doi
-from erga.delta import Delta, compute_delta
+from erga.delta import Delta, compute_delta, listed
 from erga.errors import ConfigError, FetchError
-from erga.model import Work
+from erga.model import Work, doi_key
 from erga.normalize import (
     book_series_names,
     foreign_orcids,
@@ -42,7 +44,7 @@ from erga.normalize import (
     unescape_html,
     unmapped_types,
 )
-from erga.openalex import OpenAlexClient
+from erga.openalex import OpenAlexClient, strip_openalex_host
 from erga.output import document, dump, previous_venues, read_output, write_atomic
 
 
@@ -252,13 +254,97 @@ def ratchet_venues(
     return {key: venue for key, venue in venues.items() if venue not in platforms}
 
 
+def trace_removals(
+    delta: Delta,
+    raw_works: list[dict[str, Any]],
+    tracked_ids: Collection[str],
+    openalex: OpenAlexClient,
+    include_xpac: bool,
+) -> list[str]:
+    """Why each listed removal left the list, into the delta's notes, and
+    any warning.
+
+    `compute_delta` has already named the removals whose DOI a listed
+    record carries. A work this fetch still returned was folded or dropped
+    by the build itself. The rest are looked up one by one, by id and then
+    DOI, which follows upstream merges and answers for XPAC records too;
+    the ids found are then asked of the default listing, the one the fetch
+    walks, since a record's own `is_xpac` does not say whether that
+    listing returns it. Report only, never a re-add: a survivor's byline
+    can match a namesake's name too. Manual entries are the maintainer's
+    file and get no lookup. Advisory: a failed lookup stops the rest with a
+    warning, keeping the notes already found, and never fails the build.
+    """
+    notes = delta.removal_notes
+    fetched_ids = {strip_openalex_host(raw["id"]) for raw in raw_works}
+    pending: list[tuple[str, str | None]] = []
+    for record in listed(delta.removed):
+        work_id = str(record.get("id"))
+        if record.get("source") == "manual" or work_id in notes:
+            continue
+        if work_id in fetched_ids:
+            notes[work_id] = (
+                "still fetched; this build merged it into another record or excluded it"
+            )
+        else:
+            pending.append((work_id, doi_key(record["doi"]) if record.get("doi") else None))
+
+    # Per work: what OpenAlex answered (None: nothing, or a body without an
+    # id) and whether only the DOI found it, which shows no merge. A failure
+    # stops the lookups and keeps what they had found.
+    found: dict[str, tuple[dict[str, Any], bool] | None] = {}
+    warnings: list[str] = []
+    try:
+        for work_id, doi in pending:
+            hit, by_doi = openalex.work(work_id), False
+            if not (hit and hit.get("id")) and doi:
+                hit, by_doi = openalex.work_by_doi(doi), True
+            found[work_id] = (hit, by_doi) if hit and hit.get("id") else None
+    except FetchError as exc:
+        warnings.append(f"removed works not all traced in OpenAlex: {exc}")
+    survivors = {w: strip_openalex_host(entry[0]["id"]) for w, entry in found.items() if entry}
+    unfetched = set(survivors.values()) - fetched_ids
+    try:
+        visible = unfetched if include_xpac else openalex.listed_by_default(sorted(unfetched))
+    except FetchError as exc:
+        return [*warnings, f"removed works not traced in OpenAlex: {exc}"]
+
+    for work_id, entry in found.items():
+        if entry is None:
+            notes[work_id] = "gone from OpenAlex: neither its id nor its DOI finds a work"
+            continue
+        hit, by_doi = entry
+        survivor = survivors[work_id]
+        if survivor == work_id:
+            where = "still in OpenAlex"
+        elif by_doi:
+            where = f"its DOI is now on {survivor}"
+        else:
+            where = f"merged upstream into {survivor}"
+        if survivor in fetched_ids:
+            notes[work_id] = f"{where}, which this build fetched"
+            continue
+        reasons = []
+        if not any(author_id in tracked_ids for author_id, _ in identified_authorships(hit)):
+            reasons.append("on no configured profile now")
+        if survivor not in visible:
+            reasons.append("listed only with `include_xpac`, which the config leaves off")
+        if not reasons:
+            reasons.append("on a configured profile and listed, yet not fetched: rerun first")
+        notes[work_id] = f"{where}, {'; '.join(reasons)}"
+    return warnings
+
+
 def build(
     config: Config,
     openalex: OpenAlexClient,
     crossref: CrossrefClient,
     *,
     dry_run: bool = False,
+    explain_removals: bool = False,
 ) -> BuildStats:
+    """Run the pipeline; `explain_removals` looks up why each listed
+    removal left, which only the reviewer's page prints."""
     stats = BuildStats()
 
     # Curation loads first: a typo in a curation file must abort before any
@@ -351,4 +437,9 @@ def build(
     if not dry_run:
         write_atomic(config.output_path, dump(doc))
         stats.written = True
+    # Last, after the write: an advisory lookup must never cost the output.
+    if explain_removals:
+        stats.warnings.extend(
+            trace_removals(stats.delta, raw_works, tracked_ids, openalex, config.include_xpac)
+        )
     return stats

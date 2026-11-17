@@ -73,8 +73,12 @@ Then:
   writing the JSON. Every build says in one line what changed since the
   output it found in place; `--summary` also writes that as a Markdown page
   for a reviewer, with additions and removals listed and metadata drift
-  counted.
-- `erga diff OLD NEW` prints the same page for any two output files.
+  counted. Each removal says why it left: folded into another record, merged
+  or re-attributed upstream, or still in OpenAlex but returned only with
+  `include_xpac`. Only a build with `--summary` looks these up.
+- `erga diff OLD NEW` prints the same page for any two output files. It
+  works offline, so of the removal reasons it gives only "now listed as …,
+  same DOI".
 - `erga verify [--config PATH]` prints the author-disambiguation report:
   what each configured author resolves to on OpenAlex, plus a name search
   for same-name profiles the config does not cover. Warnings tell a split
@@ -136,7 +140,10 @@ that spell it out, in any order; an initial alias such as `P. Nair` catches
 the initial-only ones too, along with every namesake that shares the
 initial. Write a name with its diacritics, as bylines print it: the search
 also tries it without them, but cannot restore accents a configured name
-lacks. A name too common to judge is skipped with a count.
+lacks. A name romanized from another script prints several ways (Greek
+μπ as b or mp, ντ as d or nt): add each spelling the bylines use as an
+alias, not only the one the person prefers. A name too common to judge
+is skipped with a count.
 
 Finding the iD in the first place is your step, and erga does not guess at
 it. An ORCID in `erga.yml` is trusted as given. What worked for a department

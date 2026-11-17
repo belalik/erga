@@ -147,7 +147,7 @@ _Appearance = tuple[dict[str, Any], _Authorships, dict[str, Any]]
 _Labels = dict[str, tuple[str, str | None]]
 
 
-def _identified_authorships(raw: dict[str, Any]) -> _Authorships:
+def identified_authorships(raw: dict[str, Any]) -> _Authorships:
     """(bare author id, authorship) for authors OpenAlex could identify."""
     pairs = []
     for entry in raw.get("authorships") or []:
@@ -170,7 +170,7 @@ def _index(
     appearances: dict[str, list[_Appearance]] = defaultdict(list)
     labels: _Labels = {}
     for raw in raw_works:
-        authorships = _identified_authorships(raw)
+        authorships = identified_authorships(raw)
         seen: set[str] = set()
         for author_id, entry in authorships:
             # An author listed twice on one work is still one appearance.

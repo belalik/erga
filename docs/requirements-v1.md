@@ -117,7 +117,15 @@ founding documents where they conflict.
   `include_xpac=true` opts in, and works carry an `is_xpac` field (verified
   live). Default off in erga, configurable, because XPAC metadata quality is
   explicitly lower and a publications page wants precision over recall.
-  Revisit with department-scale evidence.
+  Revisit with department-scale evidence. The boundary is not fixed, and
+  the record's `is_xpac` is not the list filter's view (measured
+  2026-11-17): Springer and IGI reference entries a consumer had listed
+  for weeks stopped returning without `include_xpac=true` while their
+  records still read `is_xpac: false` (`W4390708056`), and one author's
+  `is_xpac:false` filter counts 209 by default against 218 with it. A
+  default-off fetch can therefore drop a work already published; the
+  delta's removal reason names that case (stage 12), asking the default
+  listing itself rather than the record.
 - **Type vocabulary drifts**: a July 2026 reclassification changed `type` on
   ~10% of the catalog and added first-class `conference-paper`, `software`
   and `software-paper`; the classifier re-runs daily. `type_crossref` and
@@ -701,7 +709,19 @@ Ported from the production origin pipeline with generalization deltas noted.
     work belongs on the site at all; each entry carries the audit tell
     (tracked person, co-authors, venue, DOI, a manual-entry mark),
     because a same-name researcher's works arrive as additions and
-    `verify` cannot see them. *Counted per field*: every other change
+    `verify` cannot see them. Each listed removal also says why it left,
+    report only, never a re-add. Read from the two files (`compute_delta`,
+    so `erga diff` gives it too): its DOI now on another listed record.
+    Looked up by a build that writes the page (`trace_removals` in
+    `pipeline.py`): still in this fetch, so the build's own merge or
+    exclusion; otherwise, fetched from OpenAlex by id and then DOI,
+    merged upstream (found by DOI only, "its DOI is now on", since that
+    shows no merge), on no configured profile now, returned by the
+    default listing only with `include_xpac`, or on a configured profile
+    and listed yet missed by the fetch. Manual entries get no lookup; a
+    failed lookup stops the rest with a warning and keeps what it found;
+    the lookups run after the output is written, so they never cost it.
+    *Counted per field*: every other change
     OpenAlex makes (citations, abstract, open access, venue, dates,
     title, DOI, type, byline names and iDs), one table labelled as drift
     with nothing to action; drift is large, since consumer #2 saw

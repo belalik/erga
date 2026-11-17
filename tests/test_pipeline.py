@@ -7,6 +7,7 @@ from typing import Any
 from conftest import HOMONYM, FakeTransport, no_sleep
 from erga.config import load_config
 from erga.crossref import CrossrefClient
+from erga.delta import Delta, render_markdown
 from erga.http import Response
 from erga.model import Work
 from erga.openalex import OpenAlexClient
@@ -19,9 +20,13 @@ from erga.pipeline import (
     exclude_by_type,
     exclude_machine_translations,
     ratchet_venues,
+    trace_removals,
 )
 
 HOMONYM_AUTHORSHIP = {"author": HOMONYM}
+# A canned answer for FakeTransport.add: url part, params subset, data, and
+# optionally a status.
+Route = tuple[Any, ...]
 
 
 COLLEAGUE = {"author": {"id": "https://openalex.org/A5000000002", "display_name": "Ann Colleague"}}
@@ -47,9 +52,12 @@ def _build(
     raws: list[dict[str, Any]],
     overrides: str | None = None,
     crossref: tuple[tuple[str, dict[str, Any]], ...] = (),
+    openalex_routes: tuple[Route, ...] = (),
+    explain_removals: bool = False,
 ) -> BuildStats:
     """Fetched works through a real build, both members by openalex_id;
-    `crossref` answers each bare DOI with its message."""
+    `crossref` answers each bare DOI with its message, and
+    `openalex_routes` go ahead of the fetch's own."""
     (tmp_path / "erga.yml").write_text(
         "mailto: you@example.org\n"
         "authors:\n"
@@ -61,6 +69,8 @@ def _build(
     if overrides is not None:
         (tmp_path / "overrides.yml").write_text(overrides, encoding="utf-8")
     transport = FakeTransport()
+    for route in openalex_routes:
+        transport.add(*route)
     for doi, message in crossref:
         transport.add("api.crossref.org/works/" + doi.replace("/", "%2F"), {}, {"message": message})
     for openalex_id, name in (("A5000000001", "Josiah Carberry"), ("A5000000002", "Ann Colleague")):
@@ -77,6 +87,7 @@ def _build(
         config,
         OpenAlexClient(transport, mailto=config.mailto, delay=0.0, sleep=no_sleep),
         CrossrefClient(transport, mailto=config.mailto, delay=0.0, sleep=no_sleep),
+        explain_removals=explain_removals,
     )
 
 
@@ -397,3 +408,216 @@ def test_exclude_by_type_no_config_is_a_no_op() -> None:
     kept, dropped = exclude_by_type(works, frozenset())
     assert kept == works
     assert dropped == 0
+
+
+MEMBER_ID = "A5000000001"
+XPAC_NOTE = "listed only with `include_xpac`, which the config leaves off"
+FETCHED_NOTE = "still fetched; this build merged it into another record or excluded it"
+
+
+def _gone(work_id: str, doi: str | None = None, source: str = "openalex") -> dict[str, Any]:
+    """A previous output's record that this build no longer lists."""
+    return {
+        "id": work_id,
+        "title": f"Gone {work_id}",
+        "doi": f"https://doi.org/{doi}" if doi else None,
+        "source": source,
+    }
+
+
+def _hit(work_id: str, *author_ids: str) -> dict[str, Any]:
+    """A single-work answer: its id and whose authorships it carries."""
+    return {
+        "id": f"https://openalex.org/{work_id}",
+        "authorships": [{"author": {"id": f"https://openalex.org/{a}"}} for a in author_ids],
+    }
+
+
+def _missing(url_part: str, status: int = 404) -> Route:
+    return (url_part, {}, {}, status)
+
+
+def _listing(filter_value: str, *work_ids: str) -> Route:
+    """The default listing's answer to an `openalex_id:` filter."""
+    rows = [{"id": f"https://openalex.org/{w}"} for w in work_ids]
+    return (
+        "api.openalex.org/works",
+        {"filter": filter_value, "cursor": "*"},
+        {"meta": {"next_cursor": None}, "results": rows},
+    )
+
+
+def _trace(
+    removed: list[dict[str, Any]],
+    routes: list[Route] | None = None,
+    *,
+    raw: list[dict[str, Any]] | None = None,
+    noted: dict[str, str] | None = None,
+    include_xpac: bool = False,
+) -> tuple[dict[str, str], list[str], FakeTransport]:
+    """Run trace_removals against canned answers; any other request fails."""
+    transport = FakeTransport()
+    for route in routes or []:
+        transport.add(*route)
+    client = OpenAlexClient(transport, mailto="you@example.org", delay=0.0, sleep=no_sleep)
+    delta = Delta(total=0, removed=removed, removal_notes=dict(noted or {}))
+    warnings = trace_removals(
+        delta, raw or [], {MEMBER_ID: "Josiah Carberry"}, client, include_xpac
+    )
+    return delta.removal_notes, warnings, transport
+
+
+def test_a_removal_the_default_listing_hides_is_named_xpac() -> None:
+    """dpsd-new's refresh, 2026-11-17: a reference entry on a member's
+    profile, whose record reads `is_xpac: false`, stopped being listed."""
+    notes, warnings, transport = _trace(
+        [_gone("W51", "10.5555/w51")],
+        [("api.openalex.org/works/W51", {}, _hit("W51", MEMBER_ID)), _listing("openalex_id:W51")],
+    )
+    assert notes == {"W51": f"still in OpenAlex, {XPAC_NOTE}"}
+    assert warnings == []
+    # Positive control: the same work, listed, reads as a missed fetch instead.
+    notes, _, _ = _trace(
+        [_gone("W51", "10.5555/w51")],
+        [
+            ("api.openalex.org/works/W51", {}, _hit("W51", MEMBER_ID)),
+            _listing("openalex_id:W51", "W51"),
+        ],
+    )
+    assert notes == {
+        "W51": "still in OpenAlex, on a configured profile and listed, yet not fetched: rerun first"
+    }
+    # Asked once of the single record, once of the listing, never with XPAC on.
+    assert [params.get("include_xpac") for _, params in transport.calls] == [None, None]
+
+
+def test_removals_the_build_made_itself_need_no_lookup() -> None:
+    """No route is registered: a single request would fail the test."""
+    same_doi = "now listed as W64, same DOI"  # compute_delta's, offline
+    notes, warnings, transport = _trace(
+        [
+            _gone("manual-note", source="manual"),
+            _gone("W60", "10.5555/flipped"),
+            _gone("W61"),
+        ],
+        raw=[{"id": "https://openalex.org/W61"}],
+        noted={"W60": same_doi},
+    )
+    assert notes == {"W60": same_doi, "W61": FETCHED_NOTE}
+    assert warnings == []
+    assert transport.calls == []
+
+
+def test_a_fetched_twin_sharing_the_doi_does_not_explain_a_removal() -> None:
+    """The fetch returned another record with this DOI (excluded by type,
+    say), not the removed work, so the work itself is looked up."""
+    notes, _, _ = _trace(
+        [_gone("W62", "10.5555/twin")],
+        [("api.openalex.org/works/W62", {}, _hit("W62", MEMBER_ID)), _listing("openalex_id:W62")],
+        raw=[{"id": "https://openalex.org/W63", "doi": "https://doi.org/10.5555/twin"}],
+    )
+    assert notes == {"W62": f"still in OpenAlex, {XPAC_NOTE}"}
+
+
+def test_a_removal_merged_upstream_names_the_survivor() -> None:
+    notes, _, _ = _trace(
+        [_gone("W70"), _gone("W72")],
+        [
+            # Re-attributed: the member's authorship carries no configured id now.
+            ("api.openalex.org/works/W70", {}, _hit("W71", "A5000000099")),
+            ("api.openalex.org/works/W72", {}, _hit("W73", MEMBER_ID)),
+            _listing("openalex_id:W71", "W71"),
+        ],
+        raw=[{"id": "https://openalex.org/W73"}],
+    )
+    assert notes == {
+        "W70": "merged upstream into W71, on no configured profile now",
+        "W72": "merged upstream into W73, which this build fetched",
+    }
+
+
+def test_a_removal_is_found_by_doi_when_its_id_is_gone() -> None:
+    notes, _, _ = _trace(
+        [_gone("W74", "10.5555/w74"), _gone("W75", "10.5555/w75")],
+        [
+            _missing("api.openalex.org/works/W74"),
+            ("api.openalex.org/works/doi:10.5555/w74", {}, _hit("W76", "A5000000099")),
+            _missing("api.openalex.org/works/W75"),
+            _missing("api.openalex.org/works/doi:10.5555/w75"),
+            _listing("openalex_id:W76"),
+        ],
+    )
+    assert notes == {
+        # Found through the DOI only: no merge is shown, so none is claimed.
+        "W74": f"its DOI is now on W76, on no configured profile now; {XPAC_NOTE}",
+        "W75": "gone from OpenAlex: neither its id nor its DOI finds a work",
+    }
+
+
+def test_with_xpac_included_the_listing_is_not_asked() -> None:
+    notes, _, transport = _trace(
+        [_gone("W80")],
+        [("api.openalex.org/works/W80", {}, _hit("W80", MEMBER_ID))],
+        include_xpac=True,
+    )
+    assert notes["W80"].endswith("yet not fetched: rerun first")
+    assert len(transport.calls) == 1
+
+
+def test_a_failed_lookup_stops_the_rest_and_keeps_what_was_found() -> None:
+    notes, warnings, transport = _trace(
+        [_gone("W88"), _gone("W89"), _gone("W90"), _gone("W92"), _gone("W91")],
+        [
+            ("api.openalex.org/works/W88", {}, {}),  # a 200 with no id: nothing found
+            ("api.openalex.org/works/W89", {}, _hit("W89", MEMBER_ID)),
+            _missing("api.openalex.org/works/W90", status=403),
+            _listing("openalex_id:W89"),
+        ],
+        raw=[{"id": "https://openalex.org/W91"}],
+    )
+    assert notes == {
+        "W88": "gone from OpenAlex: neither its id nor its DOI finds a work",
+        "W89": f"still in OpenAlex, {XPAC_NOTE}",
+        "W91": FETCHED_NOTE,
+    }
+    assert len(warnings) == 1
+    assert warnings[0].startswith("removed works not all traced in OpenAlex: ")
+    # W92 was never asked: the lookups stopped at W90's failure.
+    assert not any("W92" in url for url, _ in transport.calls)
+
+
+def test_a_failed_listing_warns_and_adds_no_upstream_note() -> None:
+    notes, warnings, _ = _trace(
+        [_gone("W93")],
+        [
+            ("api.openalex.org/works/W93", {}, _hit("W93", MEMBER_ID)),
+            ("api.openalex.org/works", {"filter": "openalex_id:W93"}, {}, 403),
+        ],
+    )
+    assert notes == {}
+    assert len(warnings) == 1
+    assert warnings[0].startswith("removed works not traced in OpenAlex: ")
+
+
+def test_a_build_prints_why_a_listed_work_was_removed(tmp_path: Path) -> None:
+    gone = Work(id="W99", title="A reference entry", doi="https://doi.org/10.5555/entry")
+    (tmp_path / "publications.json").write_text(dump(document([gone])), encoding="utf-8")
+    raw = {
+        "id": "https://openalex.org/W1",
+        "title": "Still here",
+        "publication_year": 2026,
+        "type": "article",
+        "authorships": [COLLEAGUE],
+    }
+    routes: tuple[Route, ...] = (
+        ("api.openalex.org/works/W99", {}, _hit("W99", MEMBER_ID)),
+        _listing("openalex_id:W99"),
+    )
+    stats = _build(tmp_path, [raw], openalex_routes=routes, explain_removals=True)
+    page = render_markdown(stats.delta, stats.warnings)
+    assert "#### Removed (1)" in page
+    assert f"  https://doi.org/10.5555/entry\n  Why: still in OpenAlex, {XPAC_NOTE}\n" in page
+    # Without the flag (a build with no summary to write) nothing is looked up.
+    (tmp_path / "publications.json").write_text(dump(document([gone])), encoding="utf-8")
+    stats = _build(tmp_path, [raw])
+    assert stats.delta.removed and not stats.delta.removal_notes
