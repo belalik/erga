@@ -94,6 +94,42 @@ def test_fetch_works_paginates_and_dedups() -> None:
     ]
 
 
+GARBLED_PAGES = [
+    {"meta": {"next_cursor": None}},  # no results: read leniently, the walk's end
+    {"results": None},
+    {"results": {"id": "https://openalex.org/W2"}},
+    {"results": [None]},
+    {"results": [{"display_name": "no id"}]},
+    {"results": [{"id": 2}]},
+    {"results": [{"id": ""}]},
+]
+
+
+def _garbled_second_page(transport: FakeTransport, path: str, first: object, body: object) -> None:
+    transport.add(path, {"cursor": "*"}, {"results": [first], "meta": {"next_cursor": "page-2"}})
+    transport.add(path, {"cursor": "page-2"}, body)
+
+
+@pytest.mark.parametrize("body", GARBLED_PAGES)
+def test_fetch_works_aborts_on_a_garbled_page(body: object) -> None:
+    """A garbled page mid-walk must fail the fetch, never end it as a
+    smaller corpus the build would then write."""
+    transport = FakeTransport()
+    _garbled_second_page(transport, "/works", {"id": "https://openalex.org/W1"}, body)
+    with pytest.raises(FetchError, match="a listing page without record ids"):
+        client_with(transport).fetch_works(["A1"])
+
+
+@pytest.mark.parametrize("body", GARBLED_PAGES)
+def test_resolve_author_aborts_on_a_garbled_page(body: object) -> None:
+    """Tracking rests on every profile an iD carries, so a garbled page
+    must not shorten the list either."""
+    transport = FakeTransport()
+    _garbled_second_page(transport, "/authors", profile("A1"), body)
+    with pytest.raises(FetchError, match="a listing page without record ids"):
+        client_with(transport).resolve_author(AuthorConfig(name="X", orcid="9999-0000-0000-0001"))
+
+
 def test_fetch_works_batches_authors_with_or_pipe() -> None:
     transport = FakeTransport()
     ids = [f"A{i}" for i in range(150)]

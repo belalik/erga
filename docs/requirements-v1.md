@@ -386,7 +386,10 @@ Ported from the production origin pipeline with generalization deltas noted.
    `per-page=100`, cursor pagination, retry with backoff on 429/5xx,
    politeness delay between calls. Deduplicate by work id. Any fetch
    failure aborts the run without touching existing output; a transient
-   API failure must never shrink a published list.
+   API failure must never shrink a published list. A 200 whose page is
+   not a list of records with ids is such a failure (2026-11-21), for
+   the works and the author listings alike: read leniently, it ended the
+   walk early, and the shorter list passed for the whole one.
 4. Normalize to the canonical schema: type mapping, abstract
    reconstruction, OA URL from `best_oa_location`/`open_access.oa_url`,
    author `tracked` flags, and the venue from the primary location's

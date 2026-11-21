@@ -3,7 +3,6 @@
 ## Next steps (21-11-2026)
 
 Any order:
-- Session: read the main fetch's listing pages strictly, as `in_listing` does (Normal, first item).
 - Session: step (2) of the preprint-pair item, an exclude that binds across a merge (Normal).
 - Session, once dpsd-new's batch 5 lands (about 2026-11-24): the `include_xpac` measurement on both consumers (Normal).
 - Session: the merge measurement (Normal, a merge drops an absorbed copy's venue): a scratch build per consumer, no code change unless nonzero.
@@ -12,7 +11,6 @@ Any order:
 ## High
 
 ## Normal
-- The main fetch reads a listing page leniently (`fetch_works`, `data.get("results", [])`), so a garbled 200 mid-walk ends the walk as a smaller corpus that only the shrink warning flags. Read it as strictly as `in_listing` (`FetchError` unless `results` is a list of works with ids), so the build aborts and keeps the old output; `_pages` (`resolve_author`) reads the same way.
 - Reshape this list to the convention's ~2 lines an item: each action as one line, its measurements and cases moved into the docs they belong to (its own session; `~/projects/claude-code-config/docs/todo-convention.md`)
 - Preprint/published pairs defeat DOI excludes (dpsd-new inbox,
   2026-09-29, three entries). A homonym's pairs merge one week and split

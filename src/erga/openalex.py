@@ -92,6 +92,21 @@ def _is_trace_record(data: Any) -> TypeGuard[dict[str, Any]]:
     )
 
 
+def _listing_rows(data: dict[str, Any], path: str) -> list[dict[str, Any]]:
+    """A listing page's rows, every one a record with an id.
+
+    Anything else raises FetchError. Read leniently, a garbled 200 in the
+    middle of a walk would end it early, and the shorter list (a corpus, a
+    member's profiles) would pass for the whole one.
+    """
+    rows = data.get("results")
+    if not isinstance(rows, list) or not all(
+        isinstance(row, dict) and isinstance(row.get("id"), str) and row["id"] for row in rows
+    ):
+        raise FetchError(f"{OPENALEX_BASE}{path}: a listing page without record ids")
+    return rows
+
+
 def _works_params(filters: str, select: str, include_xpac: bool) -> dict[str, str]:
     params = {"filter": filters, "select": select}
     if include_xpac:
@@ -188,9 +203,9 @@ class OpenAlexClient:
             params = {**params, "cursor": cursor}
 
     def _pages(self, path: str, params: dict[str, str]) -> Iterator[list[dict[str, Any]]]:
-        """Every results page of a listing."""
+        """Every results page of a listing, each read by `_listing_rows`."""
         for data in self._walk(path, params):
-            yield data.get("results", [])
+            yield _listing_rows(data, path)
 
     def resolve_author(self, author: AuthorConfig) -> ResolvedAuthor:
         """All OpenAlex author profiles for a configured author.
@@ -254,11 +269,14 @@ class OpenAlexClient:
 
         Authors are batched with the OR-pipe filter; each batch is walked to
         its end. Co-authored works arrive once per matching batch; the id
-        dedup here collapses them.
+        dedup here collapses them. A page that is not a list of works with
+        ids raises FetchError, so the build aborts and the output in place
+        stays, rather than a shorter corpus that only the shrink warning
+        would flag.
         """
         works: dict[str, dict[str, Any]] = {}
         for data in self._works_listing("author.id", author_ids, WORKS_SELECT, include_xpac):
-            for raw in data.get("results", []):
+            for raw in _listing_rows(data, "/works"):
                 works.setdefault(strip_openalex_host(raw["id"]), raw)
         return list(works.values())
 
@@ -267,7 +285,7 @@ class OpenAlexClient:
     ) -> Iterator[dict[str, Any]]:
         """Every response of the works listing for any of the ids under one
         filter key: batched with the OR-pipe filter, each batch walked to its
-        end. Callers read the pages, each as strictly as it needs."""
+        end. Callers read each page by `_listing_rows`."""
         for batch in _batches(ids):
             yield from self._walk(
                 "/works", _works_params(f"{key}:" + "|".join(batch), select, include_xpac)
@@ -305,12 +323,7 @@ class OpenAlexClient:
         """
         found: set[str] = set()
         for data in self._works_listing("openalex_id", work_ids, "id", include_xpac):
-            rows = data.get("results")
-            if not isinstance(rows, list) or not all(
-                isinstance(row, dict) and isinstance(row.get("id"), str) for row in rows
-            ):
-                raise FetchError(f"{OPENALEX_BASE}/works: a listing page without work ids")
-            found.update(strip_openalex_host(row["id"]) for row in rows)
+            found.update(strip_openalex_host(row["id"]) for row in _listing_rows(data, "/works"))
         return found
 
     def works_by_byline(
