@@ -1,11 +1,9 @@
 # TODO
 
-## Next steps (17-11-2026)
-
-In order:
-1. Session: release 0.9.6 (`docs/release.md`), the removal reasons, reviewed and fixed, so dpsd-new's weekly PR says why a work left.
+## Next steps (21-11-2026)
 
 Any order:
+- Session: read the main fetch's listing pages strictly, as `in_listing` does (Normal, first item).
 - Session: step (2) of the preprint-pair item, an exclude that binds across a merge (Normal).
 - Session, once dpsd-new's batch 5 lands (about 2026-11-24): the `include_xpac` measurement on both consumers (Normal).
 - Session: the merge measurement (Normal, a merge drops an absorbed copy's venue): a scratch build per consumer, no code change unless nonzero.
