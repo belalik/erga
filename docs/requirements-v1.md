@@ -922,6 +922,11 @@ scheduling, the `v1` tag policy, how CI exercises it) lives in
   the previous output or from Crossref's [series, volume] container
   titles, and the series stays only when no volume is known (stages 4
   and 9).
+- **v0.9.6** (released 2026-11-21): the reviewer's page says why each
+  removed work left: folded or excluded by the build, merged or
+  re-attributed upstream, off every configured profile, returned only
+  with `include_xpac`, or gone from OpenAlex. A build with `--summary`
+  looks these up, and a failed lookup is a warning (stage 12).
 - **CSL-JSON and BibTeX emitters** slot in after v0.1 as demand warrants,
   before the v1.0 promotion push.
 - **v1.0**: strong README (before/after dedup story, head-on "why not
