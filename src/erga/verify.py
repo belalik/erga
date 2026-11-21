@@ -81,25 +81,49 @@ def _other_script(profile: AuthorProfile, author: AuthorConfig) -> bool:
     return bool(scripts) and not scripts & configured
 
 
+def _same_name_searches(author: AuthorConfig) -> list[str]:
+    """The names a same-name search sends: the configured name, then each
+    alias of two full words or more, one per distinct query.
+
+    An alias of initials and a surname ("X. Papageorgiou"), or a surname
+    alone, is left out: searched, it lists every namesake who shares it.
+    The rest find what the configured name misses: a detached profile under
+    a name in another script ("Ιωάννης Ξενάκης") or a nickname ("Harry
+    Valsamos"), both seen on dpsd-new 2026-11-21.
+    """
+    unique = {byline_search_key(author.name): author.name}
+    for alias in author.aliases:
+        if len(_name_tokens(alias)) >= 2:
+            unique.setdefault(byline_search_key(alias), alias)
+    return list(unique.values())
+
+
 def _same_name_lines(
     client: OpenAlexClient, author: AuthorConfig, known_ids: set[str]
 ) -> list[str]:
     """Profiles a name search surfaces beyond the configured/resolved ids.
 
     These are what a configured id can never show: homonyms, and conflated
-    profiles that hold works OpenAlex misassigned. Informational, not
-    warnings: same-name strangers are common and only a human can judge them.
+    or detached profiles that hold works OpenAlex misassigned. Informational,
+    not warnings: same-name strangers are common and only a human can judge
+    them. An alias's lines name it, and a profile shows once.
     """
-    profiles, total = client.search_authors(author.name)
-    others = [p for p in profiles if p.id not in known_ids]
-    lines = [
-        f"  same name, not configured: {p.id}  {p.display_name} — {p.works_count} works"
-        for p in others[:MAX_SAME_NAME]
-    ]
-    # Matches beyond the fetched page, plus fetched ones past the display cap.
-    unshown = (total - len(profiles)) + len(others[MAX_SAME_NAME:])
-    if unshown > 0:
-        lines.append(f"  … and {unshown} more name match(es) on OpenAlex")
+    lines: list[str] = []
+    shown = set(known_ids)
+    for name in _same_name_searches(author):
+        profiles, total = client.search_authors(name)
+        others = [p for p in profiles if p.id not in shown]
+        label = "same name" if name == author.name else f"alias {name!r}"
+        lines.extend(
+            f"  {label}, not configured: {p.id}  {p.display_name} — {p.works_count} works"
+            for p in others[:MAX_SAME_NAME]
+        )
+        shown.update(p.id for p in others[:MAX_SAME_NAME])
+        # Matches beyond the fetched page, plus fetched ones past the display cap.
+        unshown = (total - len(profiles)) + len(others[MAX_SAME_NAME:])
+        if unshown > 0:
+            what = "name" if name == author.name else f"{name!r}"
+            lines.append(f"  … and {unshown} more {what} match(es) on OpenAlex")
     return lines
 
 

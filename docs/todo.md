@@ -101,12 +101,14 @@ Any order:
   runs inside `build`, where merges and exclusions are known. What only
   this reaches: works on a detached entity (Papageorgiou's
   `A5004005331`, "X. Papageorgiou", 2 works, which `verify` does not list:
-  `_same_name_lines` searches the configured name only, not aliases;
-  two more from dpsd-new's batch 5, 2026-11-21, found by hand from a
-  surname search and their ORCID DOIs: Valsamos's pre-PhD works on
-  "Harry Valsamos" `A5066529918`, a nickname, and Xenakis's PhD thesis on
-  a Greek-script "Ιωάννης Ξενάκης" `A5046502809` that also holds a
-  stranger's two tourism works), and the confirmation that a same-name entity's works are the member's:
+  an initial alias is deliberately not name-searched; two more from
+  dpsd-new's batch 5, 2026-11-21, found by hand from a surname search and
+  their ORCID DOIs: Valsamos's pre-PhD works on "Harry Valsamos"
+  `A5066529918`, a nickname, and Xenakis's PhD thesis on a Greek-script
+  "Ιωάννης Ξενάκης" `A5046502809` that also holds a stranger's two
+  tourism works; since 2026-11-21 `verify` searches full-name aliases,
+  so these two surface once the alias is configured, which only this
+  reaches without one), and the confirmation that a same-name entity's works are the member's:
   put that on `verify`'s same-name line (`A5135377975` was listed and read
   as a homonym). Sharper case (dpsd-new, 2026-10-17): a member's works
   drifting onto a real homonym's ORCID-linked entity, so the answer is per
@@ -130,12 +132,6 @@ Any order:
   stubs from ORCID were declined at triage 2026-09-26: work summaries
   carry no byline, the one field a manual entry cannot do without; reopen
   if a consumer asks. Fixtures synthetic: ORCID lists are personal data
-- `verify`'s same-name search sends only the configured `name`
-  (`_same_name_lines`), though aliases feed its other checks. Search each
-  full-name alias too, one request each, so a Greek-script or nickname
-  alias surfaces its detached entity (the Xenakis and Valsamos cases in
-  the ORCID item above); an initial alias would list every namesake, so
-  leave those out (dpsd-new inbox, 2026-11-21)
 - Contamination cluster warning: drop "exclude them by DOI" for works that
   carry another configured author, and name that author instead
   (`contamination.py`, `contamination_warnings`). Excluding such a work

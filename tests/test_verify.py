@@ -159,6 +159,8 @@ def orcid_warnings(
             {"results": []},
         )
     add_search(transport, "Josiah Carberry", author_page([]))
+    for alias in aliases or []:
+        add_search(transport, alias, author_page([]))
     author = AuthorConfig(
         name="Josiah Carberry", orcid="9999-0000-0000-0001", aliases=aliases or []
     )
@@ -318,6 +320,51 @@ def test_verify_report_lists_same_name_profiles_not_configured() -> None:
     assert "same name, not configured: A100  Dimitrios Zissis — 45 works" in report
     assert "same name, not configured: A101  D. Zissis — 12 works" in report
     assert "and 7 more name match(es)" in report
+    assert warnings == []
+
+
+def test_verify_report_searches_full_name_aliases_too() -> None:
+    """A detached profile under another script or a nickname surfaces
+    through its alias (Xenakis, Valsamos on dpsd-new, 2026-11-21); an
+    initial alias, a surname alone and a reordered name send no search."""
+    transport = FakeTransport()
+    add_search(
+        transport,
+        "Josiah Carberry",
+        author_page([profile("A300", "Josiah Carberry", 4, [])]),
+    )
+    add_search(
+        transport,
+        GREEK_CARBERRY,
+        author_page(
+            [profile("A300", "Josiah Carberry", 4, []), profile("A301", GREEK_CARBERRY, 2, [])],
+            total=8,
+        ),
+    )
+    add_search(transport, "Joe Carberry", author_page([profile("A302", "Joe Carberry", 6, [])]))
+    config = Config(
+        mailto="m@example.org",
+        authors=[
+            AuthorConfig(
+                name="Josiah Carberry",
+                aliases=[
+                    "J. Carberry",
+                    "Carberry",
+                    "Carberry, Josiah",
+                    GREEK_CARBERRY,
+                    "Joe Carberry",
+                ],
+            )
+        ],
+    )
+    report, warnings = verify_report(config, make_client(transport))
+    assert "same name, not configured: A300  Josiah Carberry — 4 works" in report
+    assert f"alias {GREEK_CARBERRY!r}, not configured: A301  {GREEK_CARBERRY} — 2 works" in report
+    assert "alias 'Joe Carberry', not configured: A302  Joe Carberry — 6 works" in report
+    assert f"and 6 more {GREEK_CARBERRY!r} match(es)" in report
+    assert report.count("A300") == 1  # shown once, under the name that found it first
+    searched = [p["search"] for url, p in transport.calls if "search" in p]
+    assert searched == ["Josiah Carberry", GREEK_CARBERRY, "Joe Carberry"]
     assert warnings == []
 
 

@@ -779,6 +779,11 @@ Ported from the production origin pipeline with generalization deltas noted.
   variants, most recent titles, and a name search listing same-name
   profiles the config does not cover (homonyms, and conflated profiles
   holding misassigned works — surfaced for tracking-only authors too).
+  The configured name and each alias of two full words or more are
+  searched, one request per distinct query, each line naming the alias
+  that found it (2026-11-21: a Greek-script and a nickname profile the
+  name alone missed); an initial alias or a surname alone would list
+  every namesake, so neither is searched.
   Warnings separate the ORCID failure modes by comparing profile names
   to the configured name/aliases: a split profile (several ids, names
   all match; all are fetched, so pin `openalex_id` only if one holds works

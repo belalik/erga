@@ -82,7 +82,9 @@ Then:
   same DOI".
 - `erga verify [--config PATH]` prints the author-disambiguation report:
   what each configured author resolves to on OpenAlex, plus a name search
-  for same-name profiles the config does not cover. Warnings tell a split
+  for same-name profiles the config does not cover. Each alias of two full
+  words or more is searched too, so an alias in another script or a
+  nickname surfaces a profile filed under it. Warnings tell a split
   profile (one person, several ids) apart from an iD carried by strangers,
   and flag resolved profiles whose name does not match the configured
   author, zero-work authors, and implausible works counts. Run it once
