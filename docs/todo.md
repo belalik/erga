@@ -101,8 +101,12 @@ Any order:
   runs inside `build`, where merges and exclusions are known. What only
   this reaches: works on a detached entity (Papageorgiou's
   `A5004005331`, "X. Papageorgiou", 2 works, which `verify` does not list:
-  `_same_name_lines` searches the configured name only, not aliases),
-  and the confirmation that a same-name entity's works are the member's:
+  `_same_name_lines` searches the configured name only, not aliases;
+  two more from dpsd-new's batch 5, 2026-11-21, found by hand from a
+  surname search and their ORCID DOIs: Valsamos's pre-PhD works on
+  "Harry Valsamos" `A5066529918`, a nickname, and Xenakis's PhD thesis on
+  a Greek-script "Ιωάννης Ξενάκης" `A5046502809` that also holds a
+  stranger's two tourism works), and the confirmation that a same-name entity's works are the member's:
   put that on `verify`'s same-name line (`A5135377975` was listed and read
   as a homonym). Sharper case (dpsd-new, 2026-10-17): a member's works
   drifting onto a real homonym's ORCID-linked entity, so the answer is per
@@ -126,6 +130,12 @@ Any order:
   stubs from ORCID were declined at triage 2026-09-26: work summaries
   carry no byline, the one field a manual entry cannot do without; reopen
   if a consumer asks. Fixtures synthetic: ORCID lists are personal data
+- `verify`'s same-name search sends only the configured `name`
+  (`_same_name_lines`), though aliases feed its other checks. Search each
+  full-name alias too, one request each, so a Greek-script or nickname
+  alias surfaces its detached entity (the Xenakis and Valsamos cases in
+  the ORCID item above); an initial alias would list every namesake, so
+  leave those out (dpsd-new inbox, 2026-11-21)
 - Contamination cluster warning: drop "exclude them by DOI" for works that
   carry another configured author, and name that author instead
   (`contamination.py`, `contamination_warnings`). Excluding such a work
@@ -358,9 +368,11 @@ Any order:
   as absorbed by dedup, repository copy, or new work; then choose a
   read-only `verify` listing or a per-author opt-in and record it in the
   requirements' XPAC paragraph. Caveats for the verdict: the field spread
-  rests on five careers (Kyriakoulakos, Arnellos, and from batch 5 on
-  2026-11-21 Spyrou, Kyratzi, Papakostopoulos: XPAC 12 of Arnellos's 65,
-  mostly copies and fragments, 0 of 45, 2 of 26, 0 of 22), and the
+  rests on seven careers (Kyriakoulakos, Arnellos, and from batch 5 on
+  2026-11-21 Spyrou, Kyratzi, Papakostopoulos, Valsamos, Xenakis: XPAC
+  12 of Arnellos's 65, mostly copies and fragments, 0 of 45, 2 of 26,
+  0 of 22, 0 of 20 plus 0 of 5 on a pinned profile, and 2 of 20, a
+  never-published draft PDF and a "Reviewed by:" fragment), and the
   boundary moves, so the counts are a dated snapshot. Known real XPAC
   works, all manual stopgaps: two Kallipos textbooks and five reference
   entries (dpsd-new), Kyratzi's 2022 Kallipos textbook (dpsd-new), the
@@ -371,7 +383,10 @@ Any order:
   differ only by spacing: that record's title has "south east" where its
   manual twin has "Southeast", and `normalize_title` keeps spaces, so
   with XPAC on the two would not merge and a consumer who keeps the
-  manual entry gets a duplicate
+  manual entry gets a duplicate. A constraint on the verdict: dpsd-new's
+  stance (Thomas, 2026-11-21, "when in doubt, leave it out") wants any
+  recall feature opt-in and reported for review, never merged silently,
+  which rules out a default-on for that site
 - Authors can claim and fix their own OpenAlex profiles
   (help.openalex.org/how-to/fixing-authors, read 2026-11-08): a
   university email approves the claim at once; works added or removed,
