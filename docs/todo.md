@@ -3,8 +3,9 @@
 ## Next steps (21-11-2026)
 
 Any order:
+- Session: the `include_xpac` measurement on both consumers; batch 5 is in dpsd-new's config since 2026-11-21, 17 members (Normal).
+- Session: reshape this list to the convention (11 entries over the limit by `todo-shape.sh`, the Normal item), its own session.
 - Session: step (2) of the preprint-pair item, an exclude that binds across a merge (Normal).
-- Session, once dpsd-new's batch 5 lands (about 2026-11-24): the `include_xpac` measurement on both consumers (Normal).
 - Session: the merge measurement (Normal, a merge drops an absorbed copy's venue): a scratch build per consumer, no code change unless nonzero.
 - Thomas: claim and clean his own OpenAlex profile, the watch case for the profile-claiming item (Normal).
 
@@ -358,8 +359,8 @@ Any order:
   first: on both consumers, dataset-typed works sharing a title key with
   a non-dataset, and how many are `10.48786`; then choose between a
   prefix rule and a warning, or neither
-- Decide `include_xpac` (dpsd-new inbox, 2026-11-17). Measure when
-  dpsd-new's batch 5 lands (17 members, about 2026-11-24): a scratch
+- Decide `include_xpac` (dpsd-new inbox, 2026-11-17). Measure now that
+  dpsd-new's batch 5 is in its config (17 members, 2026-11-21): a scratch
   build with XPAC on and off on both consumers, each extra record classed
   as absorbed by dedup, repository copy, or new work; then choose a
   read-only `verify` listing or a per-author opt-in and record it in the
@@ -411,6 +412,11 @@ Any order:
   record of an ASIFA Magazine piece). Add a URL key; first decide whether
   it fills `open_access.url` or a new field, a schema question before v1.0
 ## Low
+- `_walk` ends on any page without `meta.next_cursor`, so a 200 with valid
+  results but no meta still ends a walk short (the strict reader of
+  2026-11-21 checks `results` only). Check live whether OpenAlex's cursor
+  walk always ends on an empty page; if so, treat a non-empty page with no
+  cursor as a failure
 - Curated DOIs are not checked for shape: `_field_value` turns any value
   into `https://doi.org/<value>`, so a manual or override `doi: 5`, or a
   typo that drops the `10.` prefix, publishes a dead link at exit 0. The

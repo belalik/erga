@@ -88,7 +88,8 @@ campus or through the university VPN, with no account. Nobody holds an
 institutional token yet, which CI would need.
 
 Tested the same day with a fresh key (label `erga`, kept outside the
-repo):
+repo in `~/.config/elsevier/api-key` on minis only, mode 600; read it
+into a variable, never print it):
 
 - The VPN carries Elsevier's traffic (IPv4 only, no split tunnel for
   `api.elsevier.com` or `www.scopus.com`), and scopus.com reads "Brought
