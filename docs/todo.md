@@ -323,7 +323,15 @@ Any order:
   schema: he set up both current ones, so the docs' first-run path
   (finding iDs, keyless runs, reviewing the first build) has never been
   walked by anyone else. A Greek department or a colleague's lab is the
-  reachable shape; ΕΘΑΑΕ's assessments make publication pages timely there
+  reachable shape; ΕΘΑΑΕ's assessments make publication pages timely there.
+  That path should also set the curation expectation, which no doc states:
+  dpsd-new holds 107 curation entries (83 overrides, 24 manual) over about
+  850 works, roughly one per eight, nearly all fixing upstream data
+  (dpsd-new inbox 2026-11-21; one department, a dated figure). It also
+  needs a short guide to judging identity from `verify`'s report (whether
+  a profile or a work is the member's), the judgment that lives today in
+  sessions and in dpsd-new's own docs; ORCID-drafted stubs stay declined
+  (2026-09-26 reason unchanged, re-weighed 2026-11-21)
 - Report confirmed upstream problems to OpenAlex, which is also how erga
   becomes known there. Candidates: preprint/published pairs flapping
   between merged and separate (the Malisova pairs), IEEE back-catalogue
@@ -354,10 +362,20 @@ Any order:
   as absorbed by dedup, repository copy, or new work; then choose a
   read-only `verify` listing or a per-author opt-in and record it in the
   requirements' XPAC paragraph. Caveats for the verdict: the field spread
-  rests on two careers (Kyriakoulakos, Arnellos), and the boundary moves,
-  so the counts are a dated snapshot. Known real XPAC works, all manual
-  stopgaps: two Kallipos textbooks and five reference entries (dpsd-new),
-  the Ro-Boat dataset `W6949021637` (smartmove-site)
+  rests on five careers (Kyriakoulakos, Arnellos, and from batch 5 on
+  2026-11-21 Spyrou, Kyratzi, Papakostopoulos: XPAC 12 of Arnellos's 65,
+  mostly copies and fragments, 0 of 45, 2 of 26, 0 of 22), and the
+  boundary moves, so the counts are a dated snapshot. Known real XPAC
+  works, all manual stopgaps: two Kallipos textbooks and five reference
+  entries (dpsd-new), Kyratzi's 2022 Kallipos textbook (dpsd-new), the
+  Ro-Boat dataset `W6949021637` (smartmove-site). On Kyriakoulakos's
+  profile every XPAC work is his (5 of 5, dpsd-new inbox 2026-11-21): the
+  two Kallipos books, two CEEGS 2024 papers and a Griffith repository
+  record `W7027632552`. The measurement also counts title pairs that
+  differ only by spacing: that record's title has "south east" where its
+  manual twin has "Southeast", and `normalize_title` keeps spaces, so
+  with XPAC on the two would not merge and a consumer who keeps the
+  manual entry gets a duplicate
 - Authors can claim and fix their own OpenAlex profiles
   (help.openalex.org/how-to/fixing-authors, read 2026-11-08): a
   university email approves the claim at once; works added or removed,
@@ -381,6 +399,10 @@ Any order:
   on smartmove-site). Shape it beside the `include_xpac` decision, since
   a per-author opt-in covers part of what it is for; the Scopus check
   (`docs/scopus.md`, stage 1) would generate these entries (2026-11-08)
+- Manual entries take no link (`MANUAL_KEYS`), so a DOI-less work with an
+  online home renders unlinked (dpsd-new inbox, 2026-11-21: a Griffith
+  record of an ASIFA Magazine piece). Add a URL key; first decide whether
+  it fills `open_access.url` or a new field, a schema question before v1.0
 ## Low
 - Curated DOIs are not checked for shape: `_field_value` turns any value
   into `https://doi.org/<value>`, so a manual or override `doi: 5`, or a
