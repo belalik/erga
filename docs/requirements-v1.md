@@ -117,7 +117,25 @@ founding documents where they conflict.
   `include_xpac=true` opts in, and works carry an `is_xpac` field (verified
   live). Default off in erga, configurable, because XPAC metadata quality is
   explicitly lower and a publications page wants precision over recall.
-  Revisit with department-scale evidence. The boundary is not fixed, and
+  Settled 2026-11-23 on department-scale evidence: off in the build, and
+  XPAC-only works surface only as a read-only `verify` listing. A scratch
+  build of both consumers with the switch off and on, against that day's
+  OpenAlex (`local/xpac-measure/`), took dpsd-new from 856 to 896 works
+  and smartmove-site from 198 to 207. Of dpsd-new's 40 additions, 32 are
+  CiteSeerX scrapes with no year, many titled from a PDF's furniture
+  ("SUMMARY", "10/01/01"), all from one import of 2025-10-27; two more
+  are repository copies that won the merge against a published record
+  and replaced it on the page. Every known real XPAC work already had a
+  manual entry and merged into it. A per-author opt-in was rejected: the
+  careers that hold real XPAC works hold the scrapes too, so it cannot
+  admit one without the other. Default-on was ruled out before measuring
+  by both consumers' stance (recall only opt-in and reviewed). The
+  `include_xpac` key stays, for a consumer who accepts the noise, and one
+  more cost of turning it on: dedup counts a record as a deposit only by
+  preprint type or repository DOI prefix, so a repository copy typed
+  thesis or conference paper can win the merge and replace its published
+  record (two cases on dpsd-new with the switch on, none with it off).
+  The boundary is not fixed, and
   the record's `is_xpac` is not the list filter's view (measured
   2026-11-17): Springer and IGI reference entries a consumer had listed
   for weeks stopped returning without `include_xpac=true` while their

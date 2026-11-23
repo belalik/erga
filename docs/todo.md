@@ -3,7 +3,7 @@
 ## Next steps (21-11-2026)
 
 Any order:
-- Session: the `include_xpac` measurement on both consumers; batch 5 is in dpsd-new's config since 2026-11-21, 17 members (Normal).
+- Session: `verify`'s XPAC-only listing, the `include_xpac` verdict's work order (Normal).
 - Session: reshape this list to the convention (11 entries over the limit by `todo-shape.sh`, the Normal item), its own session.
 - Session: step (2) of the preprint-pair item, an exclude that binds across a merge (Normal).
 - Session: the merge measurement (Normal, a merge drops an absorbed copy's venue): a scratch build per consumer, no code change unless nonzero.
@@ -167,7 +167,8 @@ Any order:
   keep this a count query (a global one counts about 195,000, 2026-10-17).
   There is no JST source id to key on: translations sit under the original
   venue (`W2744884731` on "IEEE Conference Proceedings", landing page on
-  jglobal.jst.go.jp), so the suffix is the signal: reuse
+  jglobal.jst.go.jp; merged into its original `W2533376329` by
+  2026-11-23), so the suffix is the signal: reuse
   `normalize.is_machine_translation`, which the build's exclusion uses
   (both JST tags). Ids: `A5058798701`, `A5040504023`, `A5030134532`
 - A repository as `primary_location` sets both venue and type.
@@ -178,7 +179,10 @@ Any order:
   `submittedVersion`, so venue became the repository and type
   `book-chapter`; the second location is the IASTED CSN 2006 conference).
   Prefer the first non-repository location for venue and source type when
-  the raw type is not `preprint`; the public record is a permitted fixture
+  the raw type is not `preprint`; the public record is a permitted fixture.
+  Second case (dpsd-new, 2026-11-23): `W2056870266`, venue moved from JAIS
+  to a primary "AIS Electronic Library (AISeL)" while a second location
+  names ECIS (`aisel.aisnet.org/ecis2001/112`)
 - One conference source named after one edition holds a whole series
   (dpsd-new inbox, 2026-10-17): five MED papers, 2007 to 2016
   (`W2036128436`, `W2150394945`, `W2098248572`, `W2513624788`,
@@ -359,31 +363,36 @@ Any order:
   first: on both consumers, dataset-typed works sharing a title key with
   a non-dataset, and how many are `10.48786`; then choose between a
   prefix rule and a warning, or neither
-- Decide `include_xpac` (dpsd-new inbox, 2026-11-17). Measure now that
-  dpsd-new's batch 5 is in its config (17 members, 2026-11-21): a scratch
-  build with XPAC on and off on both consumers, each extra record classed
-  as absorbed by dedup, repository copy, or new work; then choose a
-  read-only `verify` listing or a per-author opt-in and record it in the
-  requirements' XPAC paragraph. Caveats for the verdict: the field spread
-  rests on seven careers (Kyriakoulakos, Arnellos, and from batch 5 on
-  2026-11-21 Spyrou, Kyratzi, Papakostopoulos, Valsamos, Xenakis: XPAC
-  12 of Arnellos's 65, mostly copies and fragments, 0 of 45, 2 of 26,
-  0 of 22, 0 of 20 plus 0 of 5 on a pinned profile, and 2 of 20, a
-  never-published draft PDF and a "Reviewed by:" fragment), and the
-  boundary moves, so the counts are a dated snapshot. Known real XPAC
-  works, all manual stopgaps: two Kallipos textbooks and five reference
-  entries (dpsd-new), Kyratzi's 2022 Kallipos textbook (dpsd-new), the
-  Ro-Boat dataset `W6949021637` (smartmove-site). On Kyriakoulakos's
-  profile every XPAC work is his (5 of 5, dpsd-new inbox 2026-11-21): the
-  two Kallipos books, two CEEGS 2024 papers and a Griffith repository
-  record `W7027632552`. The measurement also counts title pairs that
-  differ only by spacing: that record's title has "south east" where its
-  manual twin has "Southeast", and `normalize_title` keeps spaces, so
-  with XPAC on the two would not merge and a consumer who keeps the
-  manual entry gets a duplicate. A constraint on the verdict: dpsd-new's
-  stance (Thomas, 2026-11-21, "when in doubt, leave it out") wants any
-  recall feature opt-in and reported for review, never merged silently,
-  which rules out a default-on for that site
+- TeX quote marks in titles (smartmove-site inbox, 2026-11-22: the JSS
+  editorial `10.1016/j.jss.2017.02.022` arrives as ``...'', fixed there by
+  override). Measure first: titles holding `` or '' in both consumers'
+  JSON; normalise beside the HTML-entity decoding only if not the only one
+- A removed work's override goes quiet (dpsd-new inbox, 2026-11-23:
+  `W1627971907` left as XPAC-only; its id-keyed override showed only as
+  "override matched nothing: ... entry 38", one of eleven such lines).
+  First print the match key (DOI or id) beside the position in the
+  matched-nothing warnings (`curation.py`: `where` is `path: entry N`,
+  which shifts when an entry is added above); then name the override or
+  tag on the removed work's `Why:` line
+- A book whose Crossref record names editors and no authors is an edited
+  volume (dpsd-new inbox, 2026-11-23: `10.4018/978-1-4666-5820-2`,
+  `W2954536102`, typed `book` with its editors as authors; OpenAlex marks
+  no volume). Measure first: such books in both consumers' JSON; a build
+  note only if not the only one. Not checked: whether the backfill
+  already fetches these records
+- `verify` lists each author's XPAC-only works for review, never merged
+  (the `include_xpac` verdict, 2026-11-23: requirements' XPAC paragraph;
+  driver and data in `local/xpac-measure/`). The XPAC listing minus the
+  default one; drop what a build would merge into a manual entry or a
+  listed record, or exclude (run the finds through `curate`, as the
+  byline finds are); count year-less CiteSeerX scrapes (no source,
+  landing on citeseerx.ist.psu.edu) instead of listing them. A title that
+  differs from a listed one only by spacing counts as covered
+  (`W7027632552` against its manual "Southeast" twin: `normalize_title`
+  keeps spaces). Expected leads on a first run, hand-sorted: about nine
+  dated works across both consumers (Xidias's Kallipos textbook, four
+  Zenodo papers, three Fraunhofer IRIS records, the Ro-Boat dataset on
+  dpsd-new)
 - Authors can claim and fix their own OpenAlex profiles
   (help.openalex.org/how-to/fixing-authors, read 2026-11-08): a
   university email approves the claim at once; works added or removed,
@@ -404,8 +413,9 @@ Any order:
   works on no author entity at all (four of Zissis's, entered by hand on
   dpsd-new 2026-11-10, such as `W7112954265`), and one XPAC work the
   default fetch skips (the Ro-Boat dataset `W6949021637`, a manual entry
-  on smartmove-site). Shape it beside the `include_xpac` decision, since
-  a per-author opt-in covers part of what it is for; the Scopus check
+  on smartmove-site). The `include_xpac` verdict (2026-11-23) rejected a
+  per-author opt-in, so this is also how a lead from `verify`'s XPAC
+  listing gets in once its member confirms it; the Scopus check
   (`docs/scopus.md`, stage 1) would generate these entries (2026-11-08)
 - Manual entries take no link (`MANUAL_KEYS`), so a DOI-less work with an
   online home renders unlinked (dpsd-new inbox, 2026-11-21: a Griffith
