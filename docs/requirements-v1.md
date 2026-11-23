@@ -125,8 +125,10 @@ founding documents where they conflict.
   CiteSeerX scrapes with no year, many titled from a PDF's furniture
   ("SUMMARY", "10/01/01"), all from one import of 2025-10-27; two more
   are repository copies that won the merge against a published record
-  and replaced it on the page. Every known real XPAC work already had a
-  manual entry and merged into it. A per-author opt-in was rejected: the
+  and replaced it on the page. Every known real XPAC work but one already
+  had a manual entry and merged into it; the exception (`W7027632552`)
+  differs from its manual twin only by spacing, which `normalize_title`
+  keeps. A per-author opt-in was rejected: the
   careers that hold real XPAC works hold the scrapes too, so it cannot
   admit one without the other. Default-on was ruled out before measuring
   by both consumers' stance (recall only opt-in and reviewed). The

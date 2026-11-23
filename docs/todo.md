@@ -1,12 +1,12 @@
 # TODO
 
-## Next steps (21-11-2026)
+## Next steps (23-11-2026)
 
 Any order:
-- Session: `verify`'s XPAC-only listing, the `include_xpac` verdict's work order (Normal).
-- Session: reshape this list to the convention (11 entries over the limit by `todo-shape.sh`, the Normal item), its own session.
-- Session: step (2) of the preprint-pair item, an exclude that binds across a merge (Normal).
-- Session: the merge measurement (Normal, a merge drops an absorbed copy's venue): a scratch build per consumer, no code change unless nonzero.
+- Session: `verify`'s XPAC-only listing, the `include_xpac` verdict's work order (Normal); Codex beside `/code-review medium` on its diff.
+- Session: the measure-first batch on both consumers (Normal: merge-dropped venues, dataset title keys, TeX quotes, edited volumes); `local/xpac-measure/measure.py` already records merges (timmy only).
+- Session: the removed-override item, its match-key half first (Normal, small); or step (2) of the preprint-pair item.
+- Session: reshape this list to the convention (10 entries over the limit by `todo-shape.sh`, the Normal item), its own session.
 - Thomas: claim and clean his own OpenAlex profile, the watch case for the profile-claiming item (Normal).
 
 ## High
