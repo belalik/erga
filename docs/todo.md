@@ -1,11 +1,11 @@
 # TODO
 
-## Next steps (23-11-2026)
+## Next steps (24-11-2026)
 
 Any order:
-- Session: release 0.9.7 (strict listing reader, alias search, `verify`'s XPAC listing), once the listing's diff has had `/code-review medium` and Codex.
-- Session: the measure-first batch on both consumers (Normal: merge-dropped venues, dataset title keys, TeX quotes, edited volumes); `local/xpac-measure/measure.py` already records merges (timmy only).
-- Session: the removed-override item, its match-key half first (Normal, small); or step (2) of the preprint-pair item.
+- Session: release 0.9.7 (strict listing reader, alias search, `verify`'s XPAC listing, spacing-only title fold; reviewed by `/code-review medium` and Codex). The notes name dpsd-new's one new fold (`W2186810378`).
+- Session: the XPAC listing's merge-group pass (Normal; Codex's findings in `local/codex-xpac-listing/`, minis only), or the Greek manual-id hash (Normal, small).
+- Session: the measure-first batch on both consumers (Normal: merge-dropped venues, dataset title keys, TeX quotes, edited volumes); `local/xpac-measure/` now on both machines.
 - Session: reshape this list to the convention (10 entries over the limit by `todo-shape.sh`, the Normal item), its own session.
 - Thomas: claim and clean his own OpenAlex profile, the watch case for the profile-claiming item (Normal).
 
