@@ -10,12 +10,14 @@ from __future__ import annotations
 import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urlsplit
 
 from erga.config import AuthorConfig, Config
 from erga.curation import Override, load_overrides, mark_keep_distinct
 from erga.dedup import merge_group, normalize_title, title_key
+from erga.errors import FetchError
 from erga.model import Work
-from erga.normalize import normalize_work
+from erga.normalize import book_series_names, normalize_work
 from erga.openalex import (
     AuthorProfile,
     OpenAlexClient,
@@ -32,6 +34,9 @@ MAX_SAME_NAME = 5
 MAX_UNLINKED = 10
 # A byline search past this many works has found a common name, not a person.
 BYLINE_SEARCH_LIMIT = 1000
+# CiteSeerX copies land here; the pages redirect to the Wayback Machine,
+# mostly to no snapshot (dpsd-new, 2026-11-23).
+CITESEERX_HOST = "citeseerx.ist.psu.edu"
 
 
 def _name_tokens(name: str) -> set[str]:
@@ -198,17 +203,42 @@ class _Published:
         return (self.titles.get(key, []) if key else []), True
 
 
-def _work_lines(works: list[Work], bylines: dict[str, str]) -> list[str]:
-    """One line per work with the byline that names the author, capped."""
+def _work_lines(
+    works: list[Work], tails: dict[str, str], cap: int | None = MAX_UNLINKED
+) -> list[str]:
+    """One line per work, its tail by work id after the title and year,
+    capped unless `cap` is None."""
+    ordered = sort_works(works)
+    shown = ordered if cap is None else ordered[:cap]
     lines = []
-    for work in sort_works(works)[:MAX_UNLINKED]:
+    for work in shown:
         year = f" ({work.year})" if work.year else ""
-        doi = f"  {work.doi_key}" if work.doi_key else ""
-        title = work.title or "(untitled)"
-        lines.append(f"    {work.id}  {title}{year}{doi}  as {bylines[work.id]!r}")
-    if len(works) > MAX_UNLINKED:
-        lines.append(f"    … and {len(works) - MAX_UNLINKED} more")
+        lines.append(f"    {work.id}  {work.title or '(untitled)'}{year}{tails[work.id]}")
+    if len(ordered) > len(shown):
+        lines.append(f"    … and {len(ordered) - len(shown)} more")
     return lines
+
+
+def _byline_tails(works: list[Work], bylines: dict[str, str]) -> dict[str, str]:
+    """Each work's DOI, if any, and the byline that names the author."""
+    return {
+        work.id: (f"  {work.doi_key}" if work.doi_key else "") + f"  as {bylines[work.id]!r}"
+        for work in works
+    }
+
+
+def _normalized(raws: list[dict[str, Any]]) -> list[Work]:
+    """Raw finds as canonical records, the venue chosen as a build chooses
+    it: a book series is held back, never printed as the volume."""
+    series_names = book_series_names(raws)
+    return [normalize_work(raw, {}, {}, {}, series_names) for raw in raws]
+
+
+def _as_built(works: list[Work], config: Config, overrides: list[Override]) -> list[Work]:
+    """Finds as a build would keep them: versions of one work (a dataset's
+    releases, a deposit beside its published copy) collapse, and a work the
+    maintainer excluded stays out."""
+    return curate(works, overrides, config.exclude_types, BuildStats())
 
 
 def _byline_candidates(
@@ -247,11 +277,7 @@ def _byline_candidates(
             if byline is not None and work_id not in bylines:
                 bylines[work_id] = byline
                 raws.append(raw)
-    works = [normalize_work(raw, {}, {}, {}) for raw in raws]
-    # Versions of one work (a dataset's releases, a deposit beside its
-    # published copy) collapse, and a work the maintainer excluded stays out.
-    works = curate(works, overrides, config.exclude_types, BuildStats())
-    return works, bylines, skipped
+    return _as_built(_normalized(raws), config, overrides), bylines, skipped
 
 
 def _unlinked_lines(
@@ -305,18 +331,128 @@ def _unlinked_lines(
             f"  name in the byline, no author id, not on the published list: "
             f"{len(missing)} work(s); add any that are theirs to {config.manual_path.name}"
         )
-        lines.extend(_work_lines(missing, bylines))
+        lines.extend(_work_lines(missing, _byline_tails(missing, bylines)))
     if uncredited:
         lines.append(
             f"  listed without crediting them: {len(uncredited)} work(s); if theirs, an alias "
             f"spelling the byline or an override patching the record's authors credits them"
         )
-        lines.extend(_work_lines([published.by_id[i] for i in uncredited], uncredited))
+        records = [published.by_id[i] for i in uncredited]
+        lines.extend(_work_lines(records, _byline_tails(records, uncredited)))
     for work, listed in sorted(better, key=lambda pair: pair[0].id):
         lines.append(
             f"  better record for a listed work: {work.id} carries {work.doi_key}; "
             f"listed as {', '.join(listed)} without a DOI, which an `id` override can patch in"
         )
+    return lines
+
+
+def _xpac_link(work: Work, raw: dict[str, Any]) -> tuple[str | None, bool]:
+    """Where a reviewer can read an XPAC-only work, and whether it is a
+    CiteSeerX copy.
+
+    A CiteSeerX copy's landing page is dead, but its location's raw source
+    name keeps the URL of the PDF it was indexed from: on all 33 of one
+    consumer's copies, which carry no year and no source (2026-11-24).
+    """
+    location = raw.get("primary_location") or {}
+    landing = location.get("landing_page_url")
+    landing = landing if isinstance(landing, str) and landing else None
+    if landing and _host(landing) == CITESEERX_HOST:
+        pdf = location.get("raw_source_name")
+        if isinstance(pdf, str) and _host(pdf, schemes={"http", "https", "ftp"}):
+            return pdf, True
+        return landing, True
+    return work.doi or landing, False
+
+
+def _host(url: str, schemes: frozenset[str] | set[str] | None = None) -> str | None:
+    """A URL's host, or None for text that is no URL (a depositor's note, a
+    scheme with nothing after it) or a URL too malformed to parse."""
+    try:
+        parts = urlsplit(url)
+        host = parts.hostname
+    except ValueError:
+        return None
+    if schemes is not None and parts.scheme not in schemes:
+        return None
+    return host
+
+
+def _xpac_lines(
+    client: OpenAlexClient,
+    own_ids: list[str],
+    config: Config,
+    published: _Published | None,
+    overrides: list[Override],
+) -> list[str]:
+    """XPAC-only works on the author's profiles, missing from the list.
+
+    OpenAlex leaves its expansion pack (repository records, CiteSeerX
+    copies) out of the default listing, and the build follows it unless the
+    config sets `include_xpac` (settled 2026-11-23, requirements' XPAC
+    paragraph: the careers holding real XPAC works hold the scrapes too).
+    So they surface here, read-only, for a member to confirm. The finds go
+    through the build's curation and meet the published list as a build
+    would merge them; one more listing call drops what the default fetch
+    also returns, a work upstream added after the list was built.
+    Advisory: a failed call leaves this one section unchecked.
+    """
+    if published is None or config.include_xpac or not own_ids:
+        return []
+    try:
+        raws = {
+            strip_openalex_host(raw["id"]): raw
+            for raw in client.fetch_works(own_ids, include_xpac=True)
+        }
+        works = _normalized(list(raws.values()))
+        # An XPAC copy can win the merge with a listed default record (a
+        # newer id at equal rank) and keep none of its evidence, least of
+        # all a title an override patched on the list. Its keys, read before
+        # the merge as dedup reads them, still say it is held.
+        mark_keep_distinct(works, overrides)
+        held = [work for work in works if published.holding(work)[0]]
+        held_dois = {work.doi_key for work in held if work.doi_key}
+        held_titles = {key for work in held if (key := title_key(work)) is not None}
+        leads = [
+            work
+            for work in _as_built(works, config, overrides)
+            if not published.holding(work)[0]
+            and work.doi_key not in held_dois
+            and title_key(work) not in held_titles
+        ]
+        if leads:
+            default = client.in_listing([work.id for work in leads], include_xpac=False)
+            leads = [work for work in leads if work.id not in default]
+    except FetchError as exc:
+        return [f"  XPAC-only works not checked: {exc}"]
+    # What a reviewer opens, after the venue.
+    tails: dict[str, str] = {}
+    dated: list[Work] = []
+    citeseerx: list[Work] = []
+    for work in leads:
+        link, on_citeseerx = _xpac_link(work, raws[work.id])
+        tails[work.id] = (f"  {work.venue}" if work.venue else "") + (f"  {link}" if link else "")
+        (citeseerx if on_citeseerx else dated).append(work)
+
+    # Uncapped, unlike the byline lists: these are bounded by the member's
+    # own profiles, and the long tail is where a real paper sat among
+    # page-text titles (dpsd-new, 2026-11-24).
+    lines: list[str] = []
+    if dated:
+        lines.append(
+            f"  XPAC only, not on the published list: {len(dated)} work(s), outside the "
+            f"default fetch; add any that are theirs to {config.manual_path.name}"
+        )
+        lines.extend(_work_lines(dated, tails, cap=None))
+    if citeseerx:
+        lines.append(
+            f"  CiteSeerX copies, XPAC only, not on the published list: {len(citeseerx)}; "
+            f"each linked to the PDF it was indexed from where its record names one, and many "
+            f"titled from page text "
+            f"rather than the paper"
+        )
+        lines.extend(_work_lines(citeseerx, tails, cap=None))
     return lines
 
 
@@ -420,6 +556,12 @@ def verify_report(config: Config, client: OpenAlexClient) -> tuple[str, list[str
             warnings.append(f"{author.name}: resolved profile(s) have zero works")
         lines.extend(_same_name_lines(client, author, set(resolved.ids)))
         lines.extend(_unlinked_lines(client, author, resolved.ids, config, published, overrides))
+        lines.extend(_xpac_lines(client, resolved.ids, config, published, overrides))
         lines.append("")
     lines.append(f"Unlinked bylines: {published_note}")
+    lines.append(
+        "XPAC-only works: not listed; the config's include_xpac fetches them into the build."
+        if config.include_xpac
+        else f"XPAC-only works: {published_note}"
+    )
     return "\n".join(lines).rstrip() + "\n", warnings

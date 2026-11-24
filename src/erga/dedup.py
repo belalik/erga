@@ -107,14 +107,18 @@ def title_key(work: Work) -> tuple[str, bool] | None:
     """What title clustering compares, or None for a record it leaves alone:
     one marked keep_distinct, or a title too short to trust.
 
-    Datasets never merge with papers, so the key includes is-dataset.
+    The key drops spaces, so a title scraped with its words run together
+    ("DEFENDINGWIRELESSSENSORNETWORKS FROM JAMMINGATTACKS", dpsd-new
+    2026-11-24) meets its spaced copy; the length floor still reads the
+    spaced form. Datasets never merge with papers, so the key includes
+    is-dataset.
     """
     if work.keep_distinct:
         return None
     normalized = normalize_title(work.title)
     if len(normalized) < MIN_CLUSTER_TITLE_LENGTH:
         return None
-    return normalized, work.type == "dataset"
+    return normalized.replace(" ", ""), work.type == "dataset"
 
 
 def cluster_by_title(works: list[Work]) -> list[Work]:

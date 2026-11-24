@@ -148,6 +148,21 @@ lacks. A name romanized from another script prints several ways (Greek
 alias, not only the one the person prefers. A name too common to judge
 is skipped with a count.
 
+Some works sit on a member's own profile and still never arrive. OpenAlex
+leaves its expansion pack (XPAC: repository records, DataCite deposits,
+CiteSeerX copies of PDFs found on the web) out of every listing unless asked,
+and the build follows it while `include_xpac` is off, because most of what
+XPAC adds is noise. So `verify` lists each author's XPAC-only works that the
+published list lacks, after the same curation and the same id, DOI and title
+match, for you to add the real ones to your manual file. A title that differs
+from a listed one only by its spacing counts as listed. CiteSeerX copies get
+a list of their own: most carry no year, many are titled from page text
+("SUMMARY") rather than from the paper, and their CiteSeerX pages no longer
+load, so each is linked to the PDF it was copied from. The list costs one
+extra walk of each author's works; if OpenAlex fails it, that author's
+list says so and the rest of the report stands. With `include_xpac: true`
+the build fetches all of them and `verify` lists none.
+
 Finding the iD in the first place is your step, and erga does not guess at
 it. An ORCID in `erga.yml` is trusted as given. What worked for a department
 that had iDs on file for five of sixty-three staff: search OpenAlex under

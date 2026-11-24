@@ -127,8 +127,8 @@ founding documents where they conflict.
   are repository copies that won the merge against a published record
   and replaced it on the page. Every known real XPAC work but one already
   had a manual entry and merged into it; the exception (`W7027632552`)
-  differs from its manual twin only by spacing, which `normalize_title`
-  keeps. A per-author opt-in was rejected: the
+  differs from its manual twin only by spacing, which the title key
+  kept until 2026-11-24 (stage 7 now drops it). A per-author opt-in was rejected: the
   careers that hold real XPAC works hold the scrapes too, so it cannot
   admit one without the other. Default-on was ruled out before measuring
   by both consumers' stance (recall only opt-in and reviewed). The
@@ -145,7 +145,15 @@ founding documents where they conflict.
   `is_xpac:false` filter counts 209 by default against 218 with it. A
   default-off fetch can therefore drop a work already published; the
   delta's removal reason names that case (stage 12), asking the default
-  listing itself rather than the record.
+  listing itself rather than the record. The `verify` listing asks it the
+  same way: a candidate the published list lacks is dropped if the default
+  listing returns it (added upstream since the list was built). The
+  CiteSeerX scrapes were first to be counted, not listed; reversed
+  2026-11-24 when a member confirmed one (`W7095382982`, a 2011 paper) and
+  all 33 of dpsd-new's carried their source PDF's URL in the primary
+  location's `raw_source_name`, while the CiteSeerX landing pages
+  redirect to the Wayback Machine, mostly to no snapshot. They are listed
+  apart, uncapped, each linked to that PDF.
 - **Type vocabulary drifts**: a July 2026 reclassification changed `type` on
   ~10% of the catalog and added first-class `conference-paper`, `software`
   and `software-paper`; the classifier re-runs daily. `type_crossref` and
@@ -669,9 +677,13 @@ Ported from the production origin pipeline with generalization deltas noted.
 6. DOI-level dedup, case-insensitive.
 7. Title-cluster dedup. Normalize (NFKD, lowercase, fold dash variants,
    strip non-alphanumerics, collapse whitespace); group by
-   (normalized title, is-dataset) so datasets never merge with papers;
-   titles under 12 normalized characters and `keep_distinct` records bypass
-   clustering. Rank within a cluster: manual first, then version-of-record
+   (normalized title without its spaces, is-dataset) so datasets never
+   merge with papers; titles under 12 normalized characters (counted with
+   their spaces) and `keep_distinct` records bypass clustering. The spaces
+   go since 2026-11-24, when a scrape that ran its words together
+   ("DEFENDINGWIRELESSSENSORNETWORKS FROM JAMMINGATTACKS", `W2186810378`)
+   was found listed beside its DOI record on dpsd-new; it was the only
+   such pair on either consumer. Rank within a cluster: manual first, then version-of-record
    over repository deposits (known repository DOI prefixes: arXiv, Zenodo,
    figshare, Research Square, bio/medRxiv, SSRN, OSF, Fraunhofer publica,
    and `preprint` type), then has-DOI, then citation count, then newest

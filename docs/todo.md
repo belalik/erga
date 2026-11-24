@@ -3,7 +3,7 @@
 ## Next steps (23-11-2026)
 
 Any order:
-- Session: `verify`'s XPAC-only listing, the `include_xpac` verdict's work order (Normal); Codex beside `/code-review medium` on its diff.
+- Session: release 0.9.7 (strict listing reader, alias search, `verify`'s XPAC listing), once the listing's diff has had `/code-review medium` and Codex.
 - Session: the measure-first batch on both consumers (Normal: merge-dropped venues, dataset title keys, TeX quotes, edited volumes); `local/xpac-measure/measure.py` already records merges (timmy only).
 - Session: the removed-override item, its match-key half first (Normal, small); or step (2) of the preprint-pair item.
 - Session: reshape this list to the convention (10 entries over the limit by `todo-shape.sh`, the Normal item), its own session.
@@ -121,7 +121,13 @@ Any order:
   filter passes `include_xpac=true` whatever the config says, or an XPAC
   work on a member's ORCID list (the Ro-Boat dataset `W6949021637`,
   probe 2026-11-17) reads as on no entity; the report then names it as
-  XPAC, the one reason the build skipped it. Advisory: an outage, a 503 or a spent quota skips it with
+  XPAC, the one reason the build skipped it. A DOI that resolves to no
+  OpenAlex work is reported with its registration agency
+  (`doi.org/ra/<prefix>`, one call per prefix), so a gap in upstream
+  coverage reads as such, with a manual entry its only fix. Case
+  (dpsd-new inbox, 2026-11-24): `10.53242/syzetesis/112`, mEDRA, a 404
+  on both OpenAlex and Crossref; that other agencies are missing
+  systematically is one case, unverified. Advisory: an outage, a 503 or a spent quota skips it with
   a warning. Token optional from an env var, anonymous without; README and
   `docs/action.md` gain the registration steps when the code ships, not
   before. Later, DOI-less entries by title: `filter=title.search:`
@@ -270,8 +276,9 @@ Any order:
   overrides table as drift: the page compares the previous and current
   output, both post-curation, so a newly added override lands under
   "Metadata drift from OpenAlex. Nothing to action." (dpsd-new dry run,
-  2026-09-25: type 4, date 3, venue 3, year 3, title 1, all curation).
-  Have the pipeline pass `compute_delta` the (work id, field) pairs a
+  2026-09-25: type 4, date 3, venue 3, year 3, title 1, all curation;
+  live again in refresh PR #23, 2026-11-24, one new override on
+  `W631720459` shown as `type 1`, `venue 1`). Have the pipeline pass `compute_delta` the (work id, field) pairs a
   patch touched this build; a changed field under a patch is curation,
   the rest drift. `Override.changed` alone cannot do it: it fires on every
   build a binding override runs. (b) A count per field hides regressions
@@ -380,19 +387,6 @@ Any order:
   no volume). Measure first: such books in both consumers' JSON; a build
   note only if not the only one. Not checked: whether the backfill
   already fetches these records
-- `verify` lists each author's XPAC-only works for review, never merged
-  (the `include_xpac` verdict, 2026-11-23: requirements' XPAC paragraph;
-  driver and data in `local/xpac-measure/`). The XPAC listing minus the
-  default one; drop what a build would merge into a manual entry or a
-  listed record, or exclude (run the finds through `curate`, as the
-  byline finds are); count year-less CiteSeerX scrapes (no source,
-  landing on citeseerx.ist.psu.edu) instead of listing them. A title that
-  differs from a listed one only by spacing counts as covered
-  (`W7027632552` against its manual "Southeast" twin: `normalize_title`
-  keeps spaces). Expected leads on a first run, hand-sorted: about nine
-  dated works across both consumers (Xidias's Kallipos textbook, four
-  Zenodo papers, three Fraunhofer IRIS records, the Ro-Boat dataset on
-  dpsd-new)
 - Authors can claim and fix their own OpenAlex profiles
   (help.openalex.org/how-to/fixing-authors, read 2026-11-08): a
   university email approves the claim at once; works added or removed,
@@ -421,6 +415,27 @@ Any order:
   online home renders unlinked (dpsd-new inbox, 2026-11-21: a Griffith
   record of an ASIFA Magazine piece). Add a URL key; first decide whether
   it fills `open_access.url` or a new field, a schema question before v1.0
+- A manual entry whose title has no ASCII letters gets a positional id
+  (dpsd-new inbox, 2026-11-24, refresh PR #23): `slugify` drops non-ASCII,
+  so a Greek title slugs to `untitled` and `load_manual` suffixes `-2`,
+  `-3` in file order (checked in code 2026-11-24). Inserting one above
+  others renumbers them: the delta shows them removed and re-added, and an
+  id-keyed override or tag binds to another record with no error. Any
+  non-Latin script does the same; dpsd-new has four. Fix: when the slug is
+  empty, take a short hash of the normalized title. First check that
+  neither consumer's overrides or tags address a `manual-untitled*` id;
+  the release notes must say those entries change id once
+- `verify`'s XPAC listing judges "already listed" by DOI and title keys
+  read before the merge, which Codex broke offline in three shapes, none
+  seen on either consumer (2026-11-24, `local/codex-xpac-listing/review.md`
+  findings 1 to 3, minis only): a merge chain, a default twin newer than
+  the list winning over its XPAC copy, a DOI-keyed `keep_distinct` whose
+  DOI a later patch changed. Fix by having dedup report its merge groups
+  and judging each group whole. Same pass: CiteSeerX copies titled from
+  page text merge different papers ("signatures for": `W7096736994` and
+  `W7099791549` are two PDFs), and the tests caught 23 of Codex's 41
+  mutations (its list, same file). Docs nits there too (requirements: "40
+  additions" is net, 42 gross)
 ## Low
 - `_walk` ends on any page without `meta.next_cursor`, so a 200 with valid
   results but no meta still ends a walk short (the strict reader of

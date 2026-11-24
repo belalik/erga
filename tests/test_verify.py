@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -9,12 +10,13 @@ from erga.config import AuthorConfig, Config
 from erga.model import Work, WorkAuthor
 from erga.openalex import OpenAlexClient
 from erga.output import document, dump
-from erga.verify import BYLINE_SEARCH_LIMIT, _byline_matches, verify_report
+from erga.verify import BYLINE_SEARCH_LIMIT, _byline_matches, _xpac_link, verify_report
 
 # How a build credits the configured author on a record it lists.
 CREDITED = WorkAuthor(name="Priya Nair", tracked=True, tracked_as="Priya Nair")
 # The byline search for her name; test_openalex pins the phrase syntax.
 PRIYA_BYLINES = 'raw_author_name.search:"Priya Nair"~2 OR "Nair Priya"~2'
+JOSIAH_ORCID = "9999-0000-0000-0001"
 
 
 def profile(author_id: str, name: str, works: int, alternatives: list[str]) -> dict[str, object]:
@@ -150,7 +152,7 @@ def orcid_warnings(
 ) -> list[str]:
     """Warnings for Josiah Carberry, whose ORCID resolves to these profiles."""
     transport = FakeTransport()
-    transport.add("/authors", {"filter": "orcid:9999-0000-0000-0001"}, author_page(profiles))
+    transport.add("/authors", {"filter": f"orcid:{JOSIAH_ORCID}"}, author_page(profiles))
     for p in profiles:
         author_id = str(p["id"]).rsplit("/", 1)[-1]
         transport.add(
@@ -161,9 +163,7 @@ def orcid_warnings(
     add_search(transport, "Josiah Carberry", author_page([]))
     for alias in aliases or []:
         add_search(transport, alias, author_page([]))
-    author = AuthorConfig(
-        name="Josiah Carberry", orcid="9999-0000-0000-0001", aliases=aliases or []
-    )
+    author = AuthorConfig(name="Josiah Carberry", orcid=JOSIAH_ORCID, aliases=aliases or [])
     _, warnings = verify_report(
         Config(mailto="m@example.org", authors=[author]), make_client(transport)
     )
@@ -427,7 +427,7 @@ def raw_work(
     *,
     doi: str | None = None,
     work_type: str = "article",
-    year: int = 2024,
+    year: int | None = 2024,
     bylines: tuple[tuple[str, str | None], ...] = (("Priya Nair", None),),
 ) -> dict[str, object]:
     """A raw OpenAlex work; a None author id is an authorship linked to no one."""
@@ -654,7 +654,7 @@ def test_unlinked_bylines_leave_the_authors_own_profiles_to_the_fetch(tmp_path: 
     transport = FakeTransport()
     transport.add(
         "/authors",
-        {"filter": "orcid:9999-0000-0000-0001"},
+        {"filter": f"orcid:{JOSIAH_ORCID}"},
         author_page([profile("A1", "Josiah Carberry", 8, []), profile("A2", "J. Carberry", 1, [])]),
     )
     for author_id in ("A1", "A2"):
@@ -663,6 +663,7 @@ def test_unlinked_bylines_leave_the_authors_own_profiles_to_the_fetch(tmp_path: 
             {"filter": f"author.id:{author_id}", "sort": "publication_date:desc"},
             {"results": []},
         )
+    add_pages(transport, "/works", {"filter": "author.id:A1|A2", "include_xpac": "true"}, [[]])
     add_search(transport, "Josiah Carberry", author_page([]))
     add_byline_search(
         transport,
@@ -671,7 +672,7 @@ def test_unlinked_bylines_leave_the_authors_own_profiles_to_the_fetch(tmp_path: 
     )
     config = Config(
         mailto="m@example.org",
-        authors=[AuthorConfig(name="Josiah Carberry", orcid="9999-0000-0000-0001")],
+        authors=[AuthorConfig(name="Josiah Carberry", orcid=JOSIAH_ORCID)],
         output_path=output,
     )
 
@@ -691,6 +692,7 @@ def test_unlinked_bylines_not_checked_without_a_published_list(tmp_path: Path) -
     report, _ = verify_report(config, make_client(transport))
 
     assert f"not checked; no published list at {output} yet" in report
+    assert f"XPAC-only works: not checked; no published list at {output} yet" in report
     assert byline_calls(transport) == []
 
     output.write_text("not json", encoding="utf-8")
@@ -720,3 +722,214 @@ def test_unlinked_bylines_skip_a_name_too_common_to_judge(tmp_path: Path) -> Non
     assert "W1  " not in report
     # The first page's count decides; nothing past it is walked.
     assert [p["cursor"] for p in byline_calls(transport)] == ["*"]
+
+
+CITESEERX = "http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.1.1"
+
+
+def located(
+    raw: dict[str, object],
+    landing: str,
+    raw_source: str | None = None,
+    source_name: str | None = None,
+) -> dict[str, object]:
+    """A raw work with a primary location, at a named source if given."""
+    raw["primary_location"] = {
+        "landing_page_url": landing,
+        "raw_source_name": raw_source,
+        "source": {"display_name": source_name} if source_name else None,
+    }
+    return raw
+
+
+def xpac_config(output: Path, **settings: Any) -> Config:
+    """The author `xpac_transport` resolves, with the published list at `output`."""
+    return Config(
+        mailto="m@example.org",
+        authors=[AuthorConfig(name="Josiah Carberry", orcid=JOSIAH_ORCID)],
+        output_path=output,
+        **settings,
+    )
+
+
+def xpac_transport(xpac_pages: list[list[object]] | None, in_default: list[str]) -> FakeTransport:
+    """One resolved profile A1, no byline finds, and its works with XPAC
+    (no pages: that walk fails)."""
+    transport = FakeTransport()
+    transport.add(
+        "/authors",
+        {"filter": f"orcid:{JOSIAH_ORCID}"},
+        author_page([profile("A1", "Josiah Carberry", 9, [])]),
+    )
+    transport.add(
+        "/works", {"filter": "author.id:A1", "sort": "publication_date:desc"}, {"results": []}
+    )
+    add_search(transport, "Josiah Carberry", author_page([]))
+    add_byline_search(
+        transport,
+        'raw_author_name.search:"Josiah Carberry"~2 OR "Carberry Josiah"~2,author.id:!A1',
+        [[]],
+    )
+    xpac_walk = {"filter": "author.id:A1", "include_xpac": "true"}
+    if xpac_pages is None:
+        transport.add("/works", xpac_walk, {}, status=503)
+    else:
+        add_pages(transport, "/works", xpac_walk, xpac_pages)
+    add_pages(
+        transport,
+        "/works",
+        {"select": "id"},
+        [[{"id": f"https://openalex.org/{work_id}"} for work_id in in_default]],
+    )
+    return transport
+
+
+def listing_calls(transport: FakeTransport) -> list[dict[str, str]]:
+    return [p for _, p in transport.calls if p.get("select") == "id"]
+
+
+def test_xpac_listing_reports_only_what_the_published_list_lacks(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    write_published(
+        output,
+        [
+            Work(id="W10", title="Listed From The Default Fetch", year=2020),
+            Work(id="W11", title="Listed Version Of Record", doi="https://doi.org/10.5555/vor"),
+            Work(
+                id="manual-creative-aspects",
+                title="Creative Aspects Of Southeast Animation",
+                source="manual",
+            ),
+        ],
+    )
+    overrides = tmp_path / "overrides.yml"
+    overrides.write_text("- id: W7\n  exclude: true\n", encoding="utf-8")
+    pages: list[list[object]] = [
+        [
+            raw_work("W10", "Listed From The Default Fetch", year=2020),
+            located(
+                raw_work("W1", "A Repository Paper Of His", doi="10.5281/zenodo.1"),
+                "https://doi.org/10.5281/zenodo.1",
+                "Zenodo",
+                source_name="Zenodo",
+            ),
+            raw_work("W2", "Its Repository Copy", doi="10.5555/vor"),
+            # Differs from the manual twin only by a space, which dedup ignores.
+            raw_work("W3", "Creative Aspects of South East Animation"),
+        ],
+        [
+            located(
+                raw_work("W4", "A Paper Only CiteSeerX Kept", year=None),
+                CITESEERX,
+                "http://www.example.org/~josiah/papers/kept11.pdf",
+            ),
+            located(raw_work("W5", "SUMMARY", year=None), CITESEERX, "Unknown"),
+            # Added upstream after the list was built: the next build lists it.
+            raw_work("W6", "A Default Work Newer Than The List"),
+            raw_work("W7", "A Namesake Paper Excluded Once"),
+        ],
+    ]
+    transport = xpac_transport(pages, in_default=["W6"])
+    config = xpac_config(output, overrides_path=overrides)
+
+    report, warnings = verify_report(config, make_client(transport))
+
+    assert (
+        "XPAC only, not on the published list: 1 work(s), outside the default fetch; "
+        "add any that are theirs to manual.yml\n"
+        "    W1  A Repository Paper Of His (2024)  Zenodo  https://doi.org/10.5281/zenodo.1\n"
+    ) in report
+    assert "CiteSeerX copies, XPAC only, not on the published list: 2;" in report
+    assert (
+        "    W4  A Paper Only CiteSeerX Kept  http://www.example.org/~josiah/papers/kept11.pdf"
+        in report
+    )
+    # No PDF named: the dead landing page is all there is.
+    assert f"    W5  SUMMARY  {CITESEERX}" in report
+    for dropped in ("W10  ", "W2  ", "W3  ", "W6  ", "W7  "):
+        assert dropped not in report
+    assert f"XPAC-only works: compared against {output} (3 works)." in report
+    # Only the works the list lacks are asked of the default listing.
+    (call,) = listing_calls(transport)
+    assert set(call["filter"].removeprefix("openalex_id:").split("|")) == {"W1", "W4", "W5", "W6"}
+    assert "include_xpac" not in call
+    assert warnings == []
+
+
+def test_xpac_listing_stays_quiet_when_the_list_holds_everything(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    write_published(output, [Work(id="W10", title="Listed From The Default Fetch")])
+    transport = xpac_transport([[raw_work("W10", "Listed From The Default Fetch")]], in_default=[])
+
+    report, _ = verify_report(xpac_config(output), make_client(transport))
+
+    assert "XPAC only" not in report
+    assert "CiteSeerX" not in report
+    assert listing_calls(transport) == []
+
+
+def test_xpac_listing_left_to_the_build_when_the_config_includes_xpac(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    write_published(output, [])
+    transport = xpac_transport([[raw_work("W1", "Fetched By The Build Already")]], in_default=[])
+
+    report, _ = verify_report(xpac_config(output, include_xpac=True), make_client(transport))
+
+    assert "W1  " not in report
+    assert "XPAC-only works: not listed; the config's include_xpac fetches them" in report
+    assert not any(
+        p.get("filter") == "author.id:A1" and "sort" not in p for _, p in transport.calls
+    )
+
+
+def test_xpac_listing_sees_a_listed_twin_its_copy_absorbed(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    write_published(output, [Work(id="W1", title="The Title The List Prints")])
+    overrides = tmp_path / "overrides.yml"
+    overrides.write_text("- id: W1\n  title: The Title The List Prints\n", encoding="utf-8")
+    # The copy wins the merge on its newer id and keeps the upstream title.
+    upstream = "An Upstream Title Of A Listed Paper"
+    pages: list[list[object]] = [
+        [raw_work("W1", upstream), located(raw_work("W8", upstream), CITESEERX)]
+    ]
+    transport = xpac_transport(pages, in_default=[])
+
+    report, _ = verify_report(xpac_config(output, overrides_path=overrides), make_client(transport))
+
+    assert "W8  " not in report
+    assert listing_calls(transport) == []
+
+
+def test_xpac_listing_failure_leaves_the_rest_of_the_report(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    write_published(output, [])
+    transport = xpac_transport(None, in_default=[])
+
+    report, warnings = verify_report(xpac_config(output), make_client(transport))
+
+    assert "A1  Josiah Carberry — 9 works" in report
+    assert "  XPAC-only works not checked: " in report
+    assert "HTTP 503" in report
+    assert warnings == []
+
+
+@pytest.mark.parametrize(
+    ("landing", "raw_source", "expected"),
+    [
+        (
+            CITESEERX,
+            "http://www.example.org/kept11.pdf",
+            ("http://www.example.org/kept11.pdf", True),
+        ),
+        # A scheme with no host is a depositor's note, not a PDF.
+        (CITESEERX, "https:Paper collection", (CITESEERX, True)),
+        (CITESEERX, "http://[broken", (CITESEERX, True)),
+        # A landing page too malformed to parse is no CiteSeerX copy, and no crash.
+        ("http://[broken", "http://www.example.org/kept11.pdf", ("http://[broken", False)),
+    ],
+)
+def test_xpac_link_takes_only_a_real_url(
+    landing: str, raw_source: str, expected: tuple[str, bool]
+) -> None:
+    raw = located(raw_work("W4", "A Paper Only CiteSeerX Kept"), landing, raw_source)
+    assert _xpac_link(Work(id="W4", title="A Paper Only CiteSeerX Kept"), raw) == expected

@@ -104,6 +104,21 @@ def test_short_titles_bypass_clustering() -> None:
     assert len(cluster_by_title(works)) == 2
 
 
+def test_title_cluster_ignores_spacing() -> None:
+    # A scraped title runs words together; its copy with a DOI wins.
+    spaced = Work(
+        id="W1",
+        title="Defending Sensor Networks from Jamming Attacks",
+        doi="https://doi.org/10.5555/jam",
+    )
+    run_together = Work(id="W2", title="DEFENDINGSENSORNETWORKS FROM JAMMINGATTACKS")
+    assert [w.id for w in cluster_by_title([run_together, spaced])] == ["W1"]
+    # The length floor reads the spaced form, so dropping spaces shrinks no key
+    # under it: "on pots pans" is 12 characters, its spaceless form 10.
+    pans = [Work(id="W3", title="On Pots & Pans"), Work(id="W4", title="On Pots & Pans")]
+    assert len(cluster_by_title(pans)) == 1
+
+
 def test_datasets_never_merge_with_papers() -> None:
     paper = Work(id="W1", title="Psychoceramics Survey Twenty Twenty-Two")
     dataset = Work(id="W2", title="Psychoceramics Survey Twenty Twenty-Two", type="dataset")
