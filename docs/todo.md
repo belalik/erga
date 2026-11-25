@@ -3,6 +3,7 @@
 ## Next steps (25-11-2026)
 
 Any order:
+- Session: Codex reviews the merge-group pass (`eeae658`, unreleased; Sol, fix-delta shape with Codex's 2026-11-24 review beside the diff, `local/codex-xpac-listing/`, minis only), then release 0.9.8.
 - Session: the Greek manual-id hash (Normal, small).
 - Session: the measure-first batch on both consumers (Normal: merge-dropped venues, dataset title keys, TeX quotes, edited volumes); `local/xpac-measure/` now on both machines.
 - Session: reshape this list to the convention (10 entries over the limit by `todo-shape.sh`, the Normal item), its own session.

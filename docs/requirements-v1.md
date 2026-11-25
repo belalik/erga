@@ -164,7 +164,9 @@ founding documents where they conflict.
   a member that member does not cover (a default record newer than the
   list shares a DOI with one XPAC copy, which shares a title with another
   under a second DOI), so that last work is neither listed nor reported.
-  Neither limit occurs on either consumer. The
+  The second drops nothing on either consumer (live `verify`, 2026-11-25,
+  identical to the winner-only version but for one line); the first was
+  not measured, since both versions suppress alike. The
   CiteSeerX scrapes were first to be counted, not listed; reversed
   2026-11-24 when a member confirmed one (`W7095382982`, a 2011 paper) and
   all 33 of dpsd-new's carried their source PDF's URL in the primary
