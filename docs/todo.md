@@ -127,18 +127,34 @@ Any order:
   coverage reads as such, with a manual entry its only fix. Case
   (dpsd-new inbox, 2026-11-24): `10.53242/syzetesis/112`, mEDRA, a 404
   on both OpenAlex and Crossref; that other agencies are missing
-  systematically is one case, unverified. Advisory: an outage, a 503 or a spent quota skips it with
+  systematically is one case, unverified. A recurring consumer from
+  early December (dpsd-new inbox, 2026-11-24): after its cutover,
+  dpsd-new drafts works OpenAlex lacks from each member's ORCID, reviews
+  each once into its manual file, and tells members ORCID is where to
+  add what is missing. Case from it: a member's paper absent, under its
+  title, from his own ORCID and present on a tracked co-author's
+  (Xenakis and Vosinakis, Re-thinking Technology in Museums 2011), so
+  reading co-authors' lists and attributing by byline reaches it and the
+  member's own list does not. Possibly the same work under another title
+  on his own list (unconfirmed, 2026-11-25; dpsd-new routes his answer).
+  Advisory: an outage, a 503 or a spent quota skips it with
   a warning. Token optional from an env var, anonymous without; README and
   `docs/action.md` gain the registration steps when the code ships, not
   before. Later, DOI-less entries by title: `filter=title.search:`
   (full-text `search=` missed known titles) needs every query word in the
   title, so truncate from both ends (a subtitle hid the i-Walk match); of
-  one member's 38, 27 are on site and 11 not in OpenAlex. Works OpenAlex
+  one member's 38, 27 are on site and 11 not in OpenAlex. Mark each such
+  entry's ORCID `source` (the owner, or an importer such as Scopus or
+  Crossref) and whether it carries any external id, so the reviewer sees
+  the thinnest first (dpsd-new inbox, 2026-11-24). Where titles differ,
+  propose candidate matches by venue, year and a tracked co-author, which
+  pair what a title match cannot (dpsd-new inbox, 2026-11-25). Works OpenAlex
   lacks are not ingested, only reported in that phase; whether one enters
   as a manual entry is the site's call per member. Draft `manual.yml`
   stubs from ORCID were declined at triage 2026-09-26: work summaries
   carry no byline, the one field a manual entry cannot do without; reopen
-  if a consumer asks. Fixtures synthetic: ORCID lists are personal data
+  if a consumer asks (dpsd-new drafting its own from ORCID, 2026-11-24,
+  is not that ask). Fixtures synthetic: ORCID lists are personal data
 - Contamination cluster warning: drop "exclude them by DOI" for works that
   carry another configured author, and name that author instead
   (`contamination.py`, `contamination_warnings`). Excluding such a work
