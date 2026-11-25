@@ -29,7 +29,7 @@ from erga.curation import (
     shared_dois,
     unmatched_overrides,
 )
-from erga.dedup import cluster_by_title, dedup_by_doi
+from erga.dedup import Members, cluster_by_title, dedup_by_doi
 from erga.delta import Delta, compute_delta, listed
 from erga.errors import ConfigError, FetchError
 from erga.model import Work, doi_key
@@ -155,17 +155,22 @@ def exclude_machine_translations(works: list[Work], stats: BuildStats) -> list[W
 
 
 def curate(
-    works: list[Work], overrides: list[Override], types: frozenset[str], stats: BuildStats
+    works: list[Work],
+    overrides: list[Override],
+    types: frozenset[str],
+    stats: BuildStats,
+    members: Members | None = None,
 ) -> list[Work]:
     """Drop machine translations, merge versions, apply overrides, drop
     unwanted types, in the build's order.
 
     `verify` runs its byline finds through this too, so they meet the
-    published list as a build would have kept them.
+    published list as a build would have kept them. With `members`, dedup
+    reports each survivor's merge group there.
     """
     mark_keep_distinct(works, overrides)
     works = exclude_machine_translations(works, stats)
-    merged = cluster_by_title(dedup_by_doi(works))
+    merged = cluster_by_title(dedup_by_doi(works, members), members)
     stats.deduplicated = len(works) - len(merged)
     kept, stats.excluded = apply_overrides(merged, overrides)
     kept, stats.excluded_types = exclude_by_type(kept, types)

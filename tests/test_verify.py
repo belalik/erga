@@ -752,9 +752,11 @@ def xpac_config(output: Path, **settings: Any) -> Config:
     )
 
 
-def xpac_transport(xpac_pages: list[list[object]] | None, in_default: list[str]) -> FakeTransport:
-    """One resolved profile A1, no byline finds, and its works with XPAC
-    (no pages: that walk fails)."""
+def xpac_transport(
+    xpac_pages: list[list[object]] | None, in_default: list[str] | None
+) -> FakeTransport:
+    """One resolved profile A1, no byline finds, its works with XPAC (no
+    pages: that walk fails), and the default listing's answer (None: it fails)."""
     transport = FakeTransport()
     transport.add(
         "/authors",
@@ -775,12 +777,15 @@ def xpac_transport(xpac_pages: list[list[object]] | None, in_default: list[str])
         transport.add("/works", xpac_walk, {}, status=503)
     else:
         add_pages(transport, "/works", xpac_walk, xpac_pages)
-    add_pages(
-        transport,
-        "/works",
-        {"select": "id"},
-        [[{"id": f"https://openalex.org/{work_id}"} for work_id in in_default]],
-    )
+    if in_default is None:
+        transport.add("/works", {"select": "id"}, {}, status=503)
+    else:
+        add_pages(
+            transport,
+            "/works",
+            {"select": "id"},
+            [[{"id": f"https://openalex.org/{work_id}"} for work_id in in_default]],
+        )
     return transport
 
 
@@ -900,6 +905,178 @@ def test_xpac_listing_sees_a_listed_twin_its_copy_absorbed(tmp_path: Path) -> No
     assert listing_calls(transport) == []
 
 
+def test_xpac_listing_holds_a_chain_its_listed_member_started(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    write_published(output, [Work(id="W1", title="The Title The List Prints")])
+    # W2 takes W1's DOI merge, then W3 takes W2's title merge: one group,
+    # whose winner shares no key with the listed W1.
+    second = "A Second Copy Under Its Own Title"
+    pages: list[list[object]] = [
+        [
+            raw_work("W1", "An Old Upstream Title", doi="10.5555/a"),
+            raw_work("W2", second, doi="10.5555/a"),
+            raw_work("W3", second, doi="10.5555/b"),
+        ]
+    ]
+    transport = xpac_transport(pages, in_default=[])
+
+    report, _ = verify_report(xpac_config(output), make_client(transport))
+
+    assert "W3  " not in report
+    assert listing_calls(transport) == []
+
+
+def test_xpac_listing_holds_what_an_overrides_repair_names(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    repaired = "The Title The Override Set"
+    write_published(output, [Work(id="W1", title=repaired, doi="https://doi.org/10.5555/repaired")])
+    overrides = tmp_path / "overrides.yml"
+    overrides.write_text(
+        f"- id: W1\n  doi: 10.5555/repaired\n  title: {repaired}\n", encoding="utf-8"
+    )
+    # W1 arrives broken; the XPAC records carrying the DOI or the title its
+    # override set are the listed paper, though no merge reaches W1.
+    pages: list[list[object]] = [
+        [
+            raw_work("W1", "A Broken Copy Of The Paper"),
+            raw_work("W6", "Some Other Rendering Of It", doi="10.5555/repaired"),
+            raw_work("W7", repaired),
+            raw_work("W8", "A Paper The List Lacks"),
+        ]
+    ]
+    transport = xpac_transport(pages, in_default=[])
+
+    report, _ = verify_report(xpac_config(output, overrides_path=overrides), make_client(transport))
+
+    assert "    W8  A Paper The List Lacks (2024)\n" in report
+    for held in ("W1  ", "W6  ", "W7  "):
+        assert held not in report
+
+
+def test_xpac_listing_drops_a_group_the_default_fetch_supplies(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    write_published(output, [])
+    # The XPAC copy wins on its newer id, but its default twin, newer than
+    # the list, arrives with the next build anyway.
+    title = "A Paper Indexed Twice Upstream"
+    transport = xpac_transport([[raw_work("W1", title), raw_work("W2", title)]], in_default=["W1"])
+
+    report, _ = verify_report(xpac_config(output), make_client(transport))
+
+    assert "W2  " not in report
+    (call,) = listing_calls(transport)
+    assert set(call["filter"].removeprefix("openalex_id:").split("|")) == {"W1", "W2"}
+
+
+def test_xpac_listing_survives_a_doi_patch_on_a_distinct_record(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    title = "A Title Two Records Carry"
+    write_published(output, [Work(id="W1", title=title, doi="https://doi.org/10.5555/d2")])
+    overrides = tmp_path / "overrides.yml"
+    # keep_distinct names the upstream DOI, which the id override then patches.
+    overrides.write_text(
+        "- doi: 10.5555/d\n  keep_distinct: true\n- id: W1\n  doi: 10.5555/d2\n",
+        encoding="utf-8",
+    )
+    pages: list[list[object]] = [[raw_work("W1", title, doi="10.5555/d"), raw_work("W5", title)]]
+    transport = xpac_transport(pages, in_default=[])
+
+    report, _ = verify_report(xpac_config(output, overrides_path=overrides), make_client(transport))
+
+    assert f"    W5  {title} (2024)\n" in report
+
+
+def test_xpac_listing_shows_each_pdf_a_page_text_title_merged(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    write_published(output, [])
+    pdf = "http://www.example.org/~josiah/papers/{}.pdf"
+    real = "A Repository Paper With Its CiteSeerX Copy"
+    pages: list[list[object]] = [
+        [
+            located(raw_work("W1", "signatures for", year=None), CITESEERX, pdf.format("one")),
+            located(raw_work("W2", "signatures for", year=None), CITESEERX, pdf.format("two")),
+            # The same PDF indexed twice is one line.
+            located(raw_work("W3", "signatures for", year=None), CITESEERX, pdf.format("two")),
+            # A real record wins its group: its CiteSeerX copy is that paper.
+            raw_work("W4", real, doi="10.5555/real"),
+            located(raw_work("W5", real, year=None), CITESEERX, pdf.format("four")),
+            # A CiteSeerX copy's newer id outranks an older DOI-less record:
+            # both keep a line, the record among the dated works.
+            located(raw_work("W6", "A Deposit Kept Without A DOI", year=2010), REPOSITORY),
+            located(
+                raw_work("W9", "A Deposit Kept Without A DOI", year=None),
+                CITESEERX,
+                pdf.format("nine"),
+            ),
+        ]
+    ]
+    transport = xpac_transport(pages, in_default=[])
+
+    report, _ = verify_report(xpac_config(output), make_client(transport))
+
+    assert "CiteSeerX copies, XPAC only, not on the published list: 3;" in report
+    assert "rather than the paper; add any that are theirs to manual.yml\n" in report
+    assert f"    W1  signatures for  {pdf.format('one')}\n" in report
+    assert f"    W3  signatures for  {pdf.format('two')}\n" in report
+    assert f"    W9  A Deposit Kept Without A DOI  {pdf.format('nine')}\n" in report
+    assert "XPAC only, not on the published list: 2 work(s)" in report
+    assert f"    W4  {real} (2024)  https://doi.org/10.5555/real\n" in report
+    assert f"    W6  A Deposit Kept Without A DOI (2010)  {REPOSITORY}\n" in report
+    for hidden in ("W2  ", "W5  "):
+        assert hidden not in report
+
+
+def test_xpac_listing_lists_nothing_when_the_default_listing_fails(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    write_published(output, [])
+    # Read as empty, a failed membership call would pass default works off
+    # as XPAC-only.
+    transport = xpac_transport([[raw_work("W1", "A Work Of Unknown Standing")]], None)
+
+    report, warnings = verify_report(xpac_config(output), make_client(transport))
+
+    assert "  XPAC-only works not checked: " in report
+    assert "W1  " not in report
+    assert warnings == []
+
+
+def test_xpac_listing_keeps_out_an_excluded_type(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    write_published(output, [])
+    pages: list[list[object]] = [
+        [
+            raw_work("W1", "Erratum To A Paper Of His", work_type="erratum"),
+            raw_work("W2", "A Paper Of His Kept Only In XPAC"),
+        ]
+    ]
+    transport = xpac_transport(pages, in_default=[])
+    # Normalized, OpenAlex's erratum is erga's "other".
+    config = xpac_config(output, exclude_types=frozenset({"other"}))
+
+    report, _ = verify_report(config, make_client(transport))
+
+    assert "W1  " not in report
+    assert "    W2  A Paper Of His Kept Only In XPAC (2024)\n" in report
+
+
+def test_xpac_listing_is_uncapped_newest_first(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    write_published(output, [])
+    # Twelve leads, over the byline lists' cap of ten, ids against year order.
+    years = range(2001, 2013)
+    pages: list[list[object]] = [
+        [raw_work(f"W{year}", f"An XPAC Paper From The Year {year}", year=year) for year in years]
+    ]
+    transport = xpac_transport(pages, in_default=[])
+
+    report, _ = verify_report(xpac_config(output), make_client(transport))
+
+    assert "XPAC only, not on the published list: 12 work(s)" in report
+    assert "    … and " not in report
+    printed = [line.split()[0] for line in report.splitlines() if line.startswith("    W")]
+    assert printed == [f"W{year}" for year in reversed(years)]
+
+
 def test_xpac_listing_failure_leaves_the_rest_of_the_report(tmp_path: Path) -> None:
     output = tmp_path / "publications.json"
     write_published(output, [])
@@ -913,23 +1090,33 @@ def test_xpac_listing_failure_leaves_the_rest_of_the_report(tmp_path: Path) -> N
     assert warnings == []
 
 
+PDF = "http://www.example.org/kept11.pdf"
+REPOSITORY = "https://repository.example.org/record/4"
+LOOKALIKE_HOST = "https://citeseerx.ist.psu.edu.example.org/x"
+LOOKALIKE_PATH = "https://example.org/citeseerx.ist.psu.edu/x"
+
+
 @pytest.mark.parametrize(
-    ("landing", "raw_source", "expected"),
+    ("doi", "landing", "raw_source", "expected"),
     [
-        (
-            CITESEERX,
-            "http://www.example.org/kept11.pdf",
-            ("http://www.example.org/kept11.pdf", True),
-        ),
+        (None, CITESEERX, PDF, (PDF, True)),
+        # A PDF on an FTP server is still the PDF.
+        (None, CITESEERX, "ftp://ftp.example.org/x.pdf", ("ftp://ftp.example.org/x.pdf", True)),
         # A scheme with no host is a depositor's note, not a PDF.
-        (CITESEERX, "https:Paper collection", (CITESEERX, True)),
-        (CITESEERX, "http://[broken", (CITESEERX, True)),
+        (None, CITESEERX, "https:Paper collection", (CITESEERX, True)),
+        (None, CITESEERX, "http://[broken", (CITESEERX, True)),
         # A landing page too malformed to parse is no CiteSeerX copy, and no crash.
-        ("http://[broken", "http://www.example.org/kept11.pdf", ("http://[broken", False)),
+        (None, "http://[broken", PDF, ("http://[broken", False)),
+        # CiteSeerX is its host, not a host or path that contains the name.
+        (None, LOOKALIKE_HOST, PDF, (LOOKALIKE_HOST, False)),
+        (None, LOOKALIKE_PATH, PDF, (LOOKALIKE_PATH, False)),
+        # An ordinary record: its DOI before its landing page, else the page.
+        ("https://doi.org/10.5555/x", REPOSITORY, None, ("https://doi.org/10.5555/x", False)),
+        (None, REPOSITORY, None, (REPOSITORY, False)),
     ],
 )
 def test_xpac_link_takes_only_a_real_url(
-    landing: str, raw_source: str, expected: tuple[str, bool]
+    doi: str | None, landing: str, raw_source: str | None, expected: tuple[str, bool]
 ) -> None:
-    raw = located(raw_work("W4", "A Paper Only CiteSeerX Kept"), landing, raw_source)
-    assert _xpac_link(Work(id="W4", title="A Paper Only CiteSeerX Kept"), raw) == expected
+    raw = located(raw_work("W4", "A Paper Kept In XPAC"), landing, raw_source)
+    assert _xpac_link(Work(id="W4", title="A Paper Kept In XPAC", doi=doi), raw) == expected

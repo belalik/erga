@@ -14,7 +14,7 @@ from urllib.parse import urlsplit
 
 from erga.config import AuthorConfig, Config
 from erga.curation import Override, load_overrides, mark_keep_distinct
-from erga.dedup import merge_group, normalize_title, title_key
+from erga.dedup import Members, merge_group, normalize_title, title_key
 from erga.errors import FetchError
 from erga.model import Work
 from erga.normalize import book_series_names, normalize_work
@@ -169,6 +169,10 @@ def _unlinked_byline(raw: dict[str, Any], names: list[str]) -> str | None:
     return None
 
 
+# A record's merge keys as dedup reads them: its DOI key and its title key.
+_Keys = tuple[str | None, tuple[str, bool] | None]
+
+
 @dataclass
 class _Published:
     """The published list, keyed the ways a build would merge a record into it."""
@@ -202,6 +206,31 @@ class _Published:
         key = title_key(work)
         return (self.titles.get(key, []) if key else []), True
 
+    def holds_group(self, group: list[Work], keys: dict[int, _Keys], distinct: set[str]) -> bool:
+        """Whether the list holds any member of a merge group: by id, or by
+        the member's pre-merge `keys` (DOI, title key) against the listed
+        DOIs and titles, which carry the overrides' repairs.
+
+        A listed record in `distinct` (its fetched copy is keep_distinct)
+        holds nothing by title, though an override changed the DOI its
+        keep_distinct names. Known limit, accepted 2026-11-25: a different
+        paper under a listed record's title is held by it, even where a
+        build with XPAC would keep the two apart because the listed record
+        merged first by DOI (Codex review, 2026-11-24); equal titles are one
+        work by erga's own rule, and a listing that errs leaves it out.
+        """
+        for work in group:
+            if work.id in self.by_id:
+                return True
+            doi, title = keys[id(work)]
+            if doi and doi in self.by_doi:
+                return True
+            if title is not None and any(
+                record.id not in distinct for record in self.titles.get(title, [])
+            ):
+                return True
+        return False
+
 
 def _work_lines(
     works: list[Work], tails: dict[str, str], cap: int | None = MAX_UNLINKED
@@ -234,11 +263,14 @@ def _normalized(raws: list[dict[str, Any]]) -> list[Work]:
     return [normalize_work(raw, {}, {}, {}, series_names) for raw in raws]
 
 
-def _as_built(works: list[Work], config: Config, overrides: list[Override]) -> list[Work]:
+def _as_built(
+    works: list[Work], config: Config, overrides: list[Override], members: Members | None = None
+) -> list[Work]:
     """Finds as a build would keep them: versions of one work (a dataset's
     releases, a deposit beside its published copy) collapse, and a work the
-    maintainer excluded stays out."""
-    return curate(works, overrides, config.exclude_types, BuildStats())
+    maintainer excluded stays out. With `members`, each survivor's merge
+    group is reported there."""
+    return curate(works, overrides, config.exclude_types, BuildStats(), members)
 
 
 def _byline_candidates(
@@ -393,9 +425,12 @@ def _xpac_lines(
     config sets `include_xpac` (settled 2026-11-23, requirements' XPAC
     paragraph: the careers holding real XPAC works hold the scrapes too).
     So they surface here, read-only, for a member to confirm. The finds go
-    through the build's curation and meet the published list as a build
-    would merge them; one more listing call drops what the default fetch
-    also returns, a work upstream added after the list was built.
+    through the build's curation, and each merge group is judged whole: a
+    lead is a group the list holds no member of, and the default listing
+    returns no member of either, since then the default fetch supplies the
+    work (upstream added it after the list was built). Judged by the winner
+    alone, a chain of merges or an XPAC copy outranking its default twin
+    gave the wrong answer (Codex review, 2026-11-24).
     Advisory: a failed call leaves this one section unchecked.
     """
     if published is None or config.include_xpac or not own_ids:
@@ -406,34 +441,45 @@ def _xpac_lines(
             for raw in client.fetch_works(own_ids, include_xpac=True)
         }
         works = _normalized(list(raws.values()))
-        # An XPAC copy can win the merge with a listed default record (a
-        # newer id at equal rank) and keep none of its evidence, least of
-        # all a title an override patched on the list. Its keys, read before
-        # the merge as dedup reads them, still say it is held.
+        # Keys as dedup reads them, before the merge: an override can patch
+        # the winner's, and a keep_distinct record has no title key.
         mark_keep_distinct(works, overrides)
-        held = [work for work in works if published.holding(work)[0]]
-        held_dois = {work.doi_key for work in held if work.doi_key}
-        held_titles = {key for work in held if (key := title_key(work)) is not None}
-        leads = [
-            work
-            for work in _as_built(works, config, overrides)
-            if not published.holding(work)[0]
-            and work.doi_key not in held_dois
-            and title_key(work) not in held_titles
+        keys = {id(work): (work.doi_key, title_key(work)) for work in works}
+        members: Members = {}
+        built = _as_built(works, config, overrides, members)
+        groups = [(work, members.get(id(work), [work])) for work in built]
+        distinct = {work.id for work in works if work.keep_distinct}
+        groups = [
+            (w, group) for w, group in groups if not published.holds_group(group, keys, distinct)
         ]
-        if leads:
-            default = client.in_listing([work.id for work in leads], include_xpac=False)
-            leads = [work for work in leads if work.id not in default]
+        if groups:
+            # Known limit, accepted 2026-11-25: the group drops whole, even
+            # a member a chain of merges joined to the default one, which
+            # the next build will not fetch (requirements, XPAC paragraph).
+            asked = [member.id for _, group in groups for member in group]
+            default = client.in_listing(asked, include_xpac=False)
+            groups = [(w, group) for w, group in groups if not any(m.id in default for m in group)]
     except FetchError as exc:
         return [f"  XPAC-only works not checked: {exc}"]
     # What a reviewer opens, after the venue.
     tails: dict[str, str] = {}
     dated: list[Work] = []
     citeseerx: list[Work] = []
-    for work in leads:
-        link, on_citeseerx = _xpac_link(work, raws[work.id])
-        tails[work.id] = (f"  {work.venue}" if work.venue else "") + (f"  {link}" if link else "")
-        (citeseerx if on_citeseerx else dated).append(work)
+    for winner, group in groups:
+        link, on_citeseerx = _xpac_link(winner, raws[winner.id])
+        shown = {link: (winner, on_citeseerx)}
+        if on_citeseerx:
+            # A title from page text ("signatures for") merges different
+            # PDFs (dpsd-new, 2026-11-24), and a CiteSeerX copy's newer id
+            # outranks an older DOI-less record, so a group a CiteSeerX copy
+            # won shows every member, one per link, each in its own list.
+            for member in group:
+                member_link, member_on_citeseerx = _xpac_link(member, raws[member.id])
+                shown.setdefault(member_link, (member, member_on_citeseerx))
+        for work_link, (work, in_citeseerx) in shown.items():
+            venue = f"  {work.venue}" if work.venue else ""
+            tails[work.id] = venue + (f"  {work_link}" if work_link else "")
+            (citeseerx if in_citeseerx else dated).append(work)
 
     # Uncapped, unlike the byline lists: these are bounded by the member's
     # own profiles, and the long tail is where a real paper sat among
@@ -449,8 +495,8 @@ def _xpac_lines(
         lines.append(
             f"  CiteSeerX copies, XPAC only, not on the published list: {len(citeseerx)}; "
             f"each linked to the PDF it was indexed from where its record names one, and many "
-            f"titled from page text "
-            f"rather than the paper"
+            f"titled from page text rather than the paper; add any that are theirs to "
+            f"{config.manual_path.name}"
         )
         lines.extend(_work_lines(citeseerx, tails, cap=None))
     return lines

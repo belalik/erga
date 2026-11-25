@@ -86,21 +86,33 @@ def merge_group(group: list[Work]) -> Work:
     return winner
 
 
-def _dedup(works: list[Work], key_of: dict[int, object]) -> list[Work]:
-    """Collapse works sharing a key; keyless works pass through untouched."""
+Members = dict[int, list[Work]]
+"""Each winner's merge group by `id(winner)`: every input record folded into
+it, the winner included, across as many stages as were handed the dict."""
+
+
+def _dedup(works: list[Work], key_of: dict[int, object], members: Members | None) -> list[Work]:
+    """Collapse works sharing a key; keyless works pass through untouched.
+    With `members`, each winner's group absorbs its losers' groups."""
     groups: dict[object, list[Work]] = {}
     for work in works:
         key = key_of.get(id(work))
         if key is not None:
             groups.setdefault(key, []).append(work)
-    winners = {id(merge_group(group)) for group in groups.values()}
+    winners = set()
+    for group in groups.values():
+        winner = merge_group(group)
+        winners.add(id(winner))
+        if members is not None:
+            folded = [member for work in group for member in members.pop(id(work), [work])]
+            members[id(winner)] = folded
     return [w for w in works if id(w) in winners or key_of.get(id(w)) is None]
 
 
-def dedup_by_doi(works: list[Work]) -> list[Work]:
+def dedup_by_doi(works: list[Work], members: Members | None = None) -> list[Work]:
     """Collapse records sharing a DOI, case-insensitively."""
     keys: dict[int, object] = {id(w): w.doi_key for w in works}
-    return _dedup(works, keys)
+    return _dedup(works, keys, members)
 
 
 def title_key(work: Work) -> tuple[str, bool] | None:
@@ -121,7 +133,7 @@ def title_key(work: Work) -> tuple[str, bool] | None:
     return normalized.replace(" ", ""), work.type == "dataset"
 
 
-def cluster_by_title(works: list[Work]) -> list[Work]:
+def cluster_by_title(works: list[Work], members: Members | None = None) -> list[Work]:
     """Collapse records sharing a title key."""
     keys: dict[int, object] = {id(work): title_key(work) for work in works}
-    return _dedup(works, keys)
+    return _dedup(works, keys, members)

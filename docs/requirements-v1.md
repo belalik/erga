@@ -121,7 +121,7 @@ founding documents where they conflict.
   XPAC-only works surface only as a read-only `verify` listing. A scratch
   build of both consumers with the switch off and on, against that day's
   OpenAlex (`local/xpac-measure/`), took dpsd-new from 856 to 896 works
-  and smartmove-site from 198 to 207. Of dpsd-new's 40 additions, 32 are
+  and smartmove-site from 198 to 207. Of dpsd-new's 42 additions (40 net), 32 are
   CiteSeerX scrapes with no year, many titled from a PDF's furniture
   ("SUMMARY", "10/01/01"), all from one import of 2025-10-27; two more
   are repository copies that won the merge against a published record
@@ -146,14 +146,35 @@ founding documents where they conflict.
   default-off fetch can therefore drop a work already published; the
   delta's removal reason names that case (stage 12), asking the default
   listing itself rather than the record. The `verify` listing asks it the
-  same way: a candidate the published list lacks is dropped if the default
-  listing returns it (added upstream since the list was built). The
+  same way. Its candidates are the merge groups of the author's works
+  fetched with XPAC, after the build's curation, each judged whole
+  (2026-11-25): the list holds a group when any member is listed by id or
+  shares a listed DOI or title key (a listed record whose fetched copy is
+  `keep_distinct` holds nothing by title), and a group the default listing
+  returns any member of is dropped, since the next build fetches it.
+  Judged by the winner alone, as first built, a merge chain, an XPAC copy
+  outranking a default twin newer than the list, and a `keep_distinct`
+  whose DOI an override changed each gave the wrong answer (Codex review,
+  2026-11-24, none seen on either consumer). Known limit, accepted: a
+  different paper under a listed record's title is held by it, even where
+  a build with XPAC would keep the two apart because the listed record
+  merged first by DOI; equal titles are one work by stage 7's rule. A
+  second, recorded after `/code-review` the same day: a group the default
+  listing returns one member of drops whole, even when a chain brought in
+  a member that member does not cover (a default record newer than the
+  list shares a DOI with one XPAC copy, which shares a title with another
+  under a second DOI), so that last work is neither listed nor reported.
+  Neither limit occurs on either consumer. The
   CiteSeerX scrapes were first to be counted, not listed; reversed
   2026-11-24 when a member confirmed one (`W7095382982`, a 2011 paper) and
   all 33 of dpsd-new's carried their source PDF's URL in the primary
   location's `raw_source_name`, while the CiteSeerX landing pages
   redirect to the Wayback Machine, mostly to no snapshot. They are listed
-  apart, uncapped, each linked to that PDF.
+  apart, uncapped, each linked to that PDF. A page-text title merges
+  different PDFs ("signatures for": `W7096736994` and `W7099791549`), and
+  a CiteSeerX copy's newer id outranks an older record without a DOI, so a
+  group a CiteSeerX copy won shows every member, one per link, each in its
+  own list.
 - **Type vocabulary drifts**: a July 2026 reclassification changed `type` on
   ~10% of the catalog and added first-class `conference-paper`, `software`
   and `software-paper`; the classifier re-runs daily. `type_crossref` and
@@ -675,8 +696,9 @@ Ported from the production origin pipeline with generalization deltas noted.
    could win that merge, so neither an override nor `exclude: false`
    reaches them. Manual entries stay.
 6. DOI-level dedup, case-insensitive.
-7. Title-cluster dedup. Normalize (NFKD, lowercase, fold dash variants,
-   strip non-alphanumerics, collapse whitespace); group by
+7. Title-cluster dedup. Normalize (NFKD with combining marks removed,
+   casefold, every non-alphanumeric character a space, whitespace
+   collapsed); group by
    (normalized title without its spaces, is-dataset) so datasets never
    merge with papers; titles under 12 normalized characters (counted with
    their spaces) and `keep_distinct` records bypass clustering. The spaces

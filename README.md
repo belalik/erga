@@ -150,15 +150,20 @@ is skipped with a count.
 
 Some works sit on a member's own profile and still never arrive. OpenAlex
 leaves its expansion pack (XPAC: repository records, DataCite deposits,
-CiteSeerX copies of PDFs found on the web) out of every listing unless asked,
-and the build follows it while `include_xpac` is off, because most of what
-XPAC adds is noise. So `verify` lists each author's XPAC-only works that the
-published list lacks, after the same curation and the same id, DOI and title
-match, for you to add the real ones to your manual file. A title that differs
-from a listed one only by its spacing counts as listed. CiteSeerX copies get
-a list of their own: most carry no year, many are titled from page text
-("SUMMARY") rather than from the paper, and their CiteSeerX pages no longer
-load, so each is linked to the PDF it was copied from. The list costs one
+CiteSeerX copies of PDFs found on the web) out of its works listings unless
+asked, and the build follows it while `include_xpac` is off, because most of
+what XPAC adds is noise. So `verify` lists each author's XPAC-only works that
+the published list lacks, for you to add the real ones to your manual file.
+It merges their copies with the build's own curation and judges each merged
+set whole: if any copy is listed, or shares a listed DOI or title, the work
+counts as listed, and if the default listing returns any copy, the next
+build fetches it anyway. A title that differs from a listed one only by its
+spacing counts as listed. CiteSeerX copies get a list of their own: most
+carry no year, many are titled from page text ("SUMMARY") rather than from
+the paper, and their CiteSeerX pages no longer load, so each is linked to
+the PDF it was copied from. When a CiteSeerX copy wins a merge, every record
+it merged with keeps a line of its own, since different PDFs can carry the
+same scrap of page text. The list costs one
 extra walk of each author's works; if OpenAlex fails it, that author's
 list says so and the rest of the report stands. With `include_xpac: true`
 the build fetches all of them and `verify` lists none.

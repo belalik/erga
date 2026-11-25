@@ -3,7 +3,7 @@
 ## Next steps (25-11-2026)
 
 Any order:
-- Session: the XPAC listing's merge-group pass (Normal; Codex's findings in `local/codex-xpac-listing/`, minis only), or the Greek manual-id hash (Normal, small).
+- Session: the Greek manual-id hash (Normal, small).
 - Session: the measure-first batch on both consumers (Normal: merge-dropped venues, dataset title keys, TeX quotes, edited volumes); `local/xpac-measure/` now on both machines.
 - Session: reshape this list to the convention (10 entries over the limit by `todo-shape.sh`, the Normal item), its own session.
 - Thomas: claim and clean his own OpenAlex profile, the watch case for the profile-claiming item (Normal).
@@ -440,17 +440,6 @@ Any order:
   empty, take a short hash of the normalized title. First check that
   neither consumer's overrides or tags address a `manual-untitled*` id;
   the release notes must say those entries change id once
-- `verify`'s XPAC listing judges "already listed" by DOI and title keys
-  read before the merge, which Codex broke offline in three shapes, none
-  seen on either consumer (2026-11-24, `local/codex-xpac-listing/review.md`
-  findings 1 to 3, minis only): a merge chain, a default twin newer than
-  the list winning over its XPAC copy, a DOI-keyed `keep_distinct` whose
-  DOI a later patch changed. Fix by having dedup report its merge groups
-  and judging each group whole. Same pass: CiteSeerX copies titled from
-  page text merge different papers ("signatures for": `W7096736994` and
-  `W7099791549` are two PDFs), and the tests caught 23 of Codex's 41
-  mutations (its list, same file). Docs nits there too (requirements: "40
-  additions" is net, 42 gross)
 ## Low
 - `_walk` ends on any page without `meta.next_cursor`, so a 200 with valid
   results but no meta still ends a walk short (the strict reader of

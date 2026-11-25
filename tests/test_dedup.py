@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from erga.dedup import cluster_by_title, dedup_by_doi, normalize_title
+from erga.dedup import Members, cluster_by_title, dedup_by_doi, normalize_title
 from erga.model import Work
 
 
@@ -143,3 +143,20 @@ def test_cluster_winner_inherits_abstract_and_oa() -> None:
     assert kept[0].id == "W1"
     assert kept[0].abstract == "From the copy."
     assert kept[0].open_access_url == "https://oa.example/pdf"
+
+
+def test_members_follow_a_merge_chain_across_both_stages() -> None:
+    title = "A Second Copy Under Its Own Title"
+    w1 = Work(id="W1", title="An Old Upstream Title", doi="https://doi.org/10.5555/a")
+    w2 = Work(id="W2", title=title, doi="https://doi.org/10.5555/a")
+    w3 = Work(id="W3", title=title, doi="https://doi.org/10.5555/b")
+    alone = Work(id="W4", title="Unrelated To The Others")
+    members: Members = {}
+
+    kept = cluster_by_title(dedup_by_doi([w1, w2, w3, alone], members), members)
+
+    assert [w.id for w in kept] == ["W3", "W4"]
+    assert sorted(w.id for w in members[id(w3)]) == ["W1", "W2", "W3"]
+    # A record no stage merged is its own group, and a loser keeps no entry.
+    assert [w.id for w in members[id(alone)]] == ["W4"]
+    assert id(w1) not in members and id(w2) not in members
