@@ -19,7 +19,7 @@ a fallback, never solved inside erga.
 
 ## Status
 
-v0.9.6 released 2026-11-21 (PyPI via Trusted Publishing, GitHub
+v0.9.7 released 2026-11-25 (PyPI via Trusted Publishing, GitHub
 Releases; repo public since v0.1.0, 2026-08-05). The pipeline is
 implemented end-to-end (config, fetch, normalize, dedup, curation,
 Crossref backfill, deterministic output, `build`/`verify` CLI) with unit
@@ -82,6 +82,10 @@ container titles (95 and 13 venues on the two consumers, nothing else).
 v0.9.6 says on the review page why each removed work left (folded by
 the build, merged upstream, off every profile, XPAC only, gone), looked
 up only by a build that writes the page and never touching the JSON.
+v0.9.7 lists in `verify` each member's XPAC-only works the published
+list lacks (the build keeps XPAC off, settled 2026-11-23), searches
+full-name aliases, folds title twins that differ only by spacing, and
+fails the fetch on a listing page without record ids.
 See `docs/requirements-v1.md`
 for the v1 design, `docs/action.md` for the Action, and `docs/todo.md`
 for open work.
