@@ -967,6 +967,14 @@ scheduling, the `v1` tag policy, how CI exercises it) lives in
   re-attributed upstream, off every configured profile, returned only
   with `include_xpac`, or gone from OpenAlex. A build with `--summary`
   looks these up, and a failed lookup is a warning (stage 12).
+- **v0.9.7** (released 2026-11-25): `verify` lists each member's
+  XPAC-only works that the published list lacks, CiteSeerX copies apart
+  and linked to their source PDF (section 3, the XPAC paragraph), and
+  searches full-name aliases, so a profile filed under one surfaces
+  (section 8); dedup's title key drops spaces, folding a scrape whose
+  words ran together into its DOI twin (stage 7); and a listing page
+  without record ids fails the fetch instead of ending the walk short
+  (stage 3).
 - **CSL-JSON and BibTeX emitters** slot in after v0.1 as demand warrants,
   before the v1.0 promotion push.
 - **v1.0**: strong README (before/after dedup story, head-on "why not

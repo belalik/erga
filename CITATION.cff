@@ -11,8 +11,8 @@ authors:
 repository-code: "https://github.com/belalik/erga"
 url: "https://github.com/belalik/erga"
 license: MIT
-version: 0.9.6
-date-released: "2026-11-21"
+version: 0.9.7
+date-released: "2026-11-25"
 keywords:
   - publications
   - bibliography
