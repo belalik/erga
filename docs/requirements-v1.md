@@ -149,9 +149,15 @@ founding documents where they conflict.
   same way. Its candidates are the merge groups of the author's works
   fetched with XPAC, after the build's curation, each judged whole
   (2026-11-25): the list holds a group when any member is listed by id or
-  shares a listed DOI or title key (a listed record whose fetched copy is
-  `keep_distinct` holds nothing by title), and a group the default listing
-  returns any member of is dropped, since the next build fetches it.
+  shares a listed DOI or title key, as fetched or as an override patched
+  it (a listed record whose fetched copy is `keep_distinct` holds nothing
+  by title), and a group is dropped when the default listing returns a
+  member the build would keep, since the next build lists it. A build
+  curates only a group's winner, so every other member is read as curated
+  on its own: one the maintainer excluded, or of an unwanted type, neither
+  stands for the default fetch nor gets a line (Codex review, 2026-11-26;
+  before that, a default twin the build excludes suppressed its XPAC copy,
+  and an override repairing a copy toward the listed paper went unread).
   Judged by the winner alone, as first built, a merge chain, an XPAC copy
   outranking a default twin newer than the list, and a `keep_distinct`
   whose DOI an override changed each gave the wrong answer (Codex review,
@@ -164,9 +170,21 @@ founding documents where they conflict.
   a member that member does not cover (a default record newer than the
   list shares a DOI with one XPAC copy, which shares a title with another
   under a second DOI), so that last work is neither listed nor reported.
-  The second drops nothing on either consumer (live `verify`, 2026-11-25,
-  identical to the winner-only version but for one line); the first was
-  not measured, since both versions suppress alike. The
+  The second shows no difference on either consumer (live `verify`,
+  2026-11-25, identical to the winner-only version but for one line,
+  though a group both versions drop is visible in neither report); the
+  first was not measured, since both versions suppress alike. Two more
+  from Codex's review of 2026-11-26, both in 0.9.7 as well: `verify` reads
+  each author's profiles alone while the build merges every author's
+  works, so a twin on a colleague's profile goes unseen and a work the
+  build folds can be listed; and a listed record's `keep_distinct`
+  exemption is rebuilt from the works fetched, so it lapses when that
+  record's upstream copy sits on another profile or has gone. And one from
+  `/code-review` that day: each member is curated alone, while a default
+  build merges the default copies first and curates only their winner, so
+  where an excluded default copy outranks a kept one (an erratum with more
+  citations than the article), the build lists nothing and `verify` still
+  drops the group. The
   CiteSeerX scrapes were first to be counted, not listed; reversed
   2026-11-24 when a member confirmed one (`W7095382982`, a 2011 paper) and
   all 33 of dpsd-new's carried their source PDF's URL in the primary
@@ -174,8 +192,9 @@ founding documents where they conflict.
   redirect to the Wayback Machine, mostly to no snapshot. They are listed
   apart, uncapped, each linked to that PDF. A page-text title merges
   different PDFs ("signatures for": `W7096736994` and `W7099791549`), and
-  a CiteSeerX copy's newer id outranks an older record without a DOI, so a
-  group a CiteSeerX copy won shows every member, one per link, each in its
+  at otherwise equal rank a CiteSeerX copy's newer id outranks an older
+  record without a DOI, so a group a CiteSeerX copy won shows every member
+  as curated, one per link (by id where a member has none), each in its
   own list.
 - **Type vocabulary drifts**: a July 2026 reclassification changed `type` on
   ~10% of the catalog and added first-class `conference-paper`, `software`
@@ -698,7 +717,7 @@ Ported from the production origin pipeline with generalization deltas noted.
    could win that merge, so neither an override nor `exclude: false`
    reaches them. Manual entries stay.
 6. DOI-level dedup, case-insensitive.
-7. Title-cluster dedup. Normalize (NFKD with combining marks removed,
+7. Title-cluster dedup. Normalize (NFKD with nonspacing marks removed,
    casefold, every non-alphanumeric character a space, whitespace
    collapsed); group by
    (normalized title without its spaces, is-dataset) so datasets never

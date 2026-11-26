@@ -7,6 +7,7 @@ to before a build trusts those ids.
 
 from __future__ import annotations
 
+import copy
 import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
@@ -15,7 +16,7 @@ from urllib.parse import urlsplit
 from erga.config import AuthorConfig, Config
 from erga.curation import Override, load_overrides, mark_keep_distinct
 from erga.dedup import Members, merge_group, normalize_title, title_key
-from erga.errors import FetchError
+from erga.errors import ConfigError, FetchError
 from erga.model import Work
 from erga.normalize import book_series_names, normalize_work
 from erga.openalex import (
@@ -25,7 +26,7 @@ from erga.openalex import (
     strip_openalex_host,
 )
 from erga.output import read_output, sort_works, work_from_record
-from erga.pipeline import BuildStats, curate
+from erga.pipeline import BuildStats, curate, curate_merged
 
 IMPLAUSIBLE_WORKS_COUNT = 2000
 RECENT_TITLES = 3
@@ -208,8 +209,10 @@ class _Published:
 
     def holds_group(self, group: list[Work], keys: dict[int, _Keys], distinct: set[str]) -> bool:
         """Whether the list holds any member of a merge group: by id, or by
-        the member's pre-merge `keys` (DOI, title key) against the listed
-        DOIs and titles, which carry the overrides' repairs.
+        the member's DOI or title key against the listed DOIs and titles,
+        which carry the overrides' repairs. A member's keys count both as
+        fetched (`keys`, read before the merge) and as curated, since an
+        override can patch them toward the listed copy or away from it.
 
         A listed record in `distinct` (its fetched copy is keep_distinct)
         holds nothing by title, though an override changed the DOI its
@@ -222,13 +225,13 @@ class _Published:
         for work in group:
             if work.id in self.by_id:
                 return True
-            doi, title = keys[id(work)]
-            if doi and doi in self.by_doi:
-                return True
-            if title is not None and any(
-                record.id not in distinct for record in self.titles.get(title, [])
-            ):
-                return True
+            for doi, title in (keys[id(work)], (work.doi_key, title_key(work))):
+                if doi and doi in self.by_doi:
+                    return True
+                if title is not None and any(
+                    record.id not in distinct for record in self.titles.get(title, [])
+                ):
+                    return True
         return False
 
 
@@ -268,8 +271,8 @@ def _as_built(
 ) -> list[Work]:
     """Finds as a build would keep them: versions of one work (a dataset's
     releases, a deposit beside its published copy) collapse, and a work the
-    maintainer excluded stays out. With `members`, each survivor's merge
-    group is reported there."""
+    maintainer excluded stays out. With `members`, each survivor that
+    absorbed others has its merge group reported there."""
     return curate(works, overrides, config.exclude_types, BuildStats(), members)
 
 
@@ -427,10 +430,14 @@ def _xpac_lines(
     So they surface here, read-only, for a member to confirm. The finds go
     through the build's curation, and each merge group is judged whole: a
     lead is a group the list holds no member of, and the default listing
-    returns no member of either, since then the default fetch supplies the
-    work (upstream added it after the list was built). Judged by the winner
-    alone, a chain of merges or an XPAC copy outranking its default twin
-    gave the wrong answer (Codex review, 2026-11-24).
+    returns no member the build would keep, since then the default fetch
+    supplies the work (usually one upstream added after the list was
+    built). Judged by the winner alone, a chain of merges or an XPAC copy
+    outranking its default twin gave the wrong answer (Codex review,
+    2026-11-24). Every member is read as curated (`curate_merged`): a
+    member the maintainer excluded neither stands for the default fetch
+    nor gets a line, and a patched one is compared and shown as patched
+    (Codex review, 2026-11-26).
     Advisory: a failed call leaves this one section unchecked.
     """
     if published is None or config.include_xpac or not own_ids:
@@ -441,16 +448,21 @@ def _xpac_lines(
             for raw in client.fetch_works(own_ids, include_xpac=True)
         }
         works = _normalized(list(raws.values()))
-        # Keys as dedup reads them, before the merge: an override can patch
-        # the winner's, and a keep_distinct record has no title key.
+        # Keys as dedup reads them, before the merge and its overrides
+        # (`holds_group` reads the curated ones too); a keep_distinct record
+        # has no title key.
         mark_keep_distinct(works, overrides)
         keys = {id(work): (work.doi_key, title_key(work)) for work in works}
         members: Members = {}
         built = _as_built(works, config, overrides, members)
         groups = [(work, members.get(id(work), [work])) for work in built]
+        losers = [member for winner, group in groups for member in group if member is not winner]
+        kept = {id(member) for member in losers if _kept_alone(member, config, overrides)}
         distinct = {work.id for work in works if work.keep_distinct}
         groups = [
-            (w, group) for w, group in groups if not published.holds_group(group, keys, distinct)
+            (w, [m for m in group if m is w or id(m) in kept])
+            for w, group in groups
+            if not published.holds_group(group, keys, distinct)
         ]
         if groups:
             # Known limit, accepted 2026-11-25: the group drops whole, even
@@ -459,24 +471,49 @@ def _xpac_lines(
             asked = [member.id for _, group in groups for member in group]
             default = client.in_listing(asked, include_xpac=False)
             groups = [(w, group) for w, group in groups if not any(m.id in default for m in group)]
+        return _xpac_report(groups, raws, config)
     except FetchError as exc:
         return [f"  XPAC-only works not checked: {exc}"]
+
+
+def _kept_alone(work: Work, config: Config, overrides: list[Override]) -> bool:
+    """Whether curation keeps a copy a merge absorbed, judged as if it had
+    won: patched in place, or dropped by an exclusion or the type filter.
+
+    A patch that does not fit the copy (a year its own date contradicts:
+    a DOI override reaches every copy of that DOI) leaves it as fetched
+    and kept, as the build sees it, which patches only the winner.
+    """
+    before = copy.deepcopy(work)
+    try:
+        return bool(curate_merged([work], overrides, config.exclude_types, BuildStats()))
+    except ConfigError:
+        vars(work).update(vars(before))
+        return True
+
+
+def _xpac_report(
+    groups: list[tuple[Work, list[Work]]], raws: dict[str, dict[str, Any]], config: Config
+) -> list[str]:
+    """The XPAC leads' lines: each group's winner, and in a group a CiteSeerX
+    copy won, every member with a link of its own."""
     # What a reviewer opens, after the venue.
     tails: dict[str, str] = {}
     dated: list[Work] = []
     citeseerx: list[Work] = []
     for winner, group in groups:
-        link, on_citeseerx = _xpac_link(winner, raws[winner.id])
-        shown = {link: (winner, on_citeseerx)}
-        if on_citeseerx:
-            # A title from page text ("signatures for") merges different
-            # PDFs (dpsd-new, 2026-11-24), and a CiteSeerX copy's newer id
-            # outranks an older DOI-less record, so a group a CiteSeerX copy
-            # won shows every member, one per link, each in its own list.
-            for member in group:
-                member_link, member_on_citeseerx = _xpac_link(member, raws[member.id])
-                shown.setdefault(member_link, (member, member_on_citeseerx))
-        for work_link, (work, in_citeseerx) in shown.items():
+        # A title from page text ("signatures for") merges different PDFs
+        # (dpsd-new, 2026-11-24), and at otherwise equal rank a CiteSeerX
+        # copy's newer id outranks an older DOI-less record, so a group a
+        # CiteSeerX copy won shows every curated member, one per link (by id
+        # where a member has none), each in its own list.
+        _, won_by_citeseerx = _xpac_link(winner, raws[winner.id])
+        shown: dict[str, tuple[Work, str | None, bool]] = {}
+        others = [member for member in group if member is not winner] if won_by_citeseerx else []
+        for work in [winner, *others]:
+            link, on_citeseerx = _xpac_link(work, raws[work.id])
+            shown.setdefault(link or work.id, (work, link, on_citeseerx))
+        for work, work_link, in_citeseerx in shown.values():
             venue = f"  {work.venue}" if work.venue else ""
             tails[work.id] = venue + (f"  {work_link}" if work_link else "")
             (citeseerx if in_citeseerx else dated).append(work)

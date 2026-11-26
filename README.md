@@ -155,17 +155,20 @@ asked, and the build follows it while `include_xpac` is off, because most of
 what XPAC adds is noise. So `verify` lists each author's XPAC-only works that
 the published list lacks, for you to add the real ones to your manual file.
 It merges their copies with the build's own curation and judges each merged
-set whole: if any copy is listed, or shares a listed DOI or title, the work
-counts as listed, and if the default listing returns any copy, the next
-build fetches it anyway. A title that differs from a listed one only by its
-spacing counts as listed. CiteSeerX copies get a list of their own: most
+set whole: if any copy is listed, or shares a listed DOI or title (as
+fetched or as your override patched it), the work counts as listed, and if
+the default listing returns a copy the build would keep, the next build
+lists it anyway. A copy you excluded, or of a type you filter out, neither
+stands for the next build nor gets a line. A title that differs from a listed one only by its spacing
+counts as listed. CiteSeerX copies get a list of their own: most
 carry no year, many are titled from page text ("SUMMARY") rather than from
 the paper, and their CiteSeerX pages no longer load, so each is linked to
-the PDF it was copied from. When a CiteSeerX copy wins a merge, every record
-it merged with keeps a line of its own, since different PDFs can carry the
-same scrap of page text. The list costs one
-extra walk of each author's works; if OpenAlex fails it, that author's
-list says so and the rest of the report stands. With `include_xpac: true`
+the PDF it was copied from. When a CiteSeerX copy wins a merge, every other
+copy you have not excluded keeps a line of its own, one per link, since
+different PDFs can carry the same scrap of page text. The list costs one
+extra walk of each author's works and one batched check against the
+default listing; if OpenAlex fails either, that author's list says so and
+the rest of the report stands. With `include_xpac: true`
 the build fetches all of them and `verify` lists none.
 
 Finding the iD in the first place is your step, and erga does not guess at

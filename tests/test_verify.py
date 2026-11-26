@@ -926,6 +926,74 @@ def test_xpac_listing_holds_a_chain_its_listed_member_started(tmp_path: Path) ->
     assert listing_calls(transport) == []
 
 
+def test_xpac_listing_survives_a_patch_unfit_for_an_absorbed_copy(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    write_published(output, [])
+    overrides = tmp_path / "overrides.yml"
+    overrides.write_text("- doi: 10.5555/x\n  year: 2021\n", encoding="utf-8")
+    # The override reaches both copies of its DOI; its year fits the version
+    # of record W9 and contradicts the preprint W2's own date, which a build
+    # never patches.
+    published = raw_work("W9", "A Paper And Its Preprint", doi="10.5555/x", year=2021)
+    published["publication_date"] = "2021-03-01"
+    preprint = raw_work("W2", "A Paper And Its Preprint", doi="10.5555/x", work_type="preprint")
+    preprint["publication_date"] = "2020-11-05"
+    transport = xpac_transport([[published, preprint]], in_default=[])
+
+    report, _ = verify_report(xpac_config(output, overrides_path=overrides), make_client(transport))
+
+    assert "    W9  A Paper And Its Preprint (2021)  https://doi.org/10.5555/x\n" in report
+    assert "W2  " not in report
+
+
+def test_xpac_listing_holds_a_group_by_a_losers_doi_or_title(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    listed = "The Title The List Prints"
+    write_published(output, [Work(id="W1", title=listed, doi="https://doi.org/10.5555/listed")])
+    # Each winner, on its newer id, shares no key with the listed W1; the
+    # copy it absorbed does: W2 the DOI, W4 the title.
+    shared = "A Shared Upstream Title"
+    pages: list[list[object]] = [
+        [
+            raw_work("W2", shared, doi="10.5555/listed"),
+            raw_work("W3", shared, doi="10.5555/other"),
+            raw_work("W4", listed, doi="10.5555/x"),
+            raw_work("W5", "Another Upstream Title", doi="10.5555/x"),
+            raw_work("W8", "A Paper The List Lacks"),
+        ]
+    ]
+    transport = xpac_transport(pages, in_default=[])
+
+    report, _ = verify_report(xpac_config(output), make_client(transport))
+
+    assert "    W8  A Paper The List Lacks (2024)\n" in report
+    for held in ("W2  ", "W3  ", "W4  ", "W5  "):
+        assert held not in report
+
+
+def test_xpac_listing_lists_a_paper_sharing_only_an_absorbed_copys_title(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "publications.json"
+    write_published(output, [Work(id="W1", title="The Title The List Prints")])
+    # W1 merges into W2 by DOI before titles cluster, so W3, under W1's
+    # upstream title and its own DOI, is another paper, as a build sees it.
+    old = "An Old Upstream Title"
+    pages: list[list[object]] = [
+        [
+            raw_work("W1", old, doi="10.5555/a"),
+            raw_work("W2", "A Second Copy Under Its Own Title", doi="10.5555/a"),
+            raw_work("W3", old, doi="10.5555/b"),
+        ]
+    ]
+    transport = xpac_transport(pages, in_default=[])
+
+    report, _ = verify_report(xpac_config(output), make_client(transport))
+
+    assert f"    W3  {old} (2024)  https://doi.org/10.5555/b\n" in report
+    assert "W2  " not in report
+
+
 def test_xpac_listing_holds_what_an_overrides_repair_names(tmp_path: Path) -> None:
     output = tmp_path / "publications.json"
     repaired = "The Title The Override Set"
@@ -978,12 +1046,20 @@ def test_xpac_listing_survives_a_doi_patch_on_a_distinct_record(tmp_path: Path) 
         "- doi: 10.5555/d\n  keep_distinct: true\n- id: W1\n  doi: 10.5555/d2\n",
         encoding="utf-8",
     )
-    pages: list[list[object]] = [[raw_work("W1", title, doi="10.5555/d"), raw_work("W5", title)]]
+    # The exemption is by title only: W6, under the listed DOI, is held.
+    pages: list[list[object]] = [
+        [
+            raw_work("W1", title, doi="10.5555/d"),
+            raw_work("W5", title),
+            raw_work("W6", "Another Rendering Of The Listed Paper", doi="10.5555/d2"),
+        ]
+    ]
     transport = xpac_transport(pages, in_default=[])
 
     report, _ = verify_report(xpac_config(output, overrides_path=overrides), make_client(transport))
 
     assert f"    W5  {title} (2024)\n" in report
+    assert "W6  " not in report
 
 
 def test_xpac_listing_shows_each_pdf_a_page_text_title_merged(tmp_path: Path) -> None:
@@ -1023,6 +1099,115 @@ def test_xpac_listing_shows_each_pdf_a_page_text_title_merged(tmp_path: Path) ->
     assert f"    W4  {real} (2024)  https://doi.org/10.5555/real\n" in report
     assert f"    W6  A Deposit Kept Without A DOI (2010)  {REPOSITORY}\n" in report
     for hidden in ("W2  ", "W5  "):
+        assert hidden not in report
+
+
+def test_xpac_listing_holds_a_copy_its_override_patches_either_way(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    listed = "The Title The Published Version Carries"
+    write_published(output, [Work(id="W1", title=listed, doi="https://doi.org/10.5555/vor")])
+    overrides = tmp_path / "overrides.yml"
+    # W2's patch gives it the listed DOI, W3's the listed title; W4's moves
+    # its title off the listed one. Each is the listed paper.
+    overrides.write_text(
+        "- id: W2\n  doi: 10.5555/vor\n"
+        f"- id: W3\n  title: {listed}\n"
+        "- id: W4\n  title: A Title Patched Away From The List\n",
+        encoding="utf-8",
+    )
+    pages: list[list[object]] = [
+        [
+            raw_work("W2", "An Unrelated Upstream Title"),
+            raw_work("W3", "Another Upstream Rendering Of It"),
+            raw_work("W4", listed),
+            raw_work("W8", "A Paper The List Lacks"),
+        ]
+    ]
+    transport = xpac_transport(pages, in_default=[])
+
+    report, _ = verify_report(xpac_config(output, overrides_path=overrides), make_client(transport))
+
+    assert "    W8  A Paper The List Lacks (2024)\n" in report
+    for held in ("W2  ", "W3  ", "W4  "):
+        assert held not in report
+
+
+def test_xpac_listing_holds_a_group_an_absorbed_copys_patch_names(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    write_published(output, [Work(id="W1", title="A Title", doi="https://doi.org/10.5555/vor")])
+    overrides = tmp_path / "overrides.yml"
+    overrides.write_text("- id: W2\n  doi: 10.5555/vor\n", encoding="utf-8")
+    # W3 wins on its newer id; the copy it absorbed, W2, carries the listed
+    # DOI only once its override is applied.
+    title = "A Paper Two Records Carry Upstream"
+    transport = xpac_transport([[raw_work("W2", title), raw_work("W3", title)]], in_default=[])
+
+    report, _ = verify_report(xpac_config(output, overrides_path=overrides), make_client(transport))
+
+    for held in ("W2  ", "W3  "):
+        assert held not in report
+
+
+def test_xpac_listing_lists_a_copy_whose_default_twins_curation_drops(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    write_published(output, [])
+    overrides = tmp_path / "overrides.yml"
+    overrides.write_text("- id: W1\n  exclude: true\n", encoding="utf-8")
+    # The XPAC copy W5 wins on its newer id. Its default twins never reach
+    # a build's list, W1 excluded and W2 of an unwanted type, so no build
+    # supplies the paper.
+    title = "A Paper Indexed Three Times Upstream"
+    pages: list[list[object]] = [
+        [raw_work("W1", title), raw_work("W2", title, work_type="erratum"), raw_work("W5", title)]
+    ]
+    transport = xpac_transport(pages, in_default=["W1", "W2"])
+    config = xpac_config(output, overrides_path=overrides, exclude_types=frozenset({"other"}))
+
+    report, _ = verify_report(config, make_client(transport))
+
+    assert f"    W5  {title} (2024)\n" in report
+    (call,) = listing_calls(transport)
+    assert call["filter"] == "openalex_id:W5"
+
+
+def test_xpac_listing_shows_a_citeseerx_groups_members_as_curated(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    write_published(output, [])
+    overrides = tmp_path / "overrides.yml"
+    overrides.write_text(
+        "- id: W1\n  exclude: true\n"
+        "- id: W3\n  doi: 10.5555/fixed\n  title: The Title Its Override Set\n",
+        encoding="utf-8",
+    )
+    # The CiteSeerX copy W9 wins on its newer id, so every member is shown:
+    # W1 excluded and W2 of an unwanted type are not, W3 as patched, and
+    # W4 and W6, with no link between them, each on its own line.
+    title = "The Long Shared Title Of The Work"
+    pages: list[list[object]] = [
+        [
+            raw_work("W1", title),
+            raw_work("W2", title, work_type="erratum"),
+            raw_work("W3", title),
+            raw_work("W4", title, year=2001),
+            raw_work("W6", title, year=2002),
+            located(
+                raw_work("W9", title, year=None),
+                CITESEERX,
+                "http://www.example.org/~josiah/papers/nine.pdf",
+            ),
+        ]
+    ]
+    transport = xpac_transport(pages, in_default=[])
+    config = xpac_config(output, overrides_path=overrides, exclude_types=frozenset({"other"}))
+
+    report, _ = verify_report(config, make_client(transport))
+
+    assert "XPAC only, not on the published list: 3 work(s)" in report
+    assert "    W3  The Title Its Override Set (2024)  https://doi.org/10.5555/fixed\n" in report
+    assert f"    W4  {title} (2001)\n" in report
+    assert f"    W6  {title} (2002)\n" in report
+    assert f"    W9  {title}  http://www.example.org/~josiah/papers/nine.pdf\n" in report
+    for hidden in ("W1  ", "W2  "):
         assert hidden not in report
 
 
@@ -1075,6 +1260,29 @@ def test_xpac_listing_is_uncapped_newest_first(tmp_path: Path) -> None:
     assert "    … and " not in report
     printed = [line.split()[0] for line in report.splitlines() if line.startswith("    W")]
     assert printed == [f"W{year}" for year in reversed(years)]
+
+
+def test_xpac_listing_citeseerx_copies_are_uncapped(tmp_path: Path) -> None:
+    output = tmp_path / "publications.json"
+    write_published(output, [])
+    pdf = "http://www.example.org/~josiah/papers/{}.pdf"
+    pages: list[list[object]] = [
+        [
+            located(
+                raw_work(f"W{n}", f"A CiteSeerX Copy Numbered {n}", year=None),
+                CITESEERX,
+                pdf.format(n),
+            )
+            for n in range(1, 13)
+        ]
+    ]
+    transport = xpac_transport(pages, in_default=[])
+
+    report, _ = verify_report(xpac_config(output), make_client(transport))
+
+    assert "CiteSeerX copies, XPAC only, not on the published list: 12;" in report
+    assert "    … and " not in report
+    assert f"    W12  A CiteSeerX Copy Numbered 12  {pdf.format(12)}\n" in report
 
 
 def test_xpac_listing_failure_leaves_the_rest_of_the_report(tmp_path: Path) -> None:

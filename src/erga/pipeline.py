@@ -166,13 +166,25 @@ def curate(
 
     `verify` runs its byline finds through this too, so they meet the
     published list as a build would have kept them. With `members`, dedup
-    reports each survivor's merge group there.
+    reports there the merge group of each survivor that absorbed others.
     """
     mark_keep_distinct(works, overrides)
     works = exclude_machine_translations(works, stats)
     merged = cluster_by_title(dedup_by_doi(works, members), members)
     stats.deduplicated = len(works) - len(merged)
-    kept, stats.excluded = apply_overrides(merged, overrides)
+    return curate_merged(merged, overrides, types, stats)
+
+
+def curate_merged(
+    works: list[Work], overrides: list[Override], types: frozenset[str], stats: BuildStats
+) -> list[Work]:
+    """Apply overrides, then drop unwanted types: curation after the merge.
+
+    A build runs it on each merge group's winner; `verify` also runs it on
+    the members a winner absorbed, to read each one as the maintainer
+    curated it.
+    """
+    kept, stats.excluded = apply_overrides(works, overrides)
     kept, stats.excluded_types = exclude_by_type(kept, types)
     return kept
 
