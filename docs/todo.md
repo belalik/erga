@@ -3,10 +3,9 @@
 ## Next steps (26-11-2026)
 
 Any order:
-- Session: Codex reviews the merge-group pass (`eeae658`, unreleased; Sol, fix-delta shape with Codex's 2026-11-24 review beside the diff, `local/codex-xpac-listing/`, minis only), then release 0.9.8.
-- Session: the type `journal` (High).
-- Session: the Greek manual-id hash (Normal, small).
-- Session: the measure-first batch on both consumers (Normal: merge-dropped venues, dataset title keys, TeX quotes, edited volumes); `local/xpac-measure/` now on both machines.
+- Session, first: release 0.9.8 (`eeae658` + `ecc7d8a`: XPAC merge groups judged whole, every member read as curated; reviewed by Codex and `/code-review medium`), then route both consumers.
+- Session: the type `journal` (High), measuring both consumers first.
+- Session, smaller: the Greek manual-id hash; the measure-first batch on both consumers (merge-dropped venues, dataset title keys, TeX quotes, edited volumes; `local/xpac-measure/`); or the default-drop Low item (curate a group's default members as a merge, retiring the per-member pass).
 - Session: reshape this list to the convention (10 entries over the limit by `todo-shape.sh`, the Normal item), its own session.
 - Thomas: claim and clean his own OpenAlex profile, the watch case for the profile-claiming item (Normal).
 
@@ -460,6 +459,7 @@ Any order:
   neither consumer's overrides or tags address a `manual-untitled*` id;
   the release notes must say those entries change id once
 ## Low
+- On timmy: diff and delete the three `local/*.timmy-0902` leftovers
 - `verify` drops an XPAC group silently when a member is in the default
   listing (the next build fetches it), so a twin minted after the list
   was built reads as a missed work: smartmove-site traced
