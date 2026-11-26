@@ -25,3 +25,10 @@ Routed proposals awaiting triage. See `~/projects/claude-code-config/docs/routin
   2. `journal` only when the work's source is a journal: a work with no source, or with a repository as its source, would fall to `other`. Hypothesis, not checked in erga's code: OpenAlex's source `type` field (`journal`, `repository`, `conference`) carries what this needs.
   3. A consumer setting for how fine the types are: as today, broad (journal and conference together, as papers), or none. Thomas's thought, 2026-11-26: the page is there as evidence of research, and a category that cannot be made reliable is better merged or left out; he holds no strong view on which.
 - **Completion notice wanted:** when a per-source rule ships, dpsd-new retires its 16 per-work overrides.
+
+## 2026-11-26, dpsd-new (minis): correction to today's entry on the type `journal`: no name, no email content
+
+- **Corrects:** the entry above headed "the type `journal` reaches works no source calls a journal article; three classes, 46 of 371", routed from dpsd-new earlier today.
+- **What was wrong:** this repository is public, and that entry names the person who reported the problem and paraphrases what they wrote. Neither belongs here, and the proposal needs neither (Thomas, 2026-11-26: a generalised "feedback from a consumer site", never a name).
+- **Read it as:** provenance "feedback from a consumer site (dpsd-new), 2026-11-25: its type filter, set to journal articles, listed conference papers". The counts, the three classes and the three proposals stand as written.
+- **When it is promoted:** carry only that provenance line into erga's tracked docs, without the name or the paraphrase. The original entry is left as written, per the routing rule; removing it from this file before triage is Thomas's call.
