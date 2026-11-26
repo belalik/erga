@@ -1,15 +1,27 @@
 # TODO
 
-## Next steps (25-11-2026)
+## Next steps (26-11-2026)
 
 Any order:
 - Session: Codex reviews the merge-group pass (`eeae658`, unreleased; Sol, fix-delta shape with Codex's 2026-11-24 review beside the diff, `local/codex-xpac-listing/`, minis only), then release 0.9.8.
+- Session: the type `journal` (High).
 - Session: the Greek manual-id hash (Normal, small).
 - Session: the measure-first batch on both consumers (Normal: merge-dropped venues, dataset title keys, TeX quotes, edited volumes); `local/xpac-measure/` now on both machines.
 - Session: reshape this list to the convention (10 entries over the limit by `todo-shape.sh`, the Normal item), its own session.
 - Thomas: claim and clean his own OpenAlex profile, the watch case for the profile-claiming item (Normal).
 
 ## High
+- `journal` is claimed for works no source calls a journal article
+  (feedback from a consumer site (dpsd-new), 2026-11-25: its type filter,
+  set to journal articles, listed conference papers). Of its 371, 16 sit
+  in proceedings series the publisher registers as journals, 23 have no
+  source, 7 a repository; `map_type` gives `article` `journal` at any
+  source but a conference one. Measure on both consumers first, then:
+  `journal` only at a journal source, else `other` (an understated type
+  shows and an override fixes it); and a consumer-configured type rule
+  per OpenAlex source id, erga shipping no list. Merging types for
+  display is the site's (declined, 2026-11-26). Notify dpsd-new when the
+  source rule ships: it retires its 16 per-work overrides
 
 ## Normal
 - Reshape this list to the convention's ~2 lines an item: each action as one line, its measurements and cases moved into the docs they belong to (its own session; `~/projects/claude-code-config/docs/todo-convention.md`)
@@ -60,7 +72,10 @@ Any order:
   `W7160285383`, `W7115913671`) and Zissis's `W2949119045` to his; the
   two ICSC 2022 papers on `A5004005331` and Gavalas's `W2166485328` were
   still unfixed. Whether those records moved or were minted new was not
-  checked
+  checked. Minted new, the same day (smartmove-site, 2026-11-25): its
+  manual entry for a CEUR paper (`10.5281/zenodo.10954263`) absorbed
+  `W7239562284`, a DOI-less default record created that morning, in
+  that evening's build, unreported
 - A listed work whose byline names a member on an authorship with no
   author id leaves that member untracked: `normalize` tracks a name only
   by exact casefold match on the configured name or alias, so
@@ -117,7 +132,9 @@ Any order:
   decoy dpsd-new's config records; 32 works) now mixes Zissis's maritime
   papers (MDM 2024 `W4400728518`, 2026 AIS and vessel-trajectory papers)
   with the homonym's electricity and water pricing, though the pilot
-  (2026-08-17) recorded the two as cleanly separated. The batched `doi:`
+  (2026-08-17) recorded the two as cleanly separated; by 2026-11-25 it
+  also carries Zissis on smartmove-site's CEUR paper `W7239562284`, so
+  the drift reaches both consumers. The batched `doi:`
   filter passes `include_xpac=true` whatever the config says, or an XPAC
   work on a member's ORCID list (the Ro-Boat dataset `W6949021637`,
   probe 2026-11-17) reads as on no entity; the report then names it as
@@ -437,16 +454,41 @@ Any order:
   `-3` in file order (checked in code 2026-11-24). Inserting one above
   others renumbers them: the delta shows them removed and re-added, and an
   id-keyed override or tag binds to another record with no error. Any
-  non-Latin script does the same; dpsd-new has four. Fix: when the slug is
+  non-Latin script does the same; dpsd-new has four, smartmove-site one
+  (2026-11-25, the Kallipos textbook). Fix: when the slug is
   empty, take a short hash of the normalized title. First check that
   neither consumer's overrides or tags address a `manual-untitled*` id;
   the release notes must say those entries change id once
 ## Low
+- `verify` drops an XPAC group silently when a member is in the default
+  listing (the next build fetches it), so a twin minted after the list
+  was built reads as a missed work: smartmove-site traced
+  `W6911295262` and added a manual entry for a paper whose default
+  record `W7239562284` was a day old (2026-11-25; traced 2026-11-26).
+  Say instead "N work(s) arrive with the next build", one line, ids shown
+- `verify` decides a group's default drop by curating each member alone,
+  but a default build merges the default copies first and curates only
+  their winner (`/code-review`, 2026-11-26): default W2 (erratum, more
+  citations) and W3 (article) share a title, the XPAC W5 wins the full
+  merge; the build lists nothing, `verify` keeps W3 and drops the group.
+  Same with an `exclude: true` on a default winner whose twin survives
+  alone. General fix: run the group's default members through `curate`
+  (on copies) and drop only if a work survives; it would retire most of
+  the per-member logic. Pairs with the "arrives with the next build" line
 - `_walk` ends on any page without `meta.next_cursor`, so a 200 with valid
   results but no meta still ends a walk short (the strict reader of
   2026-11-21 checks `results` only). Check live whether OpenAlex's cursor
   walk always ends on an empty page; if so, treat a non-empty page with no
   cursor as a failure
+- A listed work's fields are not checked for shape: `_listing_rows` checks
+  each row's `id` only, so a string `publication_year` crashes the sort in
+  `build` and in `verify` (now also through a CiteSeerX group's absorbed
+  member), and a list where `primary_location` belongs crashes normalize.
+  Check the fields normalize reads in `_listing_rows` and raise
+  `FetchError`, so the build fails with a clear message and `verify`'s
+  section stays advisory (Codex review, 2026-11-26; never seen live). A
+  broad `except TypeError` in `verify` was tried and dropped: it would
+  report erga's own bugs as OpenAlex's. Pairs with the `read_output` item
 - Curated DOIs are not checked for shape: `_field_value` turns any value
   into `https://doi.org/<value>`, so a manual or override `doi: 5`, or a
   typo that drops the `10.` prefix, publishes a dead link at exit 0. The
